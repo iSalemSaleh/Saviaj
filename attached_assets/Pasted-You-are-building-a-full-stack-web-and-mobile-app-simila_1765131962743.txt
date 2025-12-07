@@ -1,0 +1,50 @@
+You are building a full-stack web and mobile app similar to Uber, but completely democratized and based on user-driven pricing and route sharing. Build the project structure, backend, frontend, database models, APIs, and any needed components according to the following requirements:
+1. Core Purpose
+Create a two-way transportation marketplace where:
+•	Riders can post trip requests with pickup, destination, and an offer amount (the amount they are willing to pay).
+•	Drivers can choose whether to accept a rider’s offer.
+•	Drivers or commuters can also post their planned route, departure time, and maximum detour distance (in miles) they are willing to take for potential passengers.
+•	Riders can browse and request seats on these pre-announced routes.
+2. Key Features
+Build the platform so that it includes:
+1.	Rider Offer System
+o	Form with pickup location, destination, and price offer.
+o	Riders submit offers visible to drivers.
+o	Drivers can accept or decline offers.
+2.	Driver Route Posting
+o	Drivers enter their starting point, destination, departure time, and detour radius (miles).
+o	Riders can browse these listings and request a ride.
+3.	Matching Logic
+o	Match riders and drivers based on route alignment, proximity, price, and timing.
+o	Include endpoints for both offer-based matches and route-based matches.
+4.	User Accounts
+o	Rider and driver profiles (or unified account with role selection).
+o	Authentication (JWT or OAuth).
+o	Ratings system (optional initial version).
+5.	Database Models
+o	Users
+o	Rider Offers
+o	Driver Routes
+o	Accepted Rides
+o	Location/Geodata
+o	Notifications
+6.	Backend Requirements
+o	Build API endpoints for all features.
+o	Include validation, permission checks, and basic error handling.
+o	Use geolocation utilities for distance calculations.
+7.	Frontend Requirements
+o	Clear UI for posting offers.
+o	Clear UI for drivers posting routes.
+o	Browsable list of offers and route options.
+o	Simple acceptance/request workflows.
+8.	Scalability
+o	Organize code cleanly for future expansion.
+o	Use modular services for matching, location handling, and pricing logic.
+3. Development Style
+•	Use clean, production-ready code.
+•	Comment code so it’s readable and maintainable.
+•	Use best practices for security and performance.
+•	Suggest improvements where relevant.
+Your task
+Generate the initial project (backend + frontend), define all database schema, scaffolding, API endpoints, and begin implementing key functionality. Then tell me what additional details you need to complete the full build.
+
