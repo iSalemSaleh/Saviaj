@@ -4,7 +4,7 @@ import { Menu } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
-import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765315907465.png";
+import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
 
 export default function Navbar() {
   const [location] = useLocation();
@@ -32,14 +32,12 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-display text-xl font-bold text-primary">
-          <div className="h-8 w-8 overflow-hidden flex-shrink-0">
-            <img 
-              src={atlasRideLogo} 
-              alt="AtlasRide" 
-              className="h-8 w-auto object-cover object-left"
-              style={{ maxWidth: 'none' }}
-            />
-          </div>
+          <img 
+            src={atlasRideLogo} 
+            alt="AtlasRide Logo" 
+            className="h-9 w-9 object-contain"
+            style={{ mixBlendMode: 'multiply' }}
+          />
           AtlasRide
         </Link>
 
