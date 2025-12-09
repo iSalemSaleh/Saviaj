@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Clock, Navigation, CheckCircle2, XCircle } from "lucide-react";
+import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Mock Data
@@ -123,8 +123,8 @@ export default function DriverPage() {
                         <Button className="w-full bg-green-600 hover:bg-green-700">
                           <CheckCircle2 className="mr-1 h-4 w-4" /> Accept
                         </Button>
-                        <Button variant="outline" className="w-full text-muted-foreground hover:text-destructive">
-                          <XCircle className="mr-1 h-4 w-4" /> Decline
+                        <Button variant="outline" className="w-full text-muted-foreground hover:text-primary">
+                          <MessageSquare className="mr-1 h-4 w-4" /> Bid
                         </Button>
                       </div>
                     </div>
