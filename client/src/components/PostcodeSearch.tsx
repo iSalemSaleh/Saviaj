@@ -72,17 +72,23 @@ export default function PostcodeSearch({
     try {
       const encoded = encodeURIComponent(searchQuery.trim());
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${mapboxToken}&country=GB&autocomplete=true&types=postcode,address,place,locality,neighborhood&limit=5`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${mapboxToken}&country=GB&autocomplete=true&types=address,postcode,poi,place&limit=8&proximity=ip`
       );
       
       const data = await response.json();
       
       if (data.features && data.features.length > 0) {
-        setSuggestions(data.features.map((f: any) => ({
-          id: f.id,
-          place_name: f.place_name,
-          text: f.text,
-        })));
+        setSuggestions(data.features.map((f: any) => {
+          const addressNumber = f.address || '';
+          const streetName = f.text || '';
+          const displayText = addressNumber ? `${addressNumber} ${streetName}` : streetName;
+          
+          return {
+            id: f.id,
+            place_name: f.place_name,
+            text: displayText,
+          };
+        }));
         setShowSuggestions(true);
       } else {
         setSuggestions([]);
