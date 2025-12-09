@@ -1,85 +1,102 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Link } from "wouter";
-import { MapPin } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MapPin, Car, Users, Shield, Loader2 } from "lucide-react";
+import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
 
 export default function AuthPage() {
+  const [rememberMe, setRememberMe] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = () => {
+    setIsLoading(true);
+    const loginUrl = rememberMe ? "/api/login?remember=true" : "/api/login";
+    window.location.href = loginUrl;
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/20 p-4">
-      <Card className="w-full max-w-md border-none shadow-xl">
-        <CardHeader className="space-y-1 text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+      <Card className="w-full max-w-md border-none shadow-2xl">
+        <CardHeader className="space-y-1 text-center pb-2">
           <div className="flex justify-center mb-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <MapPin className="h-7 w-7" />
-            </div>
+            <img 
+              src={atlasRideLogo} 
+              alt="AtlasRide" 
+              className="h-20 w-20 object-contain"
+              style={{ mixBlendMode: 'multiply' }}
+            />
           </div>
-          <CardTitle className="text-2xl font-bold text-primary">Welcome to AtlasRide</CardTitle>
-          <CardDescription>
-            Join the democratized transportation network
+          <CardTitle className="text-3xl font-bold text-primary">AtlasRide</CardTitle>
+          <CardDescription className="text-base">
+            Your ride, your price. Join the democratized transportation network.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="m@example.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" />
-                </div>
-                <Button className="w-full" size="lg">Sign In</Button>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="register">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="first-name">First name</Label>
-                    <Input id="first-name" placeholder="Max" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="last-name">Last name</Label>
-                    <Input id="last-name" placeholder="Robinson" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="m@example.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input id="password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="license">Driver's License (KYC)</Label>
-                  <Input id="license" type="file" className="cursor-pointer" accept="image/*,.pdf" />
-                  <p className="text-xs text-muted-foreground">Required for driver verification</p>
-                </div>
-                <Button className="w-full" size="lg">Create Account</Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-3 gap-3 py-4">
+            <div className="flex flex-col items-center text-center p-3 rounded-lg bg-muted/50">
+              <Car className="h-6 w-6 text-primary mb-2" />
+              <span className="text-xs text-muted-foreground">Fair Pricing</span>
+            </div>
+            <div className="flex flex-col items-center text-center p-3 rounded-lg bg-muted/50">
+              <Users className="h-6 w-6 text-secondary mb-2" />
+              <span className="text-xs text-muted-foreground">Community</span>
+            </div>
+            <div className="flex flex-col items-center text-center p-3 rounded-lg bg-muted/50">
+              <Shield className="h-6 w-6 text-accent mb-2" />
+              <span className="text-xs text-muted-foreground">Verified</span>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <Button 
+              onClick={handleLogin}
+              className="w-full h-12 text-lg shadow-lg"
+              size="lg"
+              disabled={isLoading}
+              data-testid="button-login"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <MapPin className="mr-2 h-5 w-5" />
+                  Sign In / Sign Up
+                </>
+              )}
+            </Button>
+
+            <div className="flex items-center justify-center space-x-2">
+              <Checkbox 
+                id="remember" 
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                data-testid="checkbox-remember"
+              />
+              <label
+                htmlFor="remember"
+                className="text-sm text-muted-foreground cursor-pointer select-none"
+              >
+                Stay signed in
+              </label>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t">
+            <p className="text-xs text-center text-muted-foreground">
+              By signing in, you agree to our Terms of Service and Privacy Policy.
+              Your data is securely handled and never shared without consent.
+            </p>
+          </div>
         </CardContent>
-        <CardFooter className="flex justify-center border-t p-6">
-          <Link href="/">
-            <a className="text-sm text-muted-foreground hover:text-primary transition-colors">
-              Back to Home
-            </a>
-          </Link>
-        </CardFooter>
       </Card>
+
+      <p className="mt-6 text-sm text-muted-foreground">
+        Powered by secure Replit authentication
+      </p>
     </div>
   );
 }
