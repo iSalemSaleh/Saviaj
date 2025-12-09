@@ -1,8 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { MapPin, Search, Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 interface PostcodeSearchProps {
   value: string;
@@ -17,6 +15,12 @@ interface PostcodeSearchProps {
   testId?: string;
 }
 
+interface Suggestion {
+  id: string;
+  place_name: string;
+  text: string;
+}
+
 export default function PostcodeSearch({
   value,
   onChange,
@@ -25,134 +29,146 @@ export default function PostcodeSearch({
   labelClassName = "text-muted-foreground",
   iconColor = "text-muted-foreground",
   inputClassName = "",
-  buttonClassName = "",
-  textClassName = "text-muted-foreground",
   testId = "input-location",
 }: PostcodeSearchProps) {
-  const [postcode, setPostcode] = useState("");
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [showPostcodeInput, setShowPostcodeInput] = useState(false);
-  const { toast } = useToast();
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const searchPostcode = async () => {
-    if (!postcode.trim()) return;
+  useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const response = await fetch("/api/mapbox-token");
+        const { token } = await response.json();
+        setMapboxToken(token);
+      } catch (error) {
+        console.error("Failed to fetch Mapbox token:", error);
+      }
+    };
+    fetchToken();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const searchSuggestions = async (searchQuery: string) => {
+    if (!searchQuery.trim() || !mapboxToken) {
+      setSuggestions([]);
+      return;
+    }
 
     setIsSearching(true);
     try {
-      const tokenResponse = await fetch("/api/mapbox-token");
-      const { token } = await tokenResponse.json();
-
-      const searchQuery = encodeURIComponent(postcode.trim() + ", UK");
+      const encoded = encodeURIComponent(searchQuery.trim());
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${searchQuery}.json?access_token=${token}&country=GB&types=postcode,address,place&limit=1`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${mapboxToken}&country=GB&autocomplete=true&types=postcode,address,place,locality,neighborhood&limit=5`
       );
       
       const data = await response.json();
       
       if (data.features && data.features.length > 0) {
-        const place = data.features[0];
-        onChange(place.place_name);
-        setPostcode("");
-        setShowPostcodeInput(false);
-        toast({
-          title: "Location found",
-          description: place.place_name,
-        });
+        setSuggestions(data.features.map((f: any) => ({
+          id: f.id,
+          place_name: f.place_name,
+          text: f.text,
+        })));
+        setShowSuggestions(true);
       } else {
-        toast({
-          title: "Postcode not found",
-          description: "Please check the postcode and try again",
-          variant: "destructive",
-        });
+        setSuggestions([]);
       }
     } catch (error) {
-      console.error("Postcode search error:", error);
-      toast({
-        title: "Search failed",
-        description: "Unable to search for postcode",
-        variant: "destructive",
-      });
+      console.error("Autocomplete error:", error);
+      setSuggestions([]);
     } finally {
       setIsSearching(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      searchPostcode();
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setQuery(newValue);
+    
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      searchSuggestions(newValue);
+    }, 300);
+  };
+
+  const handleSuggestionClick = (suggestion: Suggestion) => {
+    onChange(suggestion.place_name);
+    setQuery("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const handleFocus = () => {
+    if (suggestions.length > 0) {
+      setShowSuggestions(true);
     }
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" ref={containerRef}>
       {label && <label className={`text-sm font-medium ${labelClassName}`}>{label}</label>}
       
-      {!showPostcodeInput ? (
-        <div className="space-y-2">
-          <div className="relative">
-            <MapPin className={`absolute left-3 top-3 h-4 w-4 ${iconColor}`} />
-            <Input
-              placeholder={placeholder}
-              className={`pl-9 h-11 ${inputClassName}`}
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              data-testid={testId}
-            />
+      <div className="relative">
+        <MapPin className={`absolute left-3 top-3 h-4 w-4 ${iconColor} z-10`} />
+        <Input
+          placeholder={placeholder}
+          className={`pl-9 h-11 ${inputClassName}`}
+          value={query || value}
+          onChange={handleInputChange}
+          onFocus={handleFocus}
+          data-testid={testId}
+        />
+        {isSearching && (
+          <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+        )}
+        
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-60 overflow-y-auto">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={suggestion.id}
+                type="button"
+                className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start gap-3 border-b border-gray-100 dark:border-gray-800 last:border-b-0 transition-colors"
+                onClick={() => handleSuggestionClick(suggestion)}
+                data-testid={`${testId}-suggestion-${index}`}
+              >
+                <Search className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
+                    {suggestion.text}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {suggestion.place_name}
+                  </p>
+                </div>
+              </button>
+            ))}
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={`text-xs ${textClassName} hover:text-primary ${buttonClassName}`}
-            onClick={() => setShowPostcodeInput(true)}
-            data-testid={`${testId}-postcode-toggle`}
-          >
-            <Search className="h-3 w-3 mr-1" />
-            Search by postcode
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className={`absolute left-3 top-3 h-4 w-4 ${iconColor}`} />
-              <Input
-                placeholder="e.g. SW1A 1AA"
-                className={`pl-9 h-11 ${inputClassName}`}
-                value={postcode}
-                onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-                onKeyDown={handleKeyDown}
-                data-testid={`${testId}-postcode`}
-              />
-            </div>
-            <Button
-              type="button"
-              onClick={searchPostcode}
-              disabled={isSearching || !postcode.trim()}
-              className={`h-11 ${buttonClassName}`}
-              data-testid={`${testId}-postcode-search`}
-            >
-              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Find"}
-            </Button>
-          </div>
-          {value && (
-            <p className={`text-xs ${textClassName} truncate`}>
-              Current: {value}
-            </p>
-          )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={`text-xs ${textClassName} hover:text-primary ${buttonClassName}`}
-            onClick={() => setShowPostcodeInput(false)}
-            data-testid={`${testId}-address-toggle`}
-          >
-            <MapPin className="h-3 w-3 mr-1" />
-            Enter address manually
-          </Button>
-        </div>
+        )}
+      </div>
+      
+      {value && !query && (
+        <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+          <MapPin className="h-3 w-3" />
+          {value}
+        </p>
       )}
     </div>
   );
