@@ -11,6 +11,7 @@ import { MapPin, Clock, PoundSterling, Calendar, Search, ArrowRight, Loader2 } f
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import PostcodeSearch from "@/components/PostcodeSearch";
 
 interface DriverRoute {
   id: number;
@@ -119,33 +120,23 @@ export default function RiderPage() {
                 </CardHeader>
                 <form onSubmit={handleSubmit}>
                   <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Pickup Location</label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          placeholder="Enter pickup address" 
-                          className="pl-9 h-11"
-                          value={pickupLocation}
-                          onChange={(e) => setPickupLocation(e.target.value)}
-                          data-testid="input-pickup"
-                        />
-                      </div>
-                    </div>
+                    <PostcodeSearch
+                      value={pickupLocation}
+                      onChange={setPickupLocation}
+                      placeholder="Enter pickup address"
+                      label="Pickup Location"
+                      iconColor="text-muted-foreground"
+                      testId="input-pickup"
+                    />
                     
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Destination</label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-secondary" />
-                        <Input 
-                          placeholder="Enter destination" 
-                          className="pl-9 h-11"
-                          value={dropoffLocation}
-                          onChange={(e) => setDropoffLocation(e.target.value)}
-                          data-testid="input-dropoff"
-                        />
-                      </div>
-                    </div>
+                    <PostcodeSearch
+                      value={dropoffLocation}
+                      onChange={setDropoffLocation}
+                      placeholder="Enter destination"
+                      label="Destination"
+                      iconColor="text-secondary"
+                      testId="input-dropoff"
+                    />
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">

@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import PostcodeSearch from "@/components/PostcodeSearch";
 
 interface RiderOffer {
   id: number;
@@ -219,33 +220,29 @@ export default function DriverPage() {
                 </CardHeader>
                 <form onSubmit={handlePublishRoute}>
                   <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-primary-foreground/80">Starting Point</label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-primary" />
-                        <Input 
-                          placeholder="Home / Current Location" 
-                          className="pl-9 h-11 bg-white text-primary border-none"
-                          value={startLocation}
-                          onChange={(e) => setStartLocation(e.target.value)}
-                          data-testid="input-start-location"
-                        />
-                      </div>
-                    </div>
+                    <PostcodeSearch
+                      value={startLocation}
+                      onChange={setStartLocation}
+                      placeholder="Home / Current Location"
+                      label="Starting Point"
+                      labelClassName="text-primary-foreground/80"
+                      iconColor="text-primary"
+                      inputClassName="bg-white text-primary border-none"
+                      textClassName="text-primary-foreground/70"
+                      testId="input-start-location"
+                    />
                     
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-primary-foreground/80">Destination</label>
-                      <div className="relative">
-                        <Navigation className="absolute left-3 top-3 h-4 w-4 text-primary" />
-                        <Input 
-                          placeholder="Work / Office" 
-                          className="pl-9 h-11 bg-white text-primary border-none"
-                          value={endLocation}
-                          onChange={(e) => setEndLocation(e.target.value)}
-                          data-testid="input-end-location"
-                        />
-                      </div>
-                    </div>
+                    <PostcodeSearch
+                      value={endLocation}
+                      onChange={setEndLocation}
+                      placeholder="Work / Office"
+                      label="Destination"
+                      labelClassName="text-primary-foreground/80"
+                      iconColor="text-primary"
+                      inputClassName="bg-white text-primary border-none"
+                      textClassName="text-primary-foreground/70"
+                      testId="input-end-location"
+                    />
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-primary-foreground/80">Departure Time</label>
