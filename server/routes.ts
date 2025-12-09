@@ -261,7 +261,80 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // Payment Routes
+  // Payment Intent for Google Pay / Apple Pay
+  app.post('/api/rides/:id/create-payment-intent', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const ride = await storage.getRideById(rideId);
+      if (!ride) {
+        return res.status(404).json({ error: "Ride not found" });
+      }
+
+      if (ride.riderId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const { stripeService } = await import('./stripeService');
+      
+      const paymentIntent = await stripeService.createPaymentIntent(
+        Math.round(parseFloat(ride.agreedPrice) * 100),
+        'gbp',
+        { rideId: rideId.toString() }
+      );
+
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error) {
+      console.error("Error creating payment intent:", error);
+      res.status(500).json({ error: "Failed to create payment intent" });
+    }
+  });
+
+  // Payment Session (for card checkout redirect)
+  app.post('/api/rides/:id/payment-session', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const ride = await storage.getRideById(rideId);
+      if (!ride) {
+        return res.status(404).json({ error: "Ride not found" });
+      }
+
+      if (ride.riderId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+
+      const { stripeService } = await import('./stripeService');
+      const user = await storage.getUser(userId);
+      
+      let customerId = user?.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripeService.createCustomer(user?.email || '', userId);
+        await storage.updateUserStripeCustomerId(userId, customer.id);
+        customerId = customer.id;
+      }
+
+      const successUrl = `${req.protocol}://${req.get('host')}/ride/${rideId}?payment=success`;
+      const cancelUrl = `${req.protocol}://${req.get('host')}/ride/${rideId}?payment=cancelled`;
+
+      const session = await stripeService.createCheckoutSession(
+        customerId,
+        parseFloat(ride.agreedPrice),
+        rideId,
+        successUrl,
+        cancelUrl
+      );
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating payment session:", error);
+      res.status(500).json({ error: "Failed to create payment session" });
+    }
+  });
+
+  // Legacy Payment Route (keeping for backward compatibility)
   app.post('/api/rides/:id/payment', isAuthenticated, async (req: any, res) => {
     try {
       const rideId = parseInt(req.params.id);

@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import PaymentButton from "@/components/PaymentButton";
 import { 
   MapPin, 
   Clock, 
@@ -19,7 +21,8 @@ import {
   Car, 
   CheckCircle,
   AlertCircle,
-  PoundSterling
+  PoundSterling,
+  CreditCard
 } from "lucide-react";
 
 interface Ride {
@@ -41,8 +44,22 @@ export default function RideTrackingPage() {
   const params = useParams<{ id: string }>();
   const rideId = parseInt(params.id || "0");
   const { user } = useAuth();
+  const { toast } = useToast();
   const [eta, setEta] = useState<number | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+      setPaymentSuccess(true);
+      toast({
+        title: "Payment Successful",
+        description: "Your ride has been paid. Thank you!",
+      });
+      window.history.replaceState({}, '', `/ride/${rideId}`);
+    }
+  }, [rideId, toast]);
 
   const { data: ride, isLoading: rideLoading } = useQuery<Ride>({
     queryKey: [`/api/rides/${rideId}`],
@@ -280,6 +297,52 @@ export default function RideTrackingPage() {
                 <CheckCircle className="mr-2 h-5 w-5" />
                 Complete Ride
               </Button>
+            )}
+
+            {/* Payment Section for Riders */}
+            {(ride.status === 'completed' || ride.status === 'in_progress') && userType === 'rider' && !paymentSuccess && (
+              <Card className="border-none shadow-lg">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Pay for Ride
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <PaymentButton
+                    amount={parseFloat(ride.agreedPrice)}
+                    rideId={ride.id}
+                    onSuccess={() => {
+                      setPaymentSuccess(true);
+                      toast({
+                        title: "Payment Successful",
+                        description: "Your ride has been paid. Thank you!",
+                      });
+                    }}
+                    onError={(error) => {
+                      toast({
+                        title: "Payment Failed",
+                        description: error,
+                        variant: "destructive",
+                      });
+                    }}
+                  />
+                  <p className="text-xs text-center text-muted-foreground mt-3">
+                    Secure payment powered by Stripe
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {paymentSuccess && (
+              <Card className="border-green-200 bg-green-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 text-green-600">
+                    <CheckCircle className="h-5 w-5" />
+                    <p className="font-medium">Payment Complete</p>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             {locationError && (

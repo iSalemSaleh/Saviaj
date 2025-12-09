@@ -11,13 +11,15 @@ export class StripeService {
     });
   }
 
-  async createPaymentIntent(amount: number, customerId: string, rideId: number) {
+  async createPaymentIntent(amount: number, currency: string, metadata: Record<string, string>) {
     const stripe = await getUncachableStripeClient();
     return await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert pounds to pence
-      currency: 'gbp',
-      customer: customerId,
-      metadata: { rideId: rideId.toString() },
+      amount, // Amount in smallest currency unit (pence for GBP)
+      currency,
+      metadata,
+      automatic_payment_methods: {
+        enabled: true,
+      },
     });
   }
 
