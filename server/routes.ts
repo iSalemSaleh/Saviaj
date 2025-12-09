@@ -1,13 +1,16 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import type { Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupWebSocket } from "./websocket";
 import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema } from "@shared/schema";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express, httpServer: Server): Promise<void> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Setup WebSocket for real-time location tracking on the main server
+  setupWebSocket(httpServer);
 
   // Mapbox token endpoint
   app.get('/api/mapbox-token', (req, res) => {
@@ -258,10 +261,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-  
-  // Setup WebSocket for real-time location tracking
-  setupWebSocket(httpServer);
-  
-  return httpServer;
+  // Payment Routes
+  app.post('/api/rides/:id/payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const ride = await storage.getRideById(rideId);
+      if (!ride) {
+        return res.status(404).json({ message: "Ride not found" });
+      }
+
+      if (ride.riderId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      const { stripeService } = await import('./stripeService');
+      const user = await storage.getUser(userId);
+      
+      let customerId = user?.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripeService.createCustomer(user?.email || '', userId);
+        await storage.updateUserStripeCustomerId(userId, customer.id);
+        customerId = customer.id;
+      }
+
+      const successUrl = `${req.protocol}://${req.get('host')}/ride/${rideId}?payment=success`;
+      const cancelUrl = `${req.protocol}://${req.get('host')}/ride/${rideId}?payment=cancelled`;
+
+      const session = await stripeService.createCheckoutSession(
+        customerId,
+        parseFloat(ride.agreedPrice),
+        rideId,
+        successUrl,
+        cancelUrl
+      );
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating payment session:", error);
+      res.status(500).json({ message: "Failed to create payment session" });
+    }
+  });
+
+  // Stripe publishable key endpoint
+  app.get('/api/stripe/publishable-key', async (req, res) => {
+    try {
+      const { getStripePublishableKey } = await import('./stripeClient');
+      const key = await getStripePublishableKey();
+      res.json({ publishableKey: key });
+    } catch (error) {
+      console.error("Error getting Stripe key:", error);
+      res.status(500).json({ message: "Failed to get Stripe key" });
+    }
+  });
 }

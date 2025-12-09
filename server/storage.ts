@@ -23,6 +23,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserDriverStatus(id: string, isDriver: boolean, licenseUrl?: string): Promise<User>;
+  updateUserStripeCustomerId(id: string, stripeCustomerId: string): Promise<User>;
   
   // Rider Offer operations
   createRiderOffer(offer: InsertRiderOffer): Promise<RiderOffer>;
@@ -77,6 +78,18 @@ export class DatabaseStorage implements IStorage {
       .set({
         isDriver,
         driverLicenseUrl: licenseUrl,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateUserStripeCustomerId(id: string, stripeCustomerId: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        stripeCustomerId,
         updatedAt: new Date(),
       })
       .where(eq(users.id, id))

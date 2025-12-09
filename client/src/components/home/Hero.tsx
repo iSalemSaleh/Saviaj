@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowRight, Car, MapPin } from "lucide-react";
+import { Car, MapPin } from "lucide-react";
 import heroBg from "@assets/generated_images/modern_abstract_city_map_with_motion_blur_lines.png";
 
 export default function Hero() {
@@ -26,16 +26,16 @@ export default function Hero() {
             No algorithms, just fair connections.
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Link href="/rider">
-              <Button size="lg" className="h-12 px-8 text-md shadow-lg shadow-primary/20">
+            <Button asChild size="lg" className="h-12 px-8 text-md shadow-lg shadow-primary/20">
+              <Link href="/rider">
                 Find a Ride <MapPin className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/driver">
-              <Button size="lg" variant="outline" className="h-12 px-8 text-md bg-white/50 backdrop-blur-sm hover:bg-white/80">
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="h-12 px-8 text-md bg-white/50 backdrop-blur-sm hover:bg-white/80">
+              <Link href="/driver">
                 Offer a Ride <Car className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

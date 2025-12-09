@@ -37,6 +37,7 @@ export const users = pgTable("users", {
   driverVerified: boolean("driver_verified").default(false),
   rating: decimal("rating", { precision: 3, scale: 2 }),
   totalRides: integer("total_rides").default(0),
+  stripeCustomerId: varchar("stripe_customer_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
