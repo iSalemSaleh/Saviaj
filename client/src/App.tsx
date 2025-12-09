@@ -8,6 +8,7 @@ import Home from "@/pages/home";
 import RiderPage from "@/pages/rider";
 import DriverPage from "@/pages/driver";
 import AuthPage from "@/pages/auth";
+import RideTrackingPage from "@/pages/ride-tracking";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/rider" component={RiderPage} />
       <Route path="/driver" component={DriverPage} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/ride/:id" component={RideTrackingPage} />
       <Route component={NotFound} />
     </Switch>
   );
