@@ -101,7 +101,7 @@ export default function DriverPage() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <span className="block text-2xl font-bold text-primary">${offer.offer}</span>
+                            <span className="block text-2xl font-bold text-primary">£{offer.offer}</span>
                             <span className="text-xs text-muted-foreground">offered price</span>
                           </div>
                         </div>

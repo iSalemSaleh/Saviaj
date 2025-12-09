@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Clock, DollarSign, Calendar, Search, ArrowRight } from "lucide-react";
+import { MapPin, Clock, PoundSterling, Calendar, Search, ArrowRight } from "lucide-react";
 import { useState } from "react";
 
 // Mock Data
@@ -55,9 +55,9 @@ export default function RiderPage() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-medium text-muted-foreground">Your Offer ($)</label>
+                      <label className="text-sm font-medium text-muted-foreground">Your Offer (£)</label>
                       <div className="relative">
-                        <DollarSign className="absolute left-3 top-3 h-4 w-4 text-accent" />
+                        <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-accent" />
                         <Input type="number" placeholder="20" className="pl-9 h-11 font-bold text-accent" />
                       </div>
                     </div>
@@ -109,7 +109,7 @@ export default function RiderPage() {
                         </div>
                       </div>
                       <Badge variant="secondary" className="text-lg px-3 py-1 bg-primary/10 text-primary">
-                        ${route.price}
+                        £{route.price}
                       </Badge>
                     </div>
 

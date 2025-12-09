@@ -62,6 +62,11 @@ export default function AuthPage() {
                   <Label htmlFor="password">Password</Label>
                   <Input id="password" type="password" />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="license">Driver's License (KYC)</Label>
+                  <Input id="license" type="file" className="cursor-pointer" accept="image/*,.pdf" />
+                  <p className="text-xs text-muted-foreground">Required for driver verification</p>
+                </div>
                 <Button className="w-full" size="lg">Create Account</Button>
               </div>
             </TabsContent>
