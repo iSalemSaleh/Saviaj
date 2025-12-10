@@ -144,8 +144,29 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // Serve uploaded files
-  app.use('/uploads', (await import('express')).static(path.join(process.cwd(), 'uploads')));
+  // Serve uploaded license files (protected - requires authentication)
+  app.get('/api/uploads/licenses/:filename', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      const filename = req.params.filename;
+      
+      // Only allow users to view their own license
+      if (user?.driverLicenseUrl !== `/uploads/licenses/${filename}`) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const filePath = path.join(uploadDir, filename);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      res.sendFile(filePath);
+    } catch (error) {
+      console.error("Error serving license:", error);
+      res.status(500).json({ message: "Failed to serve file" });
+    }
+  });
 
   // Rider Offer Routes
   app.post('/api/rider-offers', isAuthenticated, async (req: any, res) => {
