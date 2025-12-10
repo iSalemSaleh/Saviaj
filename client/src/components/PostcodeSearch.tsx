@@ -4,7 +4,7 @@ import { MapPin, Search, Loader2 } from "lucide-react";
 
 interface PostcodeSearchProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (value: string, lat?: number, lon?: number) => void;
   placeholder?: string;
   label?: string;
   labelClassName?: string;
@@ -17,8 +17,11 @@ interface PostcodeSearchProps {
 
 interface Suggestion {
   id: string;
-  place_name: string;
-  text: string;
+  address: string;
+  position: {
+    lat: number;
+    lon: number;
+  };
 }
 
 export default function PostcodeSearch({
@@ -35,22 +38,8 @@ export default function PostcodeSearch({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const response = await fetch("/api/mapbox-token");
-        const { token } = await response.json();
-        setMapboxToken(token);
-      } catch (error) {
-        console.error("Failed to fetch Mapbox token:", error);
-      }
-    };
-    fetchToken();
-  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -63,32 +52,21 @@ export default function PostcodeSearch({
   }, []);
 
   const searchSuggestions = async (searchQuery: string) => {
-    if (!searchQuery.trim() || !mapboxToken) {
+    if (!searchQuery.trim()) {
       setSuggestions([]);
       return;
     }
 
     setIsSearching(true);
     try {
-      const encoded = encodeURIComponent(searchQuery.trim());
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?access_token=${mapboxToken}&country=GB&autocomplete=true&types=address,postcode,poi,place&limit=8&proximity=ip`
+        `/api/azure-maps/search?q=${encodeURIComponent(searchQuery.trim())}`
       );
       
       const data = await response.json();
       
-      if (data.features && data.features.length > 0) {
-        setSuggestions(data.features.map((f: any) => {
-          const addressNumber = f.address || '';
-          const streetName = f.text || '';
-          const displayText = addressNumber ? `${addressNumber} ${streetName}` : streetName;
-          
-          return {
-            id: f.id,
-            place_name: f.place_name,
-            text: displayText,
-          };
-        }));
+      if (data.results && data.results.length > 0) {
+        setSuggestions(data.results);
         setShowSuggestions(true);
       } else {
         setSuggestions([]);
@@ -115,7 +93,7 @@ export default function PostcodeSearch({
   };
 
   const handleSuggestionClick = (suggestion: Suggestion) => {
-    onChange(suggestion.place_name);
+    onChange(suggestion.address, suggestion.position.lat, suggestion.position.lon);
     setQuery("");
     setSuggestions([]);
     setShowSuggestions(false);
@@ -158,10 +136,7 @@ export default function PostcodeSearch({
                 <Search className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-gray-900 dark:text-gray-100 truncate">
-                    {suggestion.text}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {suggestion.place_name}
+                    {suggestion.address}
                   </p>
                 </div>
               </button>

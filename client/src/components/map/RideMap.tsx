@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import * as atlas from 'azure-maps-control';
+import 'azure-maps-control/dist/atlas.min.css';
 
 interface Location {
   lat: number;
@@ -29,53 +29,69 @@ export function RideMap({
   className = "",
 }: RideMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const driverMarker = useRef<mapboxgl.Marker | null>(null);
-  const riderMarker = useRef<mapboxgl.Marker | null>(null);
-  const pickupMarker = useRef<mapboxgl.Marker | null>(null);
-  const dropoffMarker = useRef<mapboxgl.Marker | null>(null);
+  const map = useRef<atlas.Map | null>(null);
+  const dataSource = useRef<atlas.source.DataSource | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const [azureKey, setAzureKey] = useState<string | null>(null);
+  const markersRef = useRef<{ [key: string]: atlas.HtmlMarker }>({});
 
   useEffect(() => {
-    fetch('/api/mapbox-token')
+    fetch('/api/azure-maps/key')
       .then(res => res.json())
       .then(data => {
-        if (data.token) {
-          setMapboxToken(data.token);
+        if (data.key) {
+          setAzureKey(data.key);
         }
       })
       .catch(console.error);
   }, []);
 
   useEffect(() => {
-    if (!mapContainer.current || map.current || !mapboxToken) return;
+    if (!mapContainer.current || map.current || !azureKey) return;
 
-    mapboxgl.accessToken = mapboxToken;
-
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+    map.current = new atlas.Map(mapContainer.current, {
       center: [pickupLocation.lng, pickupLocation.lat],
       zoom: 12,
+      language: 'en-GB',
+      authOptions: {
+        authType: atlas.AuthenticationType.subscriptionKey,
+        subscriptionKey: azureKey,
+      },
+      style: 'road',
     });
 
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.current.controls.add([
+      new atlas.control.ZoomControl(),
+      new atlas.control.CompassControl(),
+    ], {
+      position: atlas.ControlPosition.TopRight,
+    });
 
-    map.current.on('load', () => {
+    map.current.events.add('ready', () => {
+      if (!map.current) return;
+      
+      dataSource.current = new atlas.source.DataSource();
+      map.current.sources.add(dataSource.current);
+
+      map.current.layers.add(new atlas.layer.LineLayer(dataSource.current, undefined, {
+        strokeColor: '#1a365d',
+        strokeWidth: 5,
+        lineJoin: 'round',
+        lineCap: 'round',
+      }));
+
       setMapReady(true);
     });
 
     return () => {
-      map.current?.remove();
+      Object.values(markersRef.current).forEach(marker => marker.remove());
+      markersRef.current = {};
+      map.current?.dispose();
       map.current = null;
     };
-  }, [mapboxToken, pickupLocation.lat, pickupLocation.lng]);
+  }, [azureKey, pickupLocation.lat, pickupLocation.lng]);
 
-  const createMarkerElement = useCallback((type: 'driver' | 'rider' | 'pickup' | 'dropoff') => {
-    const el = document.createElement('div');
-    el.className = 'marker';
-    
+  const createMarkerHtml = useCallback((type: 'driver' | 'rider' | 'pickup' | 'dropoff') => {
     const colors: Record<string, string> = {
       driver: '#1a365d',
       rider: '#0891b2',
@@ -90,7 +106,7 @@ export function RideMap({
       dropoff: '🏁',
     };
     
-    el.style.cssText = `
+    return `<div style="
       width: 40px;
       height: 40px;
       background-color: ${colors[type]};
@@ -102,70 +118,44 @@ export function RideMap({
       border: 3px solid white;
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
       cursor: pointer;
-    `;
-    el.innerHTML = icons[type];
-    
-    return el;
+    ">${icons[type]}</div>`;
   }, []);
 
-  useEffect(() => {
+  const updateMarker = useCallback((type: string, lat: number, lng: number) => {
     if (!map.current || !mapReady) return;
 
-    if (!pickupMarker.current) {
-      pickupMarker.current = new mapboxgl.Marker({
-        element: createMarkerElement('pickup'),
-      })
-        .setLngLat([pickupLocation.lng, pickupLocation.lat])
-        .setPopup(new mapboxgl.Popup().setHTML('<strong>Pickup Location</strong>'))
-        .addTo(map.current);
+    if (markersRef.current[type]) {
+      markersRef.current[type].setOptions({
+        position: [lng, lat],
+      });
     } else {
-      pickupMarker.current.setLngLat([pickupLocation.lng, pickupLocation.lat]);
+      const marker = new atlas.HtmlMarker({
+        position: [lng, lat],
+        htmlContent: createMarkerHtml(type as any),
+      });
+      map.current.markers.add(marker);
+      markersRef.current[type] = marker;
     }
-
-    if (!dropoffMarker.current) {
-      dropoffMarker.current = new mapboxgl.Marker({
-        element: createMarkerElement('dropoff'),
-      })
-        .setLngLat([dropoffLocation.lng, dropoffLocation.lat])
-        .setPopup(new mapboxgl.Popup().setHTML('<strong>Dropoff Location</strong>'))
-        .addTo(map.current);
-    } else {
-      dropoffMarker.current.setLngLat([dropoffLocation.lng, dropoffLocation.lat]);
-    }
-  }, [pickupLocation, dropoffLocation, mapReady, createMarkerElement]);
+  }, [mapReady, createMarkerHtml]);
 
   useEffect(() => {
-    if (!map.current || !mapReady || !driverLocation) return;
-
-    if (!driverMarker.current) {
-      driverMarker.current = new mapboxgl.Marker({
-        element: createMarkerElement('driver'),
-      })
-        .setLngLat([driverLocation.lng, driverLocation.lat])
-        .setPopup(new mapboxgl.Popup().setHTML('<strong>Driver Location</strong>'))
-        .addTo(map.current);
-    } else {
-      driverMarker.current.setLngLat([driverLocation.lng, driverLocation.lat]);
-    }
-  }, [driverLocation, mapReady, createMarkerElement]);
+    if (!mapReady) return;
+    updateMarker('pickup', pickupLocation.lat, pickupLocation.lng);
+    updateMarker('dropoff', dropoffLocation.lat, dropoffLocation.lng);
+  }, [pickupLocation, dropoffLocation, mapReady, updateMarker]);
 
   useEffect(() => {
-    if (!map.current || !mapReady || !riderLocation) return;
-
-    if (!riderMarker.current) {
-      riderMarker.current = new mapboxgl.Marker({
-        element: createMarkerElement('rider'),
-      })
-        .setLngLat([riderLocation.lng, riderLocation.lat])
-        .setPopup(new mapboxgl.Popup().setHTML('<strong>Rider Location</strong>'))
-        .addTo(map.current);
-    } else {
-      riderMarker.current.setLngLat([riderLocation.lng, riderLocation.lat]);
-    }
-  }, [riderLocation, mapReady, createMarkerElement]);
+    if (!mapReady || !driverLocation) return;
+    updateMarker('driver', driverLocation.lat, driverLocation.lng);
+  }, [driverLocation, mapReady, updateMarker]);
 
   useEffect(() => {
-    if (!map.current || !mapReady || !showRoute || !mapboxToken) return;
+    if (!mapReady || !riderLocation) return;
+    updateMarker('rider', riderLocation.lat, riderLocation.lng);
+  }, [riderLocation, mapReady, updateMarker]);
+
+  useEffect(() => {
+    if (!map.current || !mapReady || !showRoute || !dataSource.current) return;
 
     const getRoute = async () => {
       const start = driverLocation || pickupLocation;
@@ -173,46 +163,20 @@ export function RideMap({
 
       try {
         const response = await fetch(
-          `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?geometries=geojson&overview=full&access_token=${mapboxToken}`
+          `/api/azure-maps/route?startLat=${start.lat}&startLon=${start.lng}&endLat=${end.lat}&endLon=${end.lng}`
         );
         const data = await response.json();
 
-        if (data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const routeGeometry = route.geometry;
+        if (data.route) {
+          const coordinates = data.route.geometry.map((p: any) => [p.lon, p.lat]);
+          
+          dataSource.current?.clear();
+          dataSource.current?.add(new atlas.data.Feature(
+            new atlas.data.LineString(coordinates)
+          ));
 
-          if (map.current?.getSource('route')) {
-            (map.current.getSource('route') as mapboxgl.GeoJSONSource).setData({
-              type: 'Feature',
-              properties: {},
-              geometry: routeGeometry,
-            });
-          } else if (map.current) {
-            map.current.addLayer({
-              id: 'route',
-              type: 'line',
-              source: {
-                type: 'geojson',
-                data: {
-                  type: 'Feature',
-                  properties: {},
-                  geometry: routeGeometry,
-                },
-              },
-              layout: {
-                'line-join': 'round',
-                'line-cap': 'round',
-              },
-              paint: {
-                'line-color': '#1a365d',
-                'line-width': 5,
-                'line-opacity': 0.75,
-              },
-            });
-          }
-
-          const durationMinutes = Math.round(route.duration / 60);
-          const distanceMiles = (route.distance / 1609.34).toFixed(1);
+          const durationMinutes = Math.round(data.route.durationInSeconds / 60);
+          const distanceMiles = (data.route.distanceInMeters / 1609.34).toFixed(1);
 
           onEtaUpdate?.(durationMinutes);
           onDistanceUpdate?.(parseFloat(distanceMiles));
@@ -223,29 +187,36 @@ export function RideMap({
     };
 
     getRoute();
-  }, [pickupLocation, dropoffLocation, driverLocation, mapReady, showRoute, mapboxToken, onEtaUpdate, onDistanceUpdate]);
+  }, [pickupLocation, dropoffLocation, driverLocation, mapReady, showRoute, onEtaUpdate, onDistanceUpdate]);
 
   useEffect(() => {
     if (!map.current || !mapReady) return;
 
-    const bounds = new mapboxgl.LngLatBounds();
-    bounds.extend([pickupLocation.lng, pickupLocation.lat]);
-    bounds.extend([dropoffLocation.lng, dropoffLocation.lat]);
-    
+    const bounds = new atlas.data.BoundingBox(
+      [Math.min(pickupLocation.lng, dropoffLocation.lng), Math.min(pickupLocation.lat, dropoffLocation.lat)],
+      [Math.max(pickupLocation.lng, dropoffLocation.lng), Math.max(pickupLocation.lat, dropoffLocation.lat)]
+    );
+
     if (driverLocation) {
-      bounds.extend([driverLocation.lng, driverLocation.lat]);
+      bounds[0] = Math.min(bounds[0], driverLocation.lng);
+      bounds[1] = Math.min(bounds[1], driverLocation.lat);
+      bounds[2] = Math.max(bounds[2], driverLocation.lng);
+      bounds[3] = Math.max(bounds[3], driverLocation.lat);
     }
     if (riderLocation) {
-      bounds.extend([riderLocation.lng, riderLocation.lat]);
+      bounds[0] = Math.min(bounds[0], riderLocation.lng);
+      bounds[1] = Math.min(bounds[1], riderLocation.lat);
+      bounds[2] = Math.max(bounds[2], riderLocation.lng);
+      bounds[3] = Math.max(bounds[3], riderLocation.lat);
     }
 
-    map.current.fitBounds(bounds, {
+    map.current.setCamera({
+      bounds: bounds,
       padding: 50,
-      maxZoom: 15,
     });
   }, [pickupLocation, dropoffLocation, driverLocation, riderLocation, mapReady]);
 
-  if (!mapboxToken) {
+  if (!azureKey) {
     return (
       <div className={`flex items-center justify-center bg-gray-100 ${className}`}>
         <p className="text-gray-500">Loading map...</p>

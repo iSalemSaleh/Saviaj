@@ -12,13 +12,48 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Setup WebSocket for real-time location tracking on the main server
   setupWebSocket(httpServer);
 
-  // Mapbox token endpoint
-  app.get('/api/mapbox-token', (req, res) => {
-    const token = process.env.MAPBOX_ACCESS_TOKEN;
-    if (!token) {
-      return res.status(500).json({ message: 'Mapbox token not configured' });
+  // Azure Maps endpoints
+  app.get('/api/azure-maps/key', (req, res) => {
+    const key = process.env.AZURE_MAPS_KEY;
+    if (!key) {
+      return res.status(500).json({ message: 'Azure Maps key not configured' });
     }
-    res.json({ token });
+    res.json({ key });
+  });
+
+  app.get('/api/azure-maps/search', async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        return res.status(400).json({ message: 'Query parameter required' });
+      }
+      const { searchAddress } = await import('./azureMapsService');
+      const results = await searchAddress(query);
+      res.json({ results });
+    } catch (error: any) {
+      console.error('Azure Maps search error:', error);
+      res.status(500).json({ message: error.message || 'Search failed' });
+    }
+  });
+
+  app.get('/api/azure-maps/route', async (req, res) => {
+    try {
+      const { startLat, startLon, endLat, endLon } = req.query;
+      if (!startLat || !startLon || !endLat || !endLon) {
+        return res.status(400).json({ message: 'All coordinates required' });
+      }
+      const { getRoute } = await import('./azureMapsService');
+      const route = await getRoute(
+        parseFloat(startLat as string),
+        parseFloat(startLon as string),
+        parseFloat(endLat as string),
+        parseFloat(endLon as string)
+      );
+      res.json({ route });
+    } catch (error: any) {
+      console.error('Azure Maps route error:', error);
+      res.status(500).json({ message: error.message || 'Route calculation failed' });
+    }
   });
 
   // Auth routes
