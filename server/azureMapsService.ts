@@ -98,6 +98,3 @@ export async function getRoute(
   };
 }
 
-export function getAzureMapsKey(): string | undefined {
-  return AZURE_MAPS_KEY;
-}
