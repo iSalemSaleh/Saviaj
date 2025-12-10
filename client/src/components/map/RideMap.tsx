@@ -84,7 +84,11 @@ export function RideMap({
     });
 
     return () => {
-      Object.values(markersRef.current).forEach(marker => marker.remove());
+      if (map.current) {
+        Object.values(markersRef.current).forEach(marker => {
+          map.current?.markers.remove(marker);
+        });
+      }
       markersRef.current = {};
       map.current?.dispose();
       map.current = null;
