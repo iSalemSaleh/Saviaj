@@ -165,6 +165,15 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight font-bold text-primary;
   }
+  
+  /* Ensure date/time picker indicators are visible */
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 1;
+    display: block;
+  }
 }
 
 @layer utilities {
