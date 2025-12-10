@@ -2,7 +2,7 @@
 
 ## Overview
 
-AtlasRide is a two-way transportation marketplace similar to Uber, but completely democratized and based on user-driven pricing and route sharing. Riders can post trip requests with their own price offers, and drivers can accept or decline. Drivers can also post their planned routes with available seats, allowing riders to request to join. The platform uses real-time location tracking via WebSockets and integrates with Mapbox for mapping functionality.
+AtlasRide is a two-way transportation marketplace similar to Uber, but completely democratized and based on user-driven pricing and route sharing. Riders can post trip requests with their own price offers, and drivers can accept or decline. Drivers can also post their planned routes with available seats, allowing riders to request to join. The platform uses real-time location tracking via WebSockets and integrates with Azure Maps for geocoding and routing.
 
 ## User Preferences
 
@@ -16,7 +16,7 @@ Preferred communication style: Simple, everyday language.
 - **State Management**: TanStack React Query for server state
 - **UI Components**: shadcn/ui component library with Radix UI primitives
 - **Styling**: Tailwind CSS with custom theme variables for AtlasRide branding
-- **Maps**: Mapbox GL for interactive maps and route visualization
+- **Maps**: Leaflet with OpenStreetMap tiles for map rendering, Azure Maps for geocoding/routing
 
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js
@@ -39,7 +39,8 @@ Preferred communication style: Simple, everyday language.
 
 ### External Integrations
 - **Stripe**: Payment processing via stripe-replit-sync for managed webhooks
-- **Mapbox**: Maps, geocoding, and route calculations
+- **Azure Maps**: Geocoding and route calculations (API key securely proxied via backend)
+- **OpenStreetMap**: Free map tile rendering via Leaflet
 - **Replit Auth**: OAuth/OIDC authentication
 
 ### Key Design Patterns
@@ -47,12 +48,13 @@ Preferred communication style: Simple, everyday language.
 - **API Request Helper**: Centralized `apiRequest` function in `lib/queryClient.ts` handles all HTTP requests with proper error handling
 - **Storage Interface**: `IStorage` interface in `server/storage.ts` abstracts database operations for testability
 - **WebSocket Rooms**: Location tracking uses room-based WebSocket connections per ride
+- **Secure API Proxying**: Azure Maps API key is never exposed to frontend; all requests go through backend proxy
 
 ## External Dependencies
 
 ### Third-Party Services
 - **Stripe**: Payment processing (configured via Replit connector)
-- **Mapbox**: Maps and geolocation (requires `MAPBOX_ACCESS_TOKEN` environment variable)
+- **Azure Maps**: Geocoding and routing (requires `AZURE_MAPS_KEY` environment variable)
 - **Replit Auth**: User authentication (requires `ISSUER_URL`, `REPL_ID`, `SESSION_SECRET`)
 
 ### Database
@@ -64,11 +66,11 @@ Preferred communication style: Simple, everyday language.
 - `express-session` / `connect-pg-simple`: Session management
 - `passport` / `openid-client`: Authentication
 - `ws`: WebSocket server for real-time features
-- `mapbox-gl`: Frontend map rendering
+- `leaflet` / `react-leaflet`: Frontend map rendering
 - `stripe` / `stripe-replit-sync`: Payment processing
 
 ### Environment Variables Required
 - `DATABASE_URL`: PostgreSQL connection string
 - `SESSION_SECRET`: Secret for session encryption
-- `MAPBOX_ACCESS_TOKEN`: Mapbox API key
+- `AZURE_MAPS_KEY`: Azure Maps subscription key (for geocoding and routing)
 - Stripe credentials are managed via Replit connector

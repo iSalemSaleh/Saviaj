@@ -12,15 +12,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Setup WebSocket for real-time location tracking on the main server
   setupWebSocket(httpServer);
 
-  // Azure Maps endpoints
-  app.get('/api/azure-maps/key', (req, res) => {
-    const key = process.env.AZURE_MAPS_KEY;
-    if (!key) {
-      return res.status(500).json({ message: 'Azure Maps key not configured' });
-    }
-    res.json({ key });
-  });
-
+  // Azure Maps endpoints (secure - key never exposed to frontend)
   app.get('/api/azure-maps/search', async (req, res) => {
     try {
       const query = req.query.q as string;
