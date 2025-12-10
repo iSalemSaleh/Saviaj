@@ -1,9 +1,41 @@
 import type { Express } from "express";
 import type { Server } from "http";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupWebSocket } from "./websocket";
 import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema } from "@shared/schema";
+
+const uploadDir = path.join(process.cwd(), 'uploads', 'licenses');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const licenseUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadDir);
+    },
+    filename: (req: any, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, `license-${uniqueSuffix}${ext}`);
+    },
+  }),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPG, PNG, WebP and PDF are allowed.'));
+    }
+  },
+});
 
 export async function registerRoutes(app: Express, httpServer: Server): Promise<void> {
   // Auth middleware
@@ -73,6 +105,47 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(500).json({ message: "Failed to update driver status" });
     }
   });
+
+  // Complete user profile (onboarding)
+  app.post('/api/user/complete-profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { firstName, lastName, isDriver, driverLicenseUrl } = req.body;
+      
+      if (!firstName || !lastName) {
+        return res.status(400).json({ message: "First name and last name are required" });
+      }
+      
+      const user = await storage.completeUserProfile(userId, {
+        firstName,
+        lastName,
+        isDriver: isDriver || false,
+        driverLicenseUrl,
+      });
+      res.json(user);
+    } catch (error) {
+      console.error("Error completing profile:", error);
+      res.status(500).json({ message: "Failed to complete profile" });
+    }
+  });
+
+  // Upload driver's license
+  app.post('/api/user/upload-license', isAuthenticated, licenseUpload.single('license'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const licenseUrl = `/uploads/licenses/${req.file.filename}`;
+      res.json({ url: licenseUrl, filename: req.file.filename });
+    } catch (error) {
+      console.error("Error uploading license:", error);
+      res.status(500).json({ message: "Failed to upload license" });
+    }
+  });
+
+  // Serve uploaded files
+  app.use('/uploads', (await import('express')).static(path.join(process.cwd(), 'uploads')));
 
   // Rider Offer Routes
   app.post('/api/rider-offers', isAuthenticated, async (req: any, res) => {

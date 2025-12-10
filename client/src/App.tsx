@@ -10,10 +10,11 @@ import Home from "@/pages/home";
 import RiderPage from "@/pages/rider";
 import DriverPage from "@/pages/driver";
 import AuthPage from "@/pages/auth";
+import OnboardingPage from "@/pages/onboarding";
 import RideTrackingPage from "@/pages/ride-tracking";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [location] = useLocation();
 
   if (isLoading) {
@@ -28,11 +29,37 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
     return <Redirect to="/auth" />;
   }
 
+  if (user && !user.firstName && location !== "/onboarding") {
+    return <Redirect to="/onboarding" />;
+  }
+
   return <Component />;
 }
 
+function OnboardingRoute() {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect to="/auth" />;
+  }
+
+  if (user && user.firstName) {
+    return <Redirect to="/" />;
+  }
+
+  return <OnboardingPage />;
+}
+
 function AuthRoute() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -43,6 +70,9 @@ function AuthRoute() {
   }
 
   if (isAuthenticated) {
+    if (user && !user.firstName) {
+      return <Redirect to="/onboarding" />;
+    }
     return <Redirect to="/" />;
   }
 
@@ -52,7 +82,9 @@ function AuthRoute() {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/">
+        <ProtectedRoute component={Home} />
+      </Route>
       <Route path="/rider">
         <ProtectedRoute component={RiderPage} />
       </Route>
@@ -60,6 +92,7 @@ function Router() {
         <ProtectedRoute component={DriverPage} />
       </Route>
       <Route path="/auth" component={AuthRoute} />
+      <Route path="/onboarding" component={OnboardingRoute} />
       <Route path="/ride/:id">
         <ProtectedRoute component={RideTrackingPage} />
       </Route>
