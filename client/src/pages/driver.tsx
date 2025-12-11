@@ -144,7 +144,7 @@ export default function DriverPage() {
     e.preventDefault();
     
     if (!user) {
-      navigate("/api/login");
+      navigate("/auth");
       return;
     }
 
@@ -169,7 +169,7 @@ export default function DriverPage() {
 
   const handleAcceptOffer = (offerId: number) => {
     if (!user) {
-      navigate("/api/login");
+      navigate("/auth");
       return;
     }
     acceptOfferMutation.mutate(offerId);

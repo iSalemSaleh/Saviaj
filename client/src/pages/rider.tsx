@@ -68,7 +68,7 @@ export default function RiderPage() {
     e.preventDefault();
     
     if (!user) {
-      navigate("/api/login");
+      navigate("/auth");
       return;
     }
 
