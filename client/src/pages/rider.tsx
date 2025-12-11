@@ -81,11 +81,31 @@ export default function RiderPage() {
       return;
     }
 
+    const price = parseFloat(offerPrice);
+    if (isNaN(price) || price < 1 || price > 500) {
+      toast({
+        title: "Invalid Price",
+        description: "Please enter a price between £1 and £500",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedTime = new Date(requestedTime);
+    if (selectedTime <= new Date()) {
+      toast({
+        title: "Invalid Time",
+        description: "Please select a time in the future",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createOfferMutation.mutate({
       pickupLocation,
       dropoffLocation,
-      requestedTime: new Date(requestedTime).toISOString(),
-      offerPrice: parseFloat(offerPrice),
+      requestedTime: selectedTime.toISOString(),
+      offerPrice: price,
     });
   };
 

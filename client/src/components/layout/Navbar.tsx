@@ -58,12 +58,12 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <a href="/api/login">
+                <Link href="/auth">
                   <Button variant="ghost" size="sm" data-testid="button-login">Log in</Button>
-                </a>
-                <a href="/api/login">
+                </Link>
+                <Link href="/auth">
                   <Button size="sm" data-testid="button-signup">Sign up</Button>
-                </a>
+                </Link>
               </>
             )}
           </div>
@@ -91,9 +91,9 @@ export default function Navbar() {
                     <Button className="w-full" variant="outline">Log out</Button>
                   </a>
                 ) : (
-                  <a href="/api/login" onClick={() => setIsOpen(false)}>
+                  <Link href="/auth" onClick={() => setIsOpen(false)}>
                     <Button className="w-full">Sign In / Sign Up</Button>
-                  </a>
+                  </Link>
                 )}
               </div>
             </SheetContent>

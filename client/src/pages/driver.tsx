@@ -157,13 +157,56 @@ export default function DriverPage() {
       return;
     }
 
+    const selectedTime = new Date(departureTime);
+    if (selectedTime <= new Date()) {
+      toast({
+        title: "Invalid Time",
+        description: "Please select a departure time in the future",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const detour = parseFloat(maxDetour);
+    if (isNaN(detour) || detour < 0.5 || detour > 20) {
+      toast({
+        title: "Invalid Detour",
+        description: "Please enter a max detour between 0.5 and 20 miles",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const seats = parseInt(availableSeats);
+    if (isNaN(seats) || seats < 1 || seats > 7) {
+      toast({
+        title: "Invalid Seats",
+        description: "Please enter between 1 and 7 available seats",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    let price = null;
+    if (pricePerSeat) {
+      price = parseFloat(pricePerSeat);
+      if (isNaN(price) || price < 1 || price > 100) {
+        toast({
+          title: "Invalid Price",
+          description: "Please enter a price between £1 and £100 per seat",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     createRouteMutation.mutate({
       startLocation,
       endLocation,
-      departureTime: new Date(departureTime).toISOString(),
-      maxDetourMiles: parseFloat(maxDetour),
-      availableSeats: parseInt(availableSeats),
-      pricePerSeat: pricePerSeat ? parseFloat(pricePerSeat) : null,
+      departureTime: selectedTime.toISOString(),
+      maxDetourMiles: detour,
+      availableSeats: seats,
+      pricePerSeat: price,
     });
   };
 
@@ -176,11 +219,28 @@ export default function DriverPage() {
   };
 
   const handleBidSubmit = () => {
-    if (!selectedOffer || !bidPrice) return;
+    if (!selectedOffer || !bidPrice) {
+      toast({
+        title: "Missing Price",
+        description: "Please enter your counter-offer price",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const price = parseFloat(bidPrice);
+    if (isNaN(price) || price < 1 || price > 500) {
+      toast({
+        title: "Invalid Price",
+        description: "Please enter a price between £1 and £500",
+        variant: "destructive",
+      });
+      return;
+    }
 
     createBidMutation.mutate({
       riderOfferId: selectedOffer.id,
-      bidPrice: parseFloat(bidPrice),
+      bidPrice: price,
       message: bidMessage || undefined,
     });
   };
