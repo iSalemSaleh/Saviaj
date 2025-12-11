@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, RequestHandler } from "express";
 import type { Server } from "http";
 import multer from "multer";
 import path from "path";
@@ -7,6 +7,25 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupWebSocket } from "./websocket";
 import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema } from "@shared/schema";
+
+const isProfileComplete: RequestHandler = async (req: any, res, next) => {
+  try {
+    const userId = req.user?.claims?.sub;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const user = await storage.getUser(userId);
+    if (!user || !user.firstName) {
+      return res.status(403).json({ message: "Profile incomplete. Please complete onboarding." });
+    }
+    
+    next();
+  } catch (error) {
+    console.error("Profile check error:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 const uploadDir = path.join(process.cwd(), 'uploads', 'licenses');
 if (!fs.existsSync(uploadDir)) {
@@ -169,7 +188,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   });
 
   // Rider Offer Routes
-  app.post('/api/rider-offers', isAuthenticated, async (req: any, res) => {
+  app.post('/api/rider-offers', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertRiderOfferSchema.parse({
@@ -212,7 +231,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  app.patch('/api/rider-offers/:id/accept', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/rider-offers/:id/accept', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const driverId = req.user.claims.sub;
@@ -242,7 +261,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   });
 
   // Driver Route Routes
-  app.post('/api/driver-routes', isAuthenticated, async (req: any, res) => {
+  app.post('/api/driver-routes', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertDriverRouteSchema.parse({
@@ -270,7 +289,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   });
 
   // Bid Routes
-  app.post('/api/bids', isAuthenticated, async (req: any, res) => {
+  app.post('/api/bids', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertBidSchema.parse({
@@ -297,7 +316,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  app.patch('/api/bids/:id/accept', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/bids/:id/accept', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
       const bidId = parseInt(req.params.id);
       const userId = req.user.claims.sub;

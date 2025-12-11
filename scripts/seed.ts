@@ -1,5 +1,6 @@
 import { db } from "../server/db";
-import { users, riderOffers, driverRoutes } from "../shared/schema";
+import { users, riderOffers, driverRoutes, rides, bids } from "../shared/schema";
+import { sql } from "drizzle-orm";
 
 const driverFirstNames = ["James", "Sarah", "Mohammed", "Emily", "David", "Sophie", "Daniel", "Jessica", "Michael", "Rachel"];
 const riderFirstNames = ["Oliver", "Emma", "Noah", "Ava", "Liam", "Mia", "William", "Isabella", "Lucas", "Charlotte"];
@@ -31,13 +32,22 @@ const ukLocations = [
 async function seed() {
   console.log("🌱 Starting database seed...\n");
   
+  // Clean up existing test data
+  console.log("Cleaning up existing test data...");
+  await db.delete(bids).where(sql`1=1`);
+  await db.delete(rides).where(sql`1=1`);
+  await db.delete(riderOffers).where(sql`1=1`);
+  await db.delete(driverRoutes).where(sql`1=1`);
+  await db.delete(users).where(sql`id LIKE 'driver-%' OR id LIKE 'rider-%'`);
+  console.log("  ✓ Cleaned up existing test data\n");
+  
   const now = new Date();
   
   // Create 10 drivers
   console.log("Creating 10 driver accounts...");
   const driverIds: string[] = [];
   for (let i = 0; i < 10; i++) {
-    const driverId = `driver-${i + 1}-${Date.now()}`;
+    const driverId = `driver-${i + 1}`;
     driverIds.push(driverId);
     
     await db.insert(users).values({
@@ -49,9 +59,17 @@ async function seed() {
       isDriver: true,
       driverVerified: true,
       driverLicenseUrl: `/uploads/licenses/sample-license-${i + 1}.jpg`,
-      rating: (4.5 + Math.random() * 0.5).toFixed(2),
+      rating: String(4.5 + Math.random() * 0.5),
       totalRides: Math.floor(Math.random() * 200) + 10,
-    }).onConflictDoNothing();
+    }).onConflictDoUpdate({
+      target: users.id,
+      set: {
+        firstName: driverFirstNames[i],
+        lastName: lastNames[i],
+        isDriver: true,
+        driverVerified: true,
+      }
+    });
     
     console.log(`  ✓ Driver ${i + 1}: ${driverFirstNames[i]} ${lastNames[i]}`);
   }
@@ -60,7 +78,7 @@ async function seed() {
   console.log("\nCreating 10 rider accounts...");
   const riderIds: string[] = [];
   for (let i = 0; i < 10; i++) {
-    const riderId = `rider-${i + 1}-${Date.now()}`;
+    const riderId = `rider-${i + 1}`;
     riderIds.push(riderId);
     
     await db.insert(users).values({
@@ -70,9 +88,16 @@ async function seed() {
       lastName: lastNames[(i + 5) % 10],
       profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${riderFirstNames[i]}`,
       isDriver: false,
-      rating: (4.0 + Math.random() * 1.0).toFixed(2),
+      rating: String(4.0 + Math.random() * 1.0),
       totalRides: Math.floor(Math.random() * 50) + 5,
-    }).onConflictDoNothing();
+    }).onConflictDoUpdate({
+      target: users.id,
+      set: {
+        firstName: riderFirstNames[i],
+        lastName: lastNames[(i + 5) % 10],
+        isDriver: false,
+      }
+    });
     
     console.log(`  ✓ Rider ${i + 1}: ${riderFirstNames[i]} ${lastNames[(i + 5) % 10]}`);
   }
@@ -80,45 +105,47 @@ async function seed() {
   // Create rider offers
   console.log("\nCreating rider offers...");
   for (let i = 0; i < 8; i++) {
-    const futureTime = new Date(now.getTime() + (i + 1) * 3600000); // 1-8 hours from now
+    const futureTime = new Date(now.getTime() + (i + 1) * 3600000);
+    const offerPriceValue = 10 + Math.floor(Math.random() * 30);
     
     await db.insert(riderOffers).values({
       riderId: riderIds[i],
       pickupLocation: ukLocations[i],
       dropoffLocation: ukLocations[(i + 10) % 20],
-      pickupLat: (51.5 + Math.random() * 0.1).toFixed(7),
-      pickupLng: (-0.1 + Math.random() * 0.2).toFixed(7),
-      dropoffLat: (51.5 + Math.random() * 0.1).toFixed(7),
-      dropoffLng: (-0.1 + Math.random() * 0.2).toFixed(7),
-      offerPrice: (10 + Math.floor(Math.random() * 30)).toString(),
+      pickupLat: String(51.5 + Math.random() * 0.1),
+      pickupLng: String(-0.1 + Math.random() * 0.2),
+      dropoffLat: String(51.5 + Math.random() * 0.1),
+      dropoffLng: String(-0.1 + Math.random() * 0.2),
+      offerPrice: String(offerPriceValue),
       requestedTime: futureTime,
       status: "pending",
     });
     
-    console.log(`  ✓ Offer ${i + 1}: ${ukLocations[i].split(',')[0]} → ${ukLocations[(i + 10) % 20].split(',')[0]} - £${10 + Math.floor(Math.random() * 30)}`);
+    console.log(`  ✓ Offer ${i + 1}: ${ukLocations[i].split(',')[0]} → ${ukLocations[(i + 10) % 20].split(',')[0]} - £${offerPriceValue}`);
   }
   
   // Create driver routes
   console.log("\nCreating driver routes...");
   for (let i = 0; i < 8; i++) {
-    const futureTime = new Date(now.getTime() + (i + 2) * 3600000); // 2-9 hours from now
+    const futureTime = new Date(now.getTime() + (i + 2) * 3600000);
+    const priceValue = 8 + Math.floor(Math.random() * 15);
     
     await db.insert(driverRoutes).values({
       driverId: driverIds[i],
       startLocation: ukLocations[(i + 5) % 20],
       endLocation: ukLocations[(i + 15) % 20],
-      startLat: (51.5 + Math.random() * 0.1).toFixed(7),
-      startLng: (-0.1 + Math.random() * 0.2).toFixed(7),
-      endLat: (51.5 + Math.random() * 0.1).toFixed(7),
-      endLng: (-0.1 + Math.random() * 0.2).toFixed(7),
+      startLat: String(51.5 + Math.random() * 0.1),
+      startLng: String(-0.1 + Math.random() * 0.2),
+      endLat: String(51.5 + Math.random() * 0.1),
+      endLng: String(-0.1 + Math.random() * 0.2),
       departureTime: futureTime,
-      maxDetourMiles: (1 + Math.random() * 4).toFixed(2),
+      maxDetourMiles: String(1 + Math.random() * 4),
       availableSeats: Math.floor(Math.random() * 3) + 1,
-      pricePerSeat: (8 + Math.floor(Math.random() * 15)).toString(),
+      pricePerSeat: String(priceValue),
       status: "active",
     });
     
-    console.log(`  ✓ Route ${i + 1}: ${ukLocations[(i + 5) % 20].split(',')[0]} → ${ukLocations[(i + 15) % 20].split(',')[0]} - £${8 + Math.floor(Math.random() * 15)}/seat`);
+    console.log(`  ✓ Route ${i + 1}: ${ukLocations[(i + 5) % 20].split(',')[0]} → ${ukLocations[(i + 15) % 20].split(',')[0]} - £${priceValue}/seat`);
   }
   
   console.log("\n✅ Database seeded successfully!");
