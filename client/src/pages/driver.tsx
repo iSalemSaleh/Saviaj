@@ -323,7 +323,10 @@ export default function DriverPage() {
                         <label className="text-sm font-medium text-primary-foreground/80">Max Detour (mi)</label>
                         <Input 
                           type="number" 
-                          placeholder="2" 
+                          placeholder="2"
+                          min="0.5"
+                          max="20"
+                          step="0.5"
                           className="h-11 bg-white text-primary border-none"
                           value={maxDetour}
                           onChange={(e) => setMaxDetour(e.target.value)}
@@ -334,7 +337,10 @@ export default function DriverPage() {
                         <label className="text-sm font-medium text-primary-foreground/80">Seats</label>
                         <Input 
                           type="number" 
-                          placeholder="3" 
+                          placeholder="3"
+                          min="1"
+                          max="7"
+                          step="1"
                           className="h-11 bg-white text-primary border-none"
                           value={availableSeats}
                           onChange={(e) => setAvailableSeats(e.target.value)}
@@ -349,7 +355,10 @@ export default function DriverPage() {
                         <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-primary" />
                         <Input 
                           type="number" 
-                          placeholder="Leave blank for negotiation" 
+                          placeholder="Leave blank for negotiation"
+                          min="1"
+                          max="100"
+                          step="1"
                           className="pl-9 h-11 bg-white text-primary border-none"
                           value={pricePerSeat}
                           onChange={(e) => setPricePerSeat(e.target.value)}

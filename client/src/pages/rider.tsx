@@ -178,7 +178,10 @@ export default function RiderPage() {
                           <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-accent" />
                           <Input 
                             type="number" 
-                            placeholder="20" 
+                            placeholder="20"
+                            min="1"
+                            max="500"
+                            step="1"
                             className="pl-9 h-11 font-bold text-accent"
                             value={offerPrice}
                             onChange={(e) => setOfferPrice(e.target.value)}

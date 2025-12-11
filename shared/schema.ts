@@ -75,11 +75,12 @@ export const riderOffersRelations = relations(riderOffers, ({ one }) => ({
 }));
 
 export const insertRiderOfferSchema = createInsertSchema(riderOffers, {
-  offerPrice: z.coerce.number(),
+  offerPrice: z.coerce.number().min(1).max(500),
   pickupLat: z.coerce.number().optional(),
   pickupLng: z.coerce.number().optional(),
   dropoffLat: z.coerce.number().optional(),
   dropoffLng: z.coerce.number().optional(),
+  requestedTime: z.coerce.date(),
 }).omit({
   id: true,
   createdAt: true,
@@ -115,9 +116,10 @@ export const driverRoutesRelations = relations(driverRoutes, ({ one }) => ({
 }));
 
 export const insertDriverRouteSchema = createInsertSchema(driverRoutes, {
-  maxDetourMiles: z.coerce.number(),
-  availableSeats: z.coerce.number(),
-  pricePerSeat: z.coerce.number().optional(),
+  maxDetourMiles: z.coerce.number().min(0.5).max(20),
+  availableSeats: z.coerce.number().min(1).max(7),
+  pricePerSeat: z.coerce.number().min(1).max(100).optional().nullable(),
+  departureTime: z.coerce.date(),
   startLat: z.coerce.number().optional(),
   startLng: z.coerce.number().optional(),
   endLat: z.coerce.number().optional(),
