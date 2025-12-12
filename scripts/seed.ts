@@ -140,14 +140,14 @@ async function seed() {
   // Create driver routes - Overlapping with rider offers for matching
   console.log("\nCreating driver routes...");
   const driverRouteData = [
-    { start: 0, end: 8, detour: 3 },   // Oxford Circus → Waterloo (exact match)
-    { start: 1, end: 9, detour: 3 },   // Piccadilly → Victoria (exact match)
-    { start: 17, end: 14, detour: 2 }, // Covent Garden → Westminster (exact match)
-    { start: 18, end: 11, detour: 2 }, // Leicester Square → London Bridge (exact match)
-    { start: 6, end: 2, detour: 4 },   // Camden → King's Cross (exact match)
-    { start: 4, end: 10, detour: 3 },  // Baker Street → Paddington
-    { start: 12, end: 16, detour: 2 }, // Euston → Holborn
-    { start: 5, end: 13, detour: 3 },  // Liverpool Street → Tower Hill
+    { start: 0, end: 8, detour: 5 },   // Oxford Circus → Waterloo (exact match)
+    { start: 1, end: 9, detour: 5 },   // Piccadilly → Victoria (exact match)
+    { start: 17, end: 14, detour: 5 }, // Covent Garden → Westminster (exact match)
+    { start: 18, end: 11, detour: 5 }, // Leicester Square → London Bridge (exact match)
+    { start: 6, end: 2, detour: 5 },   // Camden → King's Cross (exact match)
+    { start: 4, end: 10, detour: 5 },  // Baker Street → Paddington
+    { start: 12, end: 16, detour: 5 }, // Euston → Holborn
+    { start: 5, end: 13, detour: 5 },  // Liverpool Street → Tower Hill
   ];
   
   for (let i = 0; i < 8; i++) {
