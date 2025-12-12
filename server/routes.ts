@@ -517,6 +517,101 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // PDF report endpoint for demo data
+  app.get('/api/reports/demo-data', async (req, res) => {
+    try {
+      const PDFDocument = (await import('pdfkit')).default;
+      const doc = new PDFDocument({ margin: 50 });
+      
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=AtlasRide-Demo-Data.pdf');
+      doc.pipe(res);
+      
+      // Title
+      doc.fontSize(24).font('Helvetica-Bold').text('AtlasRide Demo Data', { align: 'center' });
+      doc.fontSize(12).font('Helvetica').text(`Generated: ${new Date().toLocaleString('en-GB')}`, { align: 'center' });
+      doc.moveDown(2);
+      
+      // Get all demo data
+      const allRoutes = await storage.getDriverRoutes();
+      const allOffers = await storage.getRiderOffers();
+      
+      // Driver Routes Section
+      doc.fontSize(18).font('Helvetica-Bold').fillColor('#1E3A5F').text('Driver Routes');
+      doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+      doc.moveDown(0.5);
+      
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      for (const route of allRoutes) {
+        doc.font('Helvetica-Bold').text(`Route ID: ${route.id}`);
+        doc.font('Helvetica')
+          .text(`Driver ID: ${route.driverId}`)
+          .text(`From: ${route.startLocation}`)
+          .text(`To: ${route.endLocation}`)
+          .text(`Coordinates: (${route.startLat}, ${route.startLng}) → (${route.endLat}, ${route.endLng})`)
+          .text(`Departure: ${new Date(route.departureTime).toLocaleString('en-GB')}`)
+          .text(`Price per Seat: £${route.pricePerSeat || 'Negotiable'}`)
+          .text(`Available Seats: ${route.availableSeats}`)
+          .text(`Max Detour: ${route.maxDetourMiles} miles`);
+        doc.moveDown(1);
+      }
+      
+      doc.addPage();
+      
+      // Rider Offers Section
+      doc.fontSize(18).font('Helvetica-Bold').fillColor('#FF6B35').text('Rider Offers');
+      doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+      doc.moveDown(0.5);
+      
+      doc.fontSize(10).font('Helvetica').fillColor('#000000');
+      for (const offer of allOffers) {
+        doc.font('Helvetica-Bold').text(`Offer ID: ${offer.id}`);
+        doc.font('Helvetica')
+          .text(`Rider ID: ${offer.riderId}`)
+          .text(`Pickup: ${offer.pickupLocation}`)
+          .text(`Dropoff: ${offer.dropoffLocation}`)
+          .text(`Coordinates: (${offer.pickupLat}, ${offer.pickupLng}) → (${offer.dropoffLat}, ${offer.dropoffLng})`)
+          .text(`Requested Time: ${new Date(offer.requestedTime).toLocaleString('en-GB')}`)
+          .text(`Offer Price: £${offer.offerPrice}`)
+          .text(`Status: ${offer.status}`);
+        doc.moveDown(1);
+      }
+      
+      doc.addPage();
+      
+      // Test Accounts Section
+      doc.fontSize(18).font('Helvetica-Bold').fillColor('#1E3A5F').text('Test Accounts');
+      doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+      doc.moveDown(0.5);
+      
+      doc.fontSize(12).font('Helvetica-Bold').text('Driver Accounts:');
+      doc.fontSize(10).font('Helvetica');
+      const driverNames = ["James Smith", "Sarah Johnson", "Mohammed Williams", "Emily Brown", "David Jones", 
+                           "Sophie Garcia", "Daniel Miller", "Jessica Davis", "Michael Rodriguez", "Rachel Martinez"];
+      for (let i = 0; i < 10; i++) {
+        doc.text(`• driver-${i+1}: ${driverNames[i]} (driver${i+1}@atlasride.test)`);
+      }
+      
+      doc.moveDown(1);
+      doc.fontSize(12).font('Helvetica-Bold').text('Rider Accounts:');
+      doc.fontSize(10).font('Helvetica');
+      const riderNames = ["Oliver Garcia", "Emma Miller", "Noah Davis", "Ava Rodriguez", "Liam Martinez",
+                          "Mia Smith", "William Johnson", "Isabella Williams", "Lucas Brown", "Charlotte Jones"];
+      for (let i = 0; i < 10; i++) {
+        doc.text(`• rider-${i+1}: ${riderNames[i]} (rider${i+1}@atlasride.test)`);
+      }
+      
+      doc.moveDown(2);
+      doc.fontSize(10).font('Helvetica-Oblique').fillColor('#666666')
+        .text('Note: These are test accounts created for demo purposes. To test the matching feature, search for locations like "Oxford Circus" to "Waterloo" which have matching driver routes.', { align: 'center' });
+      
+      doc.end();
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      res.status(500).json({ message: "Failed to generate PDF report" });
+    }
+  });
+
   // Stripe publishable key endpoint
   app.get('/api/stripe/publishable-key', async (req, res) => {
     try {
