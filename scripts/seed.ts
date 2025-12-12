@@ -7,26 +7,26 @@ const riderFirstNames = ["Oliver", "Emma", "Noah", "Ava", "Liam", "Mia", "Willia
 const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez"];
 
 const ukLocations = [
-  "123 Oxford Street, London W1D 2LN",
-  "45 Piccadilly Circus, London W1J 9HP",
-  "78 King's Road, Chelsea, London SW3 4NZ",
-  "22 Canary Wharf, London E14 5NY",
-  "56 Baker Street, London NW1 5NJ",
-  "89 Shoreditch High Street, London E1 6JN",
-  "34 Camden High Street, London NW1 0JH",
-  "12 Notting Hill Gate, London W11 3JE",
-  "67 Greenwich High Road, London SE10 8JL",
-  "91 Brixton Road, London SW9 6AP",
-  "15 Victoria Street, London SW1H 0NE",
-  "28 Knightsbridge, London SW1X 7LY",
-  "43 Regent Street, London W1B 5TH",
-  "62 Fleet Street, London EC4A 2DY",
-  "77 Tower Hill, London EC3N 4EE",
-  "33 Liverpool Street, London EC2M 7PY",
-  "51 Paddington Station, London W2 1HQ",
-  "19 Waterloo Road, London SE1 8UT",
-  "84 Marble Arch, London W1H 7EL",
-  "36 Borough High Street, London SE1 1XN"
+  { address: "Oxford Circus, London W1B 3AG", lat: 51.5154, lng: -0.1410 },
+  { address: "Piccadilly Circus, London W1J 9HP", lat: 51.5099, lng: -0.1342 },
+  { address: "King's Cross Station, London N1C 4TB", lat: 51.5320, lng: -0.1234 },
+  { address: "Canary Wharf, London E14 5NY", lat: 51.5055, lng: -0.0195 },
+  { address: "Baker Street, London NW1 5LA", lat: 51.5226, lng: -0.1571 },
+  { address: "Liverpool Street Station, London EC2M 7QH", lat: 51.5178, lng: -0.0823 },
+  { address: "Camden Town, London NW1 8QL", lat: 51.5391, lng: -0.1426 },
+  { address: "Notting Hill Gate, London W11 3HT", lat: 51.5094, lng: -0.1963 },
+  { address: "Waterloo Station, London SE1 8SW", lat: 51.5031, lng: -0.1132 },
+  { address: "Victoria Station, London SW1V 1JU", lat: 51.4952, lng: -0.1439 },
+  { address: "Paddington Station, London W2 1HQ", lat: 51.5154, lng: -0.1755 },
+  { address: "London Bridge, London SE1 9SP", lat: 51.5079, lng: -0.0877 },
+  { address: "Euston Station, London NW1 2RT", lat: 51.5282, lng: -0.1337 },
+  { address: "Tower Hill, London EC3N 4DJ", lat: 51.5101, lng: -0.0765 },
+  { address: "Westminster, London SW1A 0AA", lat: 51.5010, lng: -0.1246 },
+  { address: "Bank Station, London EC3V 3LA", lat: 51.5133, lng: -0.0886 },
+  { address: "Holborn, London WC1V 7QH", lat: 51.5174, lng: -0.1201 },
+  { address: "Covent Garden, London WC2E 8RF", lat: 51.5117, lng: -0.1240 },
+  { address: "Leicester Square, London WC2H 7LU", lat: 51.5113, lng: -0.1281 },
+  { address: "Marble Arch, London W1H 7EJ", lat: 51.5136, lng: -0.1586 }
 ];
 
 async function seed() {
@@ -102,50 +102,76 @@ async function seed() {
     console.log(`  ✓ Rider ${i + 1}: ${riderFirstNames[i]} ${lastNames[(i + 5) % 10]}`);
   }
   
-  // Create rider offers
+  // Create rider offers - Central London routes with overlapping areas
   console.log("\nCreating rider offers...");
+  const riderRouteData = [
+    { pickup: 0, dropoff: 8 },   // Oxford Circus → Waterloo
+    { pickup: 1, dropoff: 9 },   // Piccadilly → Victoria
+    { pickup: 2, dropoff: 5 },   // King's Cross → Liverpool Street
+    { pickup: 17, dropoff: 14 }, // Covent Garden → Westminster
+    { pickup: 18, dropoff: 11 }, // Leicester Square → London Bridge
+    { pickup: 16, dropoff: 12 }, // Holborn → Euston
+    { pickup: 0, dropoff: 4 },   // Oxford Circus → Baker Street
+    { pickup: 6, dropoff: 2 },   // Camden → King's Cross
+  ];
+  
   for (let i = 0; i < 8; i++) {
     const futureTime = new Date(now.getTime() + (i + 1) * 3600000);
     const offerPriceValue = 10 + Math.floor(Math.random() * 30);
+    const pickup = ukLocations[riderRouteData[i].pickup];
+    const dropoff = ukLocations[riderRouteData[i].dropoff];
     
     await db.insert(riderOffers).values({
       riderId: riderIds[i],
-      pickupLocation: ukLocations[i],
-      dropoffLocation: ukLocations[(i + 10) % 20],
-      pickupLat: String(51.5 + Math.random() * 0.1),
-      pickupLng: String(-0.1 + Math.random() * 0.2),
-      dropoffLat: String(51.5 + Math.random() * 0.1),
-      dropoffLng: String(-0.1 + Math.random() * 0.2),
+      pickupLocation: pickup.address,
+      dropoffLocation: dropoff.address,
+      pickupLat: String(pickup.lat),
+      pickupLng: String(pickup.lng),
+      dropoffLat: String(dropoff.lat),
+      dropoffLng: String(dropoff.lng),
       offerPrice: String(offerPriceValue),
       requestedTime: futureTime,
       status: "pending",
     });
     
-    console.log(`  ✓ Offer ${i + 1}: ${ukLocations[i].split(',')[0]} → ${ukLocations[(i + 10) % 20].split(',')[0]} - £${offerPriceValue}`);
+    console.log(`  ✓ Offer ${i + 1}: ${pickup.address.split(',')[0]} → ${dropoff.address.split(',')[0]} - £${offerPriceValue}`);
   }
   
-  // Create driver routes
+  // Create driver routes - Overlapping with rider offers for matching
   console.log("\nCreating driver routes...");
+  const driverRouteData = [
+    { start: 0, end: 8, detour: 3 },   // Oxford Circus → Waterloo (exact match)
+    { start: 1, end: 9, detour: 3 },   // Piccadilly → Victoria (exact match)
+    { start: 17, end: 14, detour: 2 }, // Covent Garden → Westminster (exact match)
+    { start: 18, end: 11, detour: 2 }, // Leicester Square → London Bridge (exact match)
+    { start: 6, end: 2, detour: 4 },   // Camden → King's Cross (exact match)
+    { start: 4, end: 10, detour: 3 },  // Baker Street → Paddington
+    { start: 12, end: 16, detour: 2 }, // Euston → Holborn
+    { start: 5, end: 13, detour: 3 },  // Liverpool Street → Tower Hill
+  ];
+  
   for (let i = 0; i < 8; i++) {
     const futureTime = new Date(now.getTime() + (i + 2) * 3600000);
     const priceValue = 8 + Math.floor(Math.random() * 15);
+    const start = ukLocations[driverRouteData[i].start];
+    const end = ukLocations[driverRouteData[i].end];
     
     await db.insert(driverRoutes).values({
       driverId: driverIds[i],
-      startLocation: ukLocations[(i + 5) % 20],
-      endLocation: ukLocations[(i + 15) % 20],
-      startLat: String(51.5 + Math.random() * 0.1),
-      startLng: String(-0.1 + Math.random() * 0.2),
-      endLat: String(51.5 + Math.random() * 0.1),
-      endLng: String(-0.1 + Math.random() * 0.2),
+      startLocation: start.address,
+      endLocation: end.address,
+      startLat: String(start.lat),
+      startLng: String(start.lng),
+      endLat: String(end.lat),
+      endLng: String(end.lng),
       departureTime: futureTime,
-      maxDetourMiles: String(1 + Math.random() * 4),
+      maxDetourMiles: String(driverRouteData[i].detour),
       availableSeats: Math.floor(Math.random() * 3) + 1,
       pricePerSeat: String(priceValue),
       status: "active",
     });
     
-    console.log(`  ✓ Route ${i + 1}: ${ukLocations[(i + 5) % 20].split(',')[0]} → ${ukLocations[(i + 15) % 20].split(',')[0]} - £${priceValue}/seat`);
+    console.log(`  ✓ Route ${i + 1}: ${start.address.split(',')[0]} → ${end.address.split(',')[0]} - £${priceValue}/seat (${driverRouteData[i].detour}mi detour)`);
   }
   
   console.log("\n✅ Database seeded successfully!");
