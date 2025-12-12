@@ -18,10 +18,26 @@ interface DriverRoute {
   driverId: string;
   startLocation: string;
   endLocation: string;
+  startLat: string | null;
+  startLng: string | null;
+  endLat: string | null;
+  endLng: string | null;
   departureTime: string;
   availableSeats: number;
   pricePerSeat: string | null;
+  maxDetourMiles: string;
   status: string;
+}
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 
 export default function RiderPage() {
@@ -31,13 +47,45 @@ export default function RiderPage() {
   const { toast } = useToast();
 
   const [pickupLocation, setPickupLocation] = useState("");
+  const [pickupCoords, setPickupCoords] = useState<{lat: number; lon: number} | null>(null);
   const [dropoffLocation, setDropoffLocation] = useState("");
+  const [dropoffCoords, setDropoffCoords] = useState<{lat: number; lon: number} | null>(null);
   const [requestedTime, setRequestedTime] = useState("");
   const [offerPrice, setOfferPrice] = useState("");
+
+  const handlePickupChange = (value: string, lat?: number, lon?: number) => {
+    setPickupLocation(value);
+    if (lat !== undefined && lon !== undefined) {
+      setPickupCoords({ lat, lon });
+    } else if (!value) {
+      setPickupCoords(null);
+    }
+  };
+
+  const handleDropoffChange = (value: string, lat?: number, lon?: number) => {
+    setDropoffLocation(value);
+    if (lat !== undefined && lon !== undefined) {
+      setDropoffCoords({ lat, lon });
+    } else if (!value) {
+      setDropoffCoords(null);
+    }
+  };
 
   const { data: driverRoutes = [], isLoading: routesLoading } = useQuery<DriverRoute[]>({
     queryKey: ["/api/driver-routes"],
   });
+
+  const nearbyRoutes = (pickupCoords && dropoffCoords) ? driverRoutes.filter(route => {
+    if (!route.startLat || !route.startLng || !route.endLat || !route.endLng) return false;
+    const routeStartLat = parseFloat(route.startLat);
+    const routeStartLng = parseFloat(route.startLng);
+    const routeEndLat = parseFloat(route.endLat);
+    const routeEndLng = parseFloat(route.endLng);
+    const maxDetour = parseFloat(route.maxDetourMiles) || 5;
+    const distanceToStart = calculateDistance(pickupCoords.lat, pickupCoords.lon, routeStartLat, routeStartLng);
+    const distanceToEnd = calculateDistance(dropoffCoords.lat, dropoffCoords.lon, routeEndLat, routeEndLng);
+    return distanceToStart <= maxDetour && distanceToEnd <= maxDetour;
+  }) : [];
 
   const createOfferMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -142,7 +190,7 @@ export default function RiderPage() {
                   <CardContent className="space-y-4">
                     <PostcodeSearch
                       value={pickupLocation}
-                      onChange={setPickupLocation}
+                      onChange={handlePickupChange}
                       placeholder="Enter pickup address"
                       label="Pickup Location"
                       iconColor="text-muted-foreground"
@@ -151,7 +199,7 @@ export default function RiderPage() {
                     
                     <PostcodeSearch
                       value={dropoffLocation}
-                      onChange={setDropoffLocation}
+                      onChange={handleDropoffChange}
                       placeholder="Enter destination"
                       label="Destination"
                       iconColor="text-secondary"
@@ -222,36 +270,104 @@ export default function RiderPage() {
             </div>
           </div>
 
-          {/* Right Panel: Available Routes */}
-          <div className="lg:col-span-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-primary">Available Routes</h2>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm"><Search className="mr-2 h-4 w-4"/> Filter</Button>
-                <Button variant="outline" size="sm"><Calendar className="mr-2 h-4 w-4"/> Date</Button>
-              </div>
-            </div>
-
-            {routesLoading ? (
-              <div className="grid md:grid-cols-2 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <Card key={i} className="animate-pulse">
-                    <CardContent className="p-6">
-                      <div className="h-20 bg-muted rounded" />
+          {/* Right Panel: Nearby & Available Routes */}
+          <div className="lg:col-span-8 space-y-8">
+            
+            {/* Nearby Routes Section - shows when pickup is set */}
+            {pickupCoords && dropoffCoords && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-accent flex items-center gap-2">
+                    <MapPin className="h-6 w-6" />
+                    Nearby Driver Routes
+                    {nearbyRoutes.length > 0 && (
+                      <Badge className="bg-accent text-white">{nearbyRoutes.length} found</Badge>
+                    )}
+                  </h2>
+                </div>
+                
+                {nearbyRoutes.length === 0 ? (
+                  <Card className="border-dashed border-accent/30 bg-accent/5">
+                    <CardContent className="p-8 text-center">
+                      <MapPin className="h-12 w-12 text-accent/40 mx-auto mb-3" />
+                      <p className="text-muted-foreground">No driver routes near your location yet.</p>
+                      <p className="text-sm text-muted-foreground mt-1">Post your request and drivers will see it!</p>
                     </CardContent>
                   </Card>
-                ))}
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {nearbyRoutes.map((route) => (
+                      <Card key={route.id} className="group hover:border-accent transition-all hover:shadow-lg cursor-pointer border-accent/30 bg-accent/5" data-testid={`card-nearby-route-${route.id}`}>
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar>
+                                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
+                                <AvatarFallback>D</AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-semibold text-primary">Driver</p>
+                                <div className="flex items-center text-xs text-muted-foreground">
+                                  <span className="text-yellow-500">★</span> 4.8 • {route.availableSeats} seats
+                                </div>
+                              </div>
+                            </div>
+                            {route.pricePerSeat && (
+                              <Badge variant="secondary" className="text-lg px-3 py-1 bg-accent text-white">
+                                £{route.pricePerSeat}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-sm"><span className="text-accent">●</span> {route.startLocation}</p>
+                            <p className="text-sm"><span className="text-secondary">●</span> {route.endLocation}</p>
+                            <p className="text-xs text-muted-foreground mt-2">{formatDate(route.departureTime)} at {formatTime(route.departureTime)}</p>
+                          </div>
+                        </CardContent>
+                        <CardFooter className="bg-accent/10 p-3 flex justify-end">
+                          <Button size="sm" className="bg-accent hover:bg-accent/90">
+                            Request Seat <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : driverRoutes.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="p-12 text-center">
-                  <p className="text-muted-foreground">No driver routes available at the moment.</p>
-                  <p className="text-sm text-muted-foreground mt-2">Post a request and wait for drivers to respond!</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {driverRoutes.map((route) => (
+            )}
+
+            {/* All Available Routes */}
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-primary">
+                  {pickupCoords && dropoffCoords ? "All Available Routes" : "Available Routes"}
+                </h2>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm"><Search className="mr-2 h-4 w-4"/> Filter</Button>
+                  <Button variant="outline" size="sm"><Calendar className="mr-2 h-4 w-4"/> Date</Button>
+                </div>
+              </div>
+
+              {routesLoading ? (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="p-6">
+                        <div className="h-20 bg-muted rounded" />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : driverRoutes.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="p-12 text-center">
+                    <p className="text-muted-foreground">No driver routes available at the moment.</p>
+                    <p className="text-sm text-muted-foreground mt-2">Post a request and wait for drivers to respond!</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {driverRoutes.map((route) => (
                   <Card key={route.id} className="group hover:border-primary/50 transition-all hover:shadow-md cursor-pointer" data-testid={`card-route-${route.id}`}>
                     <CardContent className="p-6">
                       <div className="flex justify-between items-start mb-4">
@@ -299,9 +415,10 @@ export default function RiderPage() {
                       </Button>
                     </CardFooter>
                   </Card>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           
         </div>

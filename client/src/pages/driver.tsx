@@ -20,9 +20,24 @@ interface RiderOffer {
   riderId: string;
   pickupLocation: string;
   dropoffLocation: string;
+  pickupLat: string | null;
+  pickupLng: string | null;
+  dropoffLat: string | null;
+  dropoffLng: string | null;
   offerPrice: string;
   requestedTime: string;
   status: string;
+}
+
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 
 interface Ride {
@@ -43,11 +58,31 @@ export default function DriverPage() {
   const { toast } = useToast();
 
   const [startLocation, setStartLocation] = useState("");
+  const [startCoords, setStartCoords] = useState<{lat: number; lon: number} | null>(null);
   const [endLocation, setEndLocation] = useState("");
+  const [endCoords, setEndCoords] = useState<{lat: number; lon: number} | null>(null);
   const [departureTime, setDepartureTime] = useState("");
   const [maxDetour, setMaxDetour] = useState("2");
   const [availableSeats, setAvailableSeats] = useState("3");
   const [pricePerSeat, setPricePerSeat] = useState("");
+
+  const handleStartChange = (value: string, lat?: number, lon?: number) => {
+    setStartLocation(value);
+    if (lat !== undefined && lon !== undefined) {
+      setStartCoords({ lat, lon });
+    } else if (!value) {
+      setStartCoords(null);
+    }
+  };
+
+  const handleEndChange = (value: string, lat?: number, lon?: number) => {
+    setEndLocation(value);
+    if (lat !== undefined && lon !== undefined) {
+      setEndCoords({ lat, lon });
+    } else if (!value) {
+      setEndCoords(null);
+    }
+  };
 
   const [bidDialogOpen, setBidDialogOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<RiderOffer | null>(null);
@@ -61,6 +96,18 @@ export default function DriverPage() {
       return response.json();
     },
   });
+
+  const detourDistance = parseFloat(maxDetour) || 2;
+  const nearbyOffers = (startCoords && endCoords) ? riderOffers.filter(offer => {
+    if (!offer.pickupLat || !offer.pickupLng || !offer.dropoffLat || !offer.dropoffLng) return false;
+    const offerPickupLat = parseFloat(offer.pickupLat);
+    const offerPickupLng = parseFloat(offer.pickupLng);
+    const offerDropoffLat = parseFloat(offer.dropoffLat);
+    const offerDropoffLng = parseFloat(offer.dropoffLng);
+    const distanceToPickup = calculateDistance(startCoords.lat, startCoords.lon, offerPickupLat, offerPickupLng);
+    const distanceToDropoff = calculateDistance(endCoords.lat, endCoords.lon, offerDropoffLat, offerDropoffLng);
+    return distanceToPickup <= detourDistance && distanceToDropoff <= detourDistance;
+  }) : [];
 
   const { data: myRides = [], isLoading: ridesLoading } = useQuery<Ride[]>({
     queryKey: ["/api/rides"],
@@ -282,7 +329,7 @@ export default function DriverPage() {
                   <CardContent className="space-y-4">
                     <PostcodeSearch
                       value={startLocation}
-                      onChange={setStartLocation}
+                      onChange={handleStartChange}
                       placeholder="Home / Current Location"
                       label="Starting Point"
                       labelClassName="text-primary-foreground/80"
@@ -294,7 +341,7 @@ export default function DriverPage() {
                     
                     <PostcodeSearch
                       value={endLocation}
-                      onChange={setEndLocation}
+                      onChange={handleEndChange}
                       placeholder="Work / Office"
                       label="Destination"
                       labelClassName="text-primary-foreground/80"
@@ -401,26 +448,104 @@ export default function DriverPage() {
                 </TabsList>
               </div>
 
-              <TabsContent value="offers" className="space-y-4">
-                {offersLoading ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                      <Card key={i} className="animate-pulse">
-                        <CardContent className="p-6">
-                          <div className="h-24 bg-muted rounded" />
+              <TabsContent value="offers" className="space-y-6">
+                {/* Nearby Offers Section - shows when start location is set */}
+                {startCoords && endCoords && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <h3 className="text-xl font-bold text-accent flex items-center gap-2">
+                        <MapPin className="h-5 w-5" />
+                        Nearby Rider Offers
+                        {nearbyOffers.length > 0 && (
+                          <Badge className="bg-accent text-white">{nearbyOffers.length} found</Badge>
+                        )}
+                      </h3>
+                    </div>
+                    
+                    {nearbyOffers.length === 0 ? (
+                      <Card className="border-dashed border-accent/30 bg-accent/5 mb-6">
+                        <CardContent className="p-6 text-center">
+                          <MapPin className="h-10 w-10 text-accent/40 mx-auto mb-2" />
+                          <p className="text-muted-foreground">No rider offers near your route yet.</p>
+                          <p className="text-sm text-muted-foreground mt-1">Publish your route and riders will find you!</p>
                         </CardContent>
                       </Card>
-                    ))}
+                    ) : (
+                      <div className="space-y-4 mb-6">
+                        {nearbyOffers.map((offer) => (
+                          <Card key={offer.id} className="overflow-hidden hover:shadow-lg transition-shadow border-accent/30 bg-accent/5" data-testid={`card-nearby-offer-${offer.id}`}>
+                            <div className="flex flex-col sm:flex-row">
+                              <div className="p-6 flex-1">
+                                <div className="flex justify-between items-start mb-4">
+                                  <div className="flex items-center gap-3">
+                                    <Avatar>
+                                      <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${offer.riderId}`} />
+                                      <AvatarFallback>R</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                      <p className="font-semibold text-primary">Nearby Rider</p>
+                                      <div className="flex items-center text-xs text-muted-foreground">
+                                        <span className="text-yellow-500">★</span> 4.8 • {formatDate(offer.requestedTime)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Badge className="text-lg px-3 py-1 bg-accent text-white">
+                                    £{offer.offerPrice}
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <span className="text-accent text-xs uppercase tracking-wider">Pickup</span>
+                                    <p className="font-medium truncate">{offer.pickupLocation}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-secondary text-xs uppercase tracking-wider">Dropoff</span>
+                                    <p className="font-medium truncate">{offer.dropoffLocation}</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="bg-accent/10 p-4 sm:w-32 flex sm:flex-col gap-2 justify-center border-t sm:border-t-0 sm:border-l">
+                                <Button 
+                                  className="w-full bg-accent hover:bg-accent/90"
+                                  onClick={() => handleAcceptOffer(offer.id)}
+                                  disabled={acceptOfferMutation.isPending}
+                                  data-testid={`button-accept-nearby-${offer.id}`}
+                                >
+                                  <CheckCircle2 className="mr-1 h-4 w-4" /> Accept
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                ) : riderOffers.length === 0 ? (
-                  <Card className="border-dashed">
-                    <CardContent className="p-12 text-center">
-                      <p className="text-muted-foreground">No rider offers available at the moment.</p>
-                      <p className="text-sm text-muted-foreground mt-2">Check back soon for new ride requests!</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  riderOffers.map((offer) => (
+                )}
+
+                {/* All Offers Section */}
+                <div>
+                  {startCoords && endCoords && <h3 className="text-xl font-bold text-primary mb-4">All Rider Offers</h3>}
+                  
+                  {offersLoading ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <Card key={i} className="animate-pulse">
+                          <CardContent className="p-6">
+                            <div className="h-24 bg-muted rounded" />
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : riderOffers.length === 0 ? (
+                    <Card className="border-dashed">
+                      <CardContent className="p-12 text-center">
+                        <p className="text-muted-foreground">No rider offers available at the moment.</p>
+                        <p className="text-sm text-muted-foreground mt-2">Check back soon for new ride requests!</p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-4">
+                      {riderOffers.map((offer) => (
                     <Card key={offer.id} className="overflow-hidden hover:shadow-md transition-shadow" data-testid={`card-offer-${offer.id}`}>
                       <div className="flex flex-col sm:flex-row">
                         <div className="p-6 flex-1">
@@ -526,8 +651,10 @@ export default function DriverPage() {
                         </div>
                       </div>
                     </Card>
-                  ))
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </TabsContent>
               
               <TabsContent value="active" className="space-y-4">
