@@ -104,7 +104,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      res.json(user);
+      
+      if (user) {
+        const maskedUser = {
+          ...user,
+          bankAccountNumber: user.bankAccountNumber ? '****' + user.bankAccountNumber.slice(-4) : null,
+          bankSortCode: user.bankSortCode ? '**-**-' + user.bankSortCode.slice(-2) : null,
+        };
+        res.json(maskedUser);
+      } else {
+        res.json(user);
+      }
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -129,19 +139,94 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.post('/api/user/complete-profile', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { firstName, lastName, isDriver, driverLicenseUrl } = req.body;
+      const { 
+        firstName, 
+        lastName, 
+        dateOfBirth,
+        phoneNumber,
+        homeAddress,
+        city,
+        postcode,
+        isDriver, 
+        driverLicenseUrl,
+        driverLicenseNumber,
+        driverLicenseExpiry,
+        backgroundCheckConsent,
+        vehicleMake,
+        vehicleModel,
+        vehicleYear,
+        vehicleColor,
+        vehicleRegistration,
+        vehicleInsuranceExpiry,
+        bankAccountName,
+        bankSortCode,
+        bankAccountNumber,
+      } = req.body;
       
+      // Basic validation
       if (!firstName || !lastName) {
         return res.status(400).json({ message: "First name and last name are required" });
+      }
+      
+      if (!dateOfBirth) {
+        return res.status(400).json({ message: "Date of birth is required" });
+      }
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+      
+      // Driver-specific validation
+      if (isDriver) {
+        if (!driverLicenseUrl) {
+          return res.status(400).json({ message: "Driver's license upload is required for drivers" });
+        }
+        if (!driverLicenseNumber || !driverLicenseExpiry) {
+          return res.status(400).json({ message: "License number and expiry date are required for drivers" });
+        }
+        if (!backgroundCheckConsent) {
+          return res.status(400).json({ message: "Background check consent is required for drivers" });
+        }
+        if (!vehicleMake || !vehicleModel || !vehicleRegistration) {
+          return res.status(400).json({ message: "Vehicle information (make, model, registration) is required for drivers" });
+        }
+        if (!bankAccountName || !bankSortCode || !bankAccountNumber) {
+          return res.status(400).json({ message: "Bank details are required for drivers to receive payments" });
+        }
       }
       
       const user = await storage.completeUserProfile(userId, {
         firstName,
         lastName,
+        dateOfBirth,
+        phoneNumber,
+        homeAddress,
+        city,
+        postcode,
         isDriver: isDriver || false,
         driverLicenseUrl,
+        driverLicenseNumber,
+        driverLicenseExpiry,
+        backgroundCheckConsent,
+        vehicleMake,
+        vehicleModel,
+        vehicleYear,
+        vehicleColor,
+        vehicleRegistration,
+        vehicleInsuranceExpiry,
+        bankAccountName,
+        bankSortCode,
+        bankAccountNumber,
       });
-      res.json(user);
+      
+      // Mask sensitive data in response
+      const maskedUser = {
+        ...user,
+        bankAccountNumber: user.bankAccountNumber ? '****' + user.bankAccountNumber.slice(-4) : null,
+        bankSortCode: user.bankSortCode ? '**-**-' + user.bankSortCode.slice(-2) : null,
+      };
+      
+      res.json(maskedUser);
     } catch (error) {
       console.error("Error completing profile:", error);
       res.status(500).json({ message: "Failed to complete profile" });

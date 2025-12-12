@@ -25,16 +25,40 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table (required for Replit Auth)
+// User storage table (required for Auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  // Personal info
+  dateOfBirth: varchar("date_of_birth"),
+  phoneNumber: varchar("phone_number"),
+  homeAddress: text("home_address"),
+  city: varchar("city"),
+  postcode: varchar("postcode"),
+  // Driver status
   isDriver: boolean("is_driver").default(false),
   driverLicenseUrl: varchar("driver_license_url"),
   driverVerified: boolean("driver_verified").default(false),
+  // Driver-specific fields
+  driverLicenseNumber: varchar("driver_license_number"),
+  driverLicenseExpiry: varchar("driver_license_expiry"),
+  backgroundCheckConsent: boolean("background_check_consent").default(false),
+  backgroundCheckStatus: varchar("background_check_status"), // pending, approved, rejected
+  // Vehicle info
+  vehicleMake: varchar("vehicle_make"),
+  vehicleModel: varchar("vehicle_model"),
+  vehicleYear: varchar("vehicle_year"),
+  vehicleColor: varchar("vehicle_color"),
+  vehicleRegistration: varchar("vehicle_registration"),
+  vehicleInsuranceExpiry: varchar("vehicle_insurance_expiry"),
+  // Payment info
+  bankAccountName: varchar("bank_account_name"),
+  bankSortCode: varchar("bank_sort_code"),
+  bankAccountNumber: varchar("bank_account_number"),
+  // Stats and Stripe
   rating: decimal("rating", { precision: 3, scale: 2 }),
   totalRides: integer("total_rides").default(0),
   stripeCustomerId: varchar("stripe_customer_id"),

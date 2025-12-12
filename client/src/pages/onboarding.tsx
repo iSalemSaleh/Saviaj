@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { 
@@ -16,7 +17,15 @@ import {
   Loader2, 
   CheckCircle,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Phone,
+  Mail,
+  MapPin,
+  Calendar,
+  CreditCard,
+  Building,
+  Palette,
+  Hash
 } from "lucide-react";
 import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
 
@@ -25,20 +34,40 @@ export default function OnboardingPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Personal Information
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [homeAddress, setHomeAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [postcode, setPostcode] = useState("");
+
+  // Driver Registration
   const [isDriver, setIsDriver] = useState(false);
   const [licenseFile, setLicenseFile] = useState<File | null>(null);
   const [licensePreview, setLicensePreview] = useState<string | null>(null);
+  const [driverLicenseNumber, setDriverLicenseNumber] = useState("");
+  const [driverLicenseExpiry, setDriverLicenseExpiry] = useState("");
+  const [backgroundCheckConsent, setBackgroundCheckConsent] = useState(false);
+
+  // Vehicle Information
+  const [vehicleMake, setVehicleMake] = useState("");
+  const [vehicleModel, setVehicleModel] = useState("");
+  const [vehicleYear, setVehicleYear] = useState("");
+  const [vehicleColor, setVehicleColor] = useState("");
+  const [vehicleRegistration, setVehicleRegistration] = useState("");
+  const [vehicleInsuranceExpiry, setVehicleInsuranceExpiry] = useState("");
+
+  // Payment Information
+  const [bankAccountName, setBankAccountName] = useState("");
+  const [bankSortCode, setBankSortCode] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+
   const [isUploading, setIsUploading] = useState(false);
 
   const completeProfileMutation = useMutation({
-    mutationFn: async (data: { 
-      firstName: string; 
-      lastName: string; 
-      isDriver: boolean; 
-      driverLicenseUrl?: string;
-    }) => {
+    mutationFn: async (data: Record<string, any>) => {
       const response = await apiRequest("POST", "/api/user/complete-profile", data);
       return response.json();
     },
@@ -46,7 +75,7 @@ export default function OnboardingPage() {
       toast({
         title: "Profile Complete!",
         description: isDriver 
-          ? "Your profile is set up. Your driver's license is pending verification."
+          ? "Your profile is set up. Your driver application is pending verification."
           : "Your profile is set up. You can now request rides!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
@@ -139,13 +168,69 @@ export default function OnboardingPage() {
       return;
     }
 
-    if (isDriver && !licenseFile) {
+    if (!dateOfBirth) {
       toast({
-        title: "Driver's License Required",
-        description: "To register as a driver, please upload your driver's license",
+        title: "Missing Information",
+        description: "Please enter your date of birth",
         variant: "destructive",
       });
       return;
+    }
+
+    if (!phoneNumber.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter your phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isDriver) {
+      if (!licenseFile) {
+        toast({
+          title: "Driver's License Required",
+          description: "To register as a driver, please upload your driver's license",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!driverLicenseNumber.trim() || !driverLicenseExpiry) {
+        toast({
+          title: "License Information Required",
+          description: "Please enter your license number and expiry date",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!backgroundCheckConsent) {
+        toast({
+          title: "Background Check Required",
+          description: "You must consent to a background check to register as a driver",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!vehicleMake.trim() || !vehicleModel.trim() || !vehicleRegistration.trim()) {
+        toast({
+          title: "Vehicle Information Required",
+          description: "Please enter your vehicle details",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!bankAccountName.trim() || !bankSortCode.trim() || !bankAccountNumber.trim()) {
+        toast({
+          title: "Payment Information Required",
+          description: "Please enter your bank details to receive payments",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     let licenseUrl: string | undefined;
@@ -158,16 +243,33 @@ export default function OnboardingPage() {
     completeProfileMutation.mutate({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
+      dateOfBirth,
+      phoneNumber: phoneNumber.trim(),
+      homeAddress: homeAddress.trim(),
+      city: city.trim(),
+      postcode: postcode.trim(),
       isDriver,
       driverLicenseUrl: licenseUrl,
+      driverLicenseNumber: driverLicenseNumber.trim(),
+      driverLicenseExpiry,
+      backgroundCheckConsent,
+      vehicleMake: vehicleMake.trim(),
+      vehicleModel: vehicleModel.trim(),
+      vehicleYear: vehicleYear.trim(),
+      vehicleColor: vehicleColor.trim(),
+      vehicleRegistration: vehicleRegistration.trim(),
+      vehicleInsuranceExpiry,
+      bankAccountName: bankAccountName.trim(),
+      bankSortCode: bankSortCode.trim(),
+      bankAccountNumber: bankAccountNumber.trim(),
     });
   };
 
   const isSubmitting = isUploading || completeProfileMutation.isPending;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-      <Card className="w-full max-w-lg border-none shadow-2xl">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4 py-8">
+      <Card className="w-full max-w-2xl border-none shadow-2xl">
         <CardHeader className="space-y-1 text-center pb-2">
           <div className="flex justify-center mb-2">
             <img 
@@ -179,41 +281,116 @@ export default function OnboardingPage() {
           </div>
           <CardTitle className="text-2xl font-bold text-primary">Complete Your Profile</CardTitle>
           <CardDescription>
-            Tell us a bit about yourself to get started
+            Tell us about yourself to get started with AtlasRide
           </CardDescription>
         </CardHeader>
 
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-6">
-            {/* Name Fields */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName">First Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            {/* Personal Information Section */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" />
+                Personal Information
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name *</Label>
                   <Input
                     id="firstName"
                     placeholder="John"
-                    className="pl-9"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     data-testid="input-first-name"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Input
+                    id="lastName"
+                    placeholder="Smith"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    data-testid="input-last-name"
+                  />
+                </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="dateOfBirth"
+                      type="date"
+                      className="pl-9"
+                      value={dateOfBirth}
+                      onChange={(e) => setDateOfBirth(e.target.value)}
+                      data-testid="input-date-of-birth"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Phone Number *</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="phoneNumber"
+                      type="tel"
+                      placeholder="+44 7700 900000"
+                      className="pl-9"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      data-testid="input-phone-number"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  placeholder="Smith"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  data-testid="input-last-name"
-                />
+                <Label htmlFor="homeAddress">Home Address</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="homeAddress"
+                    placeholder="123 Main Street"
+                    className="pl-9"
+                    value={homeAddress}
+                    onChange={(e) => setHomeAddress(e.target.value)}
+                    data-testid="input-home-address"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    placeholder="London"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    data-testid="input-city"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postcode">Postcode</Label>
+                  <Input
+                    id="postcode"
+                    placeholder="SW1A 1AA"
+                    value={postcode}
+                    onChange={(e) => setPostcode(e.target.value)}
+                    data-testid="input-postcode"
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Driver Checkbox */}
+            <Separator />
+
+            {/* Driver Registration Checkbox */}
             <div className="p-4 rounded-lg border bg-muted/30">
               <div className="flex items-start space-x-3">
                 <Checkbox
@@ -229,69 +406,253 @@ export default function OnboardingPage() {
                     className="font-medium cursor-pointer flex items-center gap-2"
                   >
                     <Car className="h-4 w-4 text-primary" />
-                    Register as a Driver
+                    I want to register as a Driver
                   </label>
                   <p className="text-sm text-muted-foreground">
-                    Earn money by offering rides to others. You'll need to verify your driver's license.
+                    Earn money by offering rides to others. Additional verification required.
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Driver License Upload - Only shown if isDriver is checked */}
+            {/* Driver-specific fields - Only shown if isDriver is checked */}
             {isDriver && (
-              <div className="space-y-4 p-4 rounded-lg border border-primary/20 bg-primary/5 animate-in slide-in-from-top-2">
-                <div className="flex items-center gap-2 text-primary">
-                  <Shield className="h-5 w-5" />
-                  <h3 className="font-semibold">Driver Verification (KYC)</h3>
-                </div>
-                
-                <p className="text-sm text-muted-foreground">
-                  Upload a clear photo of your valid UK driver's license. Both sides if applicable.
-                </p>
+              <div className="space-y-6 animate-in slide-in-from-top-2">
+                {/* License & Background Check Section */}
+                <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-4">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Shield className="h-5 w-5" />
+                    <h3 className="font-semibold">Driver Verification & Background Check</h3>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="license">Driver's License</Label>
-                  <div className="relative">
-                    <input
-                      type="file"
-                      id="license"
-                      accept="image/*,.pdf"
-                      onChange={handleFileChange}
-                      className="hidden"
-                      data-testid="input-license-file"
-                    />
-                    <label
-                      htmlFor="license"
-                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                    >
-                      {licensePreview ? (
-                        <img 
-                          src={licensePreview} 
-                          alt="License preview" 
-                          className="h-full object-contain rounded"
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="driverLicenseNumber">License Number *</Label>
+                      <div className="relative">
+                        <Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="driverLicenseNumber"
+                          placeholder="SMITH901234AB1CD"
+                          className="pl-9"
+                          value={driverLicenseNumber}
+                          onChange={(e) => setDriverLicenseNumber(e.target.value)}
+                          data-testid="input-license-number"
                         />
-                      ) : licenseFile ? (
-                        <div className="flex flex-col items-center text-primary">
-                          <FileText className="h-10 w-10 mb-2" />
-                          <span className="text-sm font-medium">{licenseFile.name}</span>
-                          <span className="text-xs text-muted-foreground">Click to change</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center text-muted-foreground">
-                          <Upload className="h-10 w-10 mb-2" />
-                          <span className="text-sm font-medium">Click to upload</span>
-                          <span className="text-xs">JPG, PNG or PDF (max 10MB)</span>
-                        </div>
-                      )}
-                    </label>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="driverLicenseExpiry">License Expiry *</Label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="driverLicenseExpiry"
+                          type="date"
+                          className="pl-9"
+                          value={driverLicenseExpiry}
+                          onChange={(e) => setDriverLicenseExpiry(e.target.value)}
+                          data-testid="input-license-expiry"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="license">Upload Driver's License *</Label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        id="license"
+                        accept="image/*,.pdf"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        data-testid="input-license-file"
+                      />
+                      <label
+                        htmlFor="license"
+                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                      >
+                        {licensePreview ? (
+                          <img 
+                            src={licensePreview} 
+                            alt="License preview" 
+                            className="h-full object-contain rounded"
+                          />
+                        ) : licenseFile ? (
+                          <div className="flex flex-col items-center text-primary">
+                            <FileText className="h-10 w-10 mb-2" />
+                            <span className="text-sm font-medium">{licenseFile.name}</span>
+                            <span className="text-xs text-muted-foreground">Click to change</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center text-muted-foreground">
+                            <Upload className="h-10 w-10 mb-2" />
+                            <span className="text-sm font-medium">Click to upload</span>
+                            <span className="text-xs">JPG, PNG or PDF (max 10MB)</span>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-3 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <Checkbox
+                      id="backgroundCheck"
+                      checked={backgroundCheckConsent}
+                      onCheckedChange={(checked) => setBackgroundCheckConsent(checked as boolean)}
+                      className="mt-1"
+                      data-testid="checkbox-background-check"
+                    />
+                    <div className="space-y-1">
+                      <label htmlFor="backgroundCheck" className="font-medium cursor-pointer text-sm">
+                        I consent to a background check *
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        By checking this box, you authorize AtlasRide to conduct a background verification including criminal record and driving history checks.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vehicle Information Section */}
+                <div className="p-4 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20 space-y-4">
+                  <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                    <Car className="h-5 w-5" />
+                    <h3 className="font-semibold">Vehicle Information</h3>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="vehicleMake">Make *</Label>
+                      <Input
+                        id="vehicleMake"
+                        placeholder="Toyota"
+                        value={vehicleMake}
+                        onChange={(e) => setVehicleMake(e.target.value)}
+                        data-testid="input-vehicle-make"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="vehicleModel">Model *</Label>
+                      <Input
+                        id="vehicleModel"
+                        placeholder="Camry"
+                        value={vehicleModel}
+                        onChange={(e) => setVehicleModel(e.target.value)}
+                        data-testid="input-vehicle-model"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="vehicleYear">Year</Label>
+                      <Input
+                        id="vehicleYear"
+                        placeholder="2022"
+                        value={vehicleYear}
+                        onChange={(e) => setVehicleYear(e.target.value)}
+                        data-testid="input-vehicle-year"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="vehicleColor">Color</Label>
+                      <div className="relative">
+                        <Palette className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="vehicleColor"
+                          placeholder="Silver"
+                          className="pl-9"
+                          value={vehicleColor}
+                          onChange={(e) => setVehicleColor(e.target.value)}
+                          data-testid="input-vehicle-color"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="vehicleRegistration">Registration *</Label>
+                      <Input
+                        id="vehicleRegistration"
+                        placeholder="AB12 CDE"
+                        value={vehicleRegistration}
+                        onChange={(e) => setVehicleRegistration(e.target.value)}
+                        data-testid="input-vehicle-registration"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="vehicleInsuranceExpiry">Insurance Expiry Date</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="vehicleInsuranceExpiry"
+                        type="date"
+                        className="pl-9"
+                        value={vehicleInsuranceExpiry}
+                        onChange={(e) => setVehicleInsuranceExpiry(e.target.value)}
+                        data-testid="input-insurance-expiry"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Information Section */}
+                <div className="p-4 rounded-lg border border-green-200 bg-green-50/50 dark:border-green-800 dark:bg-green-950/20 space-y-4">
+                  <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                    <CreditCard className="h-5 w-5" />
+                    <h3 className="font-semibold">Payment Details (for receiving payments)</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bankAccountName">Account Holder Name *</Label>
+                    <div className="relative">
+                      <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="bankAccountName"
+                        placeholder="John Smith"
+                        className="pl-9"
+                        value={bankAccountName}
+                        onChange={(e) => setBankAccountName(e.target.value)}
+                        data-testid="input-bank-account-name"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="bankSortCode">Sort Code *</Label>
+                      <Input
+                        id="bankSortCode"
+                        placeholder="00-00-00"
+                        value={bankSortCode}
+                        onChange={(e) => setBankSortCode(e.target.value)}
+                        data-testid="input-sort-code"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bankAccountNumber">Account Number *</Label>
+                      <Input
+                        id="bankAccountNumber"
+                        placeholder="12345678"
+                        value={bankAccountNumber}
+                        onChange={(e) => setBankAccountNumber(e.target.value)}
+                        data-testid="input-account-number"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <AlertCircle className="h-4 w-4 text-green-700 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-green-700 dark:text-green-400">
+                      Your bank details are securely encrypted and will only be used to transfer your earnings.
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
                   <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-amber-700 dark:text-amber-400">
-                    Your license will be reviewed within 24-48 hours. You can browse offers while waiting for verification.
+                    Your driver application will be reviewed within 24-48 hours. You can browse ride requests while waiting for verification.
                   </p>
                 </div>
               </div>
@@ -312,7 +673,7 @@ export default function OnboardingPage() {
               ) : (
                 <>
                   <CheckCircle className="mr-2 h-5 w-5" />
-                  Complete Profile
+                  {isDriver ? "Submit Driver Application" : "Complete Profile"}
                 </>
               )}
             </Button>

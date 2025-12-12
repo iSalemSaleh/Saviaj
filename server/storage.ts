@@ -24,7 +24,29 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserDriverStatus(id: string, isDriver: boolean, licenseUrl?: string): Promise<User>;
   updateUserStripeCustomerId(id: string, stripeCustomerId: string): Promise<User>;
-  completeUserProfile(id: string, data: { firstName: string; lastName: string; isDriver: boolean; driverLicenseUrl?: string }): Promise<User>;
+  completeUserProfile(id: string, data: {
+    firstName: string;
+    lastName: string;
+    dateOfBirth?: string;
+    phoneNumber?: string;
+    homeAddress?: string;
+    city?: string;
+    postcode?: string;
+    isDriver: boolean;
+    driverLicenseUrl?: string;
+    driverLicenseNumber?: string;
+    driverLicenseExpiry?: string;
+    backgroundCheckConsent?: boolean;
+    vehicleMake?: string;
+    vehicleModel?: string;
+    vehicleYear?: string;
+    vehicleColor?: string;
+    vehicleRegistration?: string;
+    vehicleInsuranceExpiry?: string;
+    bankAccountName?: string;
+    bankSortCode?: string;
+    bankAccountNumber?: string;
+  }): Promise<User>;
   
   // Rider Offer operations
   createRiderOffer(offer: InsertRiderOffer): Promise<RiderOffer>;
@@ -98,14 +120,54 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async completeUserProfile(id: string, data: { firstName: string; lastName: string; isDriver: boolean; driverLicenseUrl?: string }): Promise<User> {
+  async completeUserProfile(id: string, data: {
+    firstName: string;
+    lastName: string;
+    dateOfBirth?: string;
+    phoneNumber?: string;
+    homeAddress?: string;
+    city?: string;
+    postcode?: string;
+    isDriver: boolean;
+    driverLicenseUrl?: string;
+    driverLicenseNumber?: string;
+    driverLicenseExpiry?: string;
+    backgroundCheckConsent?: boolean;
+    vehicleMake?: string;
+    vehicleModel?: string;
+    vehicleYear?: string;
+    vehicleColor?: string;
+    vehicleRegistration?: string;
+    vehicleInsuranceExpiry?: string;
+    bankAccountName?: string;
+    bankSortCode?: string;
+    bankAccountNumber?: string;
+  }): Promise<User> {
     const [user] = await db
       .update(users)
       .set({
         firstName: data.firstName,
         lastName: data.lastName,
+        dateOfBirth: data.dateOfBirth,
+        phoneNumber: data.phoneNumber,
+        homeAddress: data.homeAddress,
+        city: data.city,
+        postcode: data.postcode,
         isDriver: data.isDriver,
         driverLicenseUrl: data.driverLicenseUrl,
+        driverLicenseNumber: data.driverLicenseNumber,
+        driverLicenseExpiry: data.driverLicenseExpiry,
+        backgroundCheckConsent: data.backgroundCheckConsent,
+        backgroundCheckStatus: data.backgroundCheckConsent ? 'pending' : null,
+        vehicleMake: data.vehicleMake,
+        vehicleModel: data.vehicleModel,
+        vehicleYear: data.vehicleYear,
+        vehicleColor: data.vehicleColor,
+        vehicleRegistration: data.vehicleRegistration,
+        vehicleInsuranceExpiry: data.vehicleInsuranceExpiry,
+        bankAccountName: data.bankAccountName,
+        bankSortCode: data.bankSortCode,
+        bankAccountNumber: data.bankAccountNumber,
         updatedAt: new Date(),
       })
       .where(eq(users.id, id))
