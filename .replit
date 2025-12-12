@@ -41,3 +41,9 @@ waitForPort = 5000
 [agent]
 mockupState = "FULLSTACK"
 integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0", "stripe:2.0.0"]
+
+[userenv]
+
+[userenv.shared]
+ENTRA_CLIENT_ID = "311dc452-3411-411e-acd5-0bdea1331569"
+ENTRA_TENANT_ID = "d647be5f-293f-406c-a4dc-a24d4b348cc0"
