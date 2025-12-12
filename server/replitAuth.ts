@@ -14,7 +14,8 @@ const ENTRA_CLIENT_SECRET = process.env.ENTRA_CLIENT_SECRET!;
 
 const getOidcConfig = memoize(
   async () => {
-    const issuerUrl = `https://login.microsoftonline.com/${ENTRA_TENANT_ID}/v2.0`;
+    // External ID (CIAM) uses ciamlogin.com domain
+    const issuerUrl = `https://${ENTRA_TENANT_ID}.ciamlogin.com/${ENTRA_TENANT_ID}/v2.0`;
     return await client.discovery(
       new URL(issuerUrl),
       ENTRA_CLIENT_ID,
@@ -132,7 +133,8 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
-      const logoutUrl = `https://login.microsoftonline.com/${ENTRA_TENANT_ID}/oauth2/v2.0/logout?post_logout_redirect_uri=${encodeURIComponent(`https://${req.hostname}`)}`;
+      // External ID (CIAM) logout endpoint
+      const logoutUrl = `https://${ENTRA_TENANT_ID}.ciamlogin.com/${ENTRA_TENANT_ID}/oauth2/v2.0/logout?post_logout_redirect_uri=${encodeURIComponent(`https://${req.hostname}`)}`;
       res.redirect(logoutUrl);
     });
   });
