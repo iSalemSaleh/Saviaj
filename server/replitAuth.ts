@@ -8,18 +8,11 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-const ENTRA_TENANT_ID = process.env.ENTRA_TENANT_ID!;
-const ENTRA_CLIENT_ID = process.env.ENTRA_CLIENT_ID!;
-const ENTRA_CLIENT_SECRET = process.env.ENTRA_CLIENT_SECRET!;
-
 const getOidcConfig = memoize(
   async () => {
-    // External ID (CIAM) uses ciamlogin.com domain
-    const issuerUrl = `https://${ENTRA_TENANT_ID}.ciamlogin.com/${ENTRA_TENANT_ID}/v2.0`;
     return await client.discovery(
-      new URL(issuerUrl),
-      ENTRA_CLIENT_ID,
-      ENTRA_CLIENT_SECRET
+      new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
+      process.env.REPL_ID!
     );
   },
   { maxAge: 3600 * 1000 }
@@ -58,18 +51,12 @@ function updateUserSession(
 }
 
 async function upsertUser(claims: any) {
-  // Entra ID uses different claim names than Replit
-  // 'sub' is the unique user identifier
-  // 'name' is the display name
-  // 'email' or 'preferred_username' for email
-  // 'given_name' for first name
-  // 'family_name' for last name
   await storage.upsertUser({
     id: claims["sub"],
-    email: claims["email"] || claims["preferred_username"],
-    firstName: claims["given_name"] || claims["name"]?.split(" ")[0] || null,
-    lastName: claims["family_name"] || claims["name"]?.split(" ").slice(1).join(" ") || null,
-    profileImageUrl: null, // Entra ID doesn't provide profile image in standard claims
+    email: claims["email"],
+    firstName: claims["first_name"],
+    lastName: claims["last_name"],
+    profileImageUrl: claims["profile_image_url"],
   });
 }
 
@@ -96,7 +83,7 @@ export async function setupAuth(app: Express) {
 
   // Helper function to ensure strategy exists for a domain
   const ensureStrategy = (domain: string) => {
-    const strategyName = `entra:${domain}`;
+    const strategyName = `replitauth:${domain}`;
     if (!registeredStrategies.has(strategyName)) {
       const strategy = new Strategy(
         {
@@ -117,28 +104,28 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/login", (req, res, next) => {
     ensureStrategy(req.hostname);
-    passport.authenticate(`entra:${req.hostname}`, {
-      prompt: "select_account",
+    passport.authenticate(`replitauth:${req.hostname}`, {
+      prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
-  // Handle both GET and POST for callback (Azure may use form_post response mode)
-  const callbackHandler = (req: any, res: any, next: any) => {
+  app.get("/api/callback", (req, res, next) => {
     ensureStrategy(req.hostname);
-    passport.authenticate(`entra:${req.hostname}`, {
+    passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
-  };
-  app.get("/api/callback", callbackHandler);
-  app.post("/api/callback", callbackHandler);
+  });
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
-      // External ID (CIAM) logout endpoint
-      const logoutUrl = `https://${ENTRA_TENANT_ID}.ciamlogin.com/${ENTRA_TENANT_ID}/oauth2/v2.0/logout?post_logout_redirect_uri=${encodeURIComponent(`https://${req.hostname}`)}`;
-      res.redirect(logoutUrl);
+      res.redirect(
+        client.buildEndSessionUrl(config, {
+          client_id: process.env.REPL_ID!,
+          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+        }).href
+      );
     });
   });
 }
