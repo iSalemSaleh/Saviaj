@@ -67,10 +67,11 @@ export default function RiderPage() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setUserLocation({ lat, lng });
+          setPickupLocation("Your location");
+          setPickupCoords({ lat, lon: lng });
           setLocationLoading(false);
         },
         (error) => {
@@ -301,6 +302,7 @@ export default function RiderPage() {
                       label="Pickup Location"
                       iconColor="text-muted-foreground"
                       testId="input-pickup"
+                      showLocationPulse={pickupLocation === "Your location"}
                     />
                     
                     <PostcodeSearch

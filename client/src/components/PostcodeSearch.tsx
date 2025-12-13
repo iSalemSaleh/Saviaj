@@ -13,6 +13,7 @@ interface PostcodeSearchProps {
   buttonClassName?: string;
   textClassName?: string;
   testId?: string;
+  showLocationPulse?: boolean;
 }
 
 interface Suggestion {
@@ -33,6 +34,7 @@ export default function PostcodeSearch({
   iconColor = "text-muted-foreground",
   inputClassName = "",
   testId = "input-location",
+  showLocationPulse = false,
 }: PostcodeSearchProps) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -110,7 +112,16 @@ export default function PostcodeSearch({
       {label && <label className={`text-sm font-medium ${labelClassName}`}>{label}</label>}
       
       <div className="relative">
-        <MapPin className={`absolute left-3 top-3 h-4 w-4 ${iconColor} z-10`} />
+        {showLocationPulse ? (
+          <div className="absolute left-3 top-3 z-10">
+            <div className="relative h-4 w-4 flex items-center justify-center">
+              <div className="absolute h-3 w-3 rounded-full bg-sky-400 animate-ping opacity-75" />
+              <div className="h-2 w-2 rounded-full bg-sky-500" />
+            </div>
+          </div>
+        ) : (
+          <MapPin className={`absolute left-3 top-3 h-4 w-4 ${iconColor} z-10`} />
+        )}
         <Input
           placeholder={placeholder}
           className={`pl-9 h-11 ${inputClassName}`}
