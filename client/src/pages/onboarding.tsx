@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   User, 
@@ -33,6 +34,14 @@ export default function OnboardingPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      localStorage.setItem('atlasride_signup', 'true');
+      window.location.href = '/api/login';
+    }
+  }, [authLoading, isAuthenticated]);
 
   // Personal Information
   const [firstName, setFirstName] = useState("");
@@ -266,6 +275,15 @@ export default function OnboardingPage() {
   };
 
   const isSubmitting = isUploading || completeProfileMutation.isPending;
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4 py-8">

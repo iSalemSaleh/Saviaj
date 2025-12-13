@@ -52,20 +52,17 @@ export default function Navbar() {
                 <span className="text-sm text-muted-foreground">
                   Welcome, {(user as any).firstName || 'User'}
                 </span>
-                <Link href="/onboarding">
-                  <Button variant="outline" size="sm" data-testid="button-view-register">View Register Form</Button>
-                </Link>
                 <a href="/api/logout">
                   <Button variant="ghost" size="sm" data-testid="button-logout">Log out</Button>
                 </a>
               </>
             ) : (
               <>
-                <Link href="/auth">
-                  <Button variant="ghost" size="sm" data-testid="button-login">Log in</Button>
-                </Link>
-                <Link href="/auth">
-                  <Button size="sm" data-testid="button-signup">Sign up</Button>
+                <a href="/api/login">
+                  <Button variant="ghost" size="sm" data-testid="button-login">Sign In</Button>
+                </a>
+                <Link href="/onboarding">
+                  <Button size="sm" data-testid="button-signup">Sign Up</Button>
                 </Link>
               </>
             )}
@@ -90,18 +87,18 @@ export default function Navbar() {
                 </Link>
                 <div className="h-px bg-border my-2" />
                 {user ? (
-                  <>
-                    <Link href="/onboarding" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full" variant="outline">View Register Form</Button>
-                    </Link>
-                    <a href="/api/logout" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full" variant="ghost">Log out</Button>
-                    </a>
-                  </>
+                  <a href="/api/logout" onClick={() => setIsOpen(false)}>
+                    <Button className="w-full" variant="outline">Log out</Button>
+                  </a>
                 ) : (
-                  <Link href="/auth" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full">Sign In / Sign Up</Button>
-                  </Link>
+                  <>
+                    <a href="/api/login" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full" variant="outline">Sign In</Button>
+                    </a>
+                    <Link href="/onboarding" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full">Sign Up</Button>
+                    </Link>
+                  </>
                 )}
               </div>
             </SheetContent>
