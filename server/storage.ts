@@ -4,6 +4,7 @@ import {
   driverRoutes,
   rides,
   bids,
+  notifications,
   type User,
   type UpsertUser,
   type RiderOffer,
@@ -14,6 +15,8 @@ import {
   type InsertRide,
   type Bid,
   type InsertBid,
+  type Notification,
+  type InsertNotification,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";

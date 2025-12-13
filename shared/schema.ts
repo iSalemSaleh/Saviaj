@@ -243,3 +243,43 @@ export const insertBidSchema = createInsertSchema(bids, {
 });
 export type InsertBid = z.infer<typeof insertBidSchema>;
 export type Bid = typeof bids.$inferSelect;
+
+// Notifications - User notifications for ride updates, bids, messages
+export const notifications = pgTable("notifications", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: varchar("type", { length: 50 }).notNull(), // bid_received, bid_accepted, ride_accepted, ride_cancelled, message, system
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  read: boolean("read").default(false),
+  relatedRideId: integer("related_ride_id").references(() => rides.id),
+  relatedOfferId: integer("related_offer_id").references(() => riderOffers.id),
+  relatedBidId: integer("related_bid_id").references(() => bids.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+  ride: one(rides, {
+    fields: [notifications.relatedRideId],
+    references: [rides.id],
+  }),
+  offer: one(riderOffers, {
+    fields: [notifications.relatedOfferId],
+    references: [riderOffers.id],
+  }),
+  bid: one(bids, {
+    fields: [notifications.relatedBidId],
+    references: [bids.id],
+  }),
+}));
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
