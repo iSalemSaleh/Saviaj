@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MapPin, Clock, PoundSterling, Calendar, Search, ArrowRight, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -27,6 +28,11 @@ interface DriverRoute {
   pricePerSeat: string | null;
   maxDetourMiles: string;
   status: string;
+}
+
+interface UserLocation {
+  lat: number;
+  lng: number;
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -52,6 +58,31 @@ export default function RiderPage() {
   const [dropoffCoords, setDropoffCoords] = useState<{lat: number; lon: number} | null>(null);
   const [requestedTime, setRequestedTime] = useState("");
   const [offerPrice, setOfferPrice] = useState("");
+  
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [locationLoading, setLocationLoading] = useState(true);
+  const [showFutureDates, setShowFutureDates] = useState(false);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+          setLocationLoading(false);
+        },
+        (error) => {
+          console.log("Geolocation error:", error.message);
+          setLocationLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      setLocationLoading(false);
+    }
+  }, []);
 
   const handlePickupChange = (value: string, lat?: number, lon?: number) => {
     setPickupLocation(value);
@@ -75,17 +106,80 @@ export default function RiderPage() {
     queryKey: ["/api/driver-routes"],
   });
 
-  const nearbyRoutes = (pickupCoords && dropoffCoords) ? driverRoutes.filter(route => {
-    if (!route.startLat || !route.startLng || !route.endLat || !route.endLng) return false;
-    const routeStartLat = parseFloat(route.startLat);
-    const routeStartLng = parseFloat(route.startLng);
-    const routeEndLat = parseFloat(route.endLat);
-    const routeEndLng = parseFloat(route.endLng);
-    const maxDetour = parseFloat(route.maxDetourMiles) || 5;
-    const distanceToStart = calculateDistance(pickupCoords.lat, pickupCoords.lon, routeStartLat, routeStartLng);
-    const distanceToEnd = calculateDistance(dropoffCoords.lat, dropoffCoords.lon, routeEndLat, routeEndLng);
-    return distanceToStart <= maxDetour && distanceToEnd <= maxDetour;
-  }) : [];
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const filteredAndSortedRoutes = useMemo(() => {
+    const now = new Date(currentTime);
+    const twentyFourHoursLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    
+    let filtered = driverRoutes.filter(route => {
+      const departureTime = new Date(route.departureTime);
+      if (departureTime < now) return false;
+      if (!showFutureDates && departureTime > twentyFourHoursLater) return false;
+      return route.status === "active";
+    });
+    
+    filtered.sort((a, b) => {
+      if (userLocation && a.startLat && a.startLng && b.startLat && b.startLng) {
+        const distA = calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          parseFloat(a.startLat),
+          parseFloat(a.startLng)
+        );
+        const distB = calculateDistance(
+          userLocation.lat,
+          userLocation.lng,
+          parseFloat(b.startLat),
+          parseFloat(b.startLng)
+        );
+        const distDiff = distA - distB;
+        if (distDiff !== 0) {
+          return distDiff;
+        }
+      }
+      return new Date(a.departureTime).getTime() - new Date(b.departureTime).getTime();
+    });
+    
+    return filtered;
+  }, [driverRoutes, userLocation, showFutureDates, currentTime]);
+
+  const nearbyRoutes = useMemo(() => {
+    if (!pickupCoords || !dropoffCoords) return [];
+    
+    return filteredAndSortedRoutes.filter(route => {
+      if (!route.startLat || !route.startLng || !route.endLat || !route.endLng) return false;
+      const routeStartLat = parseFloat(route.startLat);
+      const routeStartLng = parseFloat(route.startLng);
+      const routeEndLat = parseFloat(route.endLat);
+      const routeEndLng = parseFloat(route.endLng);
+      const maxDetour = parseFloat(route.maxDetourMiles) || 5;
+      const distanceToStart = calculateDistance(pickupCoords.lat, pickupCoords.lon, routeStartLat, routeStartLng);
+      const distanceToEnd = calculateDistance(dropoffCoords.lat, dropoffCoords.lon, routeEndLat, routeEndLng);
+      return distanceToStart <= maxDetour && distanceToEnd <= maxDetour;
+    });
+  }, [filteredAndSortedRoutes, pickupCoords, dropoffCoords]);
+
+  const getDistanceFromUser = (route: DriverRoute): string | null => {
+    if (!userLocation || !route.startLat || !route.startLng) return null;
+    const distance = calculateDistance(
+      userLocation.lat,
+      userLocation.lng,
+      parseFloat(route.startLat),
+      parseFloat(route.startLng)
+    );
+    if (distance < 1) {
+      return `${Math.round(distance * 1760)} yards away`;
+    }
+    return `${distance.toFixed(1)} miles away`;
+  };
 
   const createOfferMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -170,6 +264,18 @@ export default function RiderPage() {
       day: "numeric",
       month: "short",
     });
+  };
+
+  const getTimeUntilDeparture = (dateString: string): string => {
+    const now = new Date();
+    const departure = new Date(dateString);
+    const diffMs = departure.getTime() - now.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    
+    if (diffMins < 60) return `Leaving in ${diffMins} mins`;
+    if (diffHours < 24) return `Leaving in ${diffHours}h`;
+    return formatDate(dateString);
   };
 
   return (
@@ -321,7 +427,18 @@ export default function RiderPage() {
                           <div className="space-y-2">
                             <p className="text-sm"><span className="text-accent">●</span> {route.startLocation}</p>
                             <p className="text-sm"><span className="text-secondary">●</span> {route.endLocation}</p>
-                            <p className="text-xs text-muted-foreground mt-2">{formatDate(route.departureTime)} at {formatTime(route.departureTime)}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant="outline" className="text-xs">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {getTimeUntilDeparture(route.departureTime)}
+                              </Badge>
+                              {getDistanceFromUser(route) && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Navigation className="h-3 w-3 mr-1" />
+                                  {getDistanceFromUser(route)}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </CardContent>
                         <CardFooter className="bg-accent/10 p-3 flex justify-end">
@@ -339,13 +456,50 @@ export default function RiderPage() {
             {/* All Available Routes */}
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-primary">
-                  {pickupCoords && dropoffCoords ? "All Available Routes" : "Available Routes"}
-                </h2>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm"><Search className="mr-2 h-4 w-4"/> Filter</Button>
-                  <Button variant="outline" size="sm"><Calendar className="mr-2 h-4 w-4"/> Date</Button>
+                <div>
+                  <h2 className="text-2xl font-bold text-primary">
+                    {pickupCoords && dropoffCoords ? "All Available Routes" : "Available Routes"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {userLocation ? (
+                      <span className="flex items-center gap-1">
+                        <Navigation className="h-3 w-3" /> Sorted by distance from you
+                      </span>
+                    ) : locationLoading ? (
+                      "Getting your location..."
+                    ) : (
+                      "Enable location for distance sorting"
+                    )}
+                  </p>
                 </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="future-dates"
+                      checked={showFutureDates}
+                      onCheckedChange={setShowFutureDates}
+                      data-testid="switch-future-dates"
+                    />
+                    <label htmlFor="future-dates" className="text-sm flex items-center gap-1 cursor-pointer">
+                      <CalendarDays className="h-4 w-4" />
+                      Show future dates
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 mb-4">
+                <Badge variant={!showFutureDates ? "default" : "outline"}>
+                  Next 24 hours
+                </Badge>
+                {showFutureDates && (
+                  <Badge variant="secondary">
+                    + Future dates
+                  </Badge>
+                )}
+                <Badge variant="outline" className="ml-auto">
+                  {filteredAndSortedRoutes.length} routes
+                </Badge>
               </div>
 
               {routesLoading ? (
@@ -358,16 +512,30 @@ export default function RiderPage() {
                     </Card>
                   ))}
                 </div>
-              ) : driverRoutes.length === 0 ? (
+              ) : filteredAndSortedRoutes.length === 0 ? (
                 <Card className="border-dashed">
                   <CardContent className="p-12 text-center">
-                    <p className="text-muted-foreground">No driver routes available at the moment.</p>
+                    <Calendar className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+                    <p className="text-muted-foreground">
+                      {showFutureDates 
+                        ? "No driver routes available at the moment."
+                        : "No routes available in the next 24 hours."}
+                    </p>
+                    {!showFutureDates && (
+                      <Button 
+                        variant="link" 
+                        onClick={() => setShowFutureDates(true)}
+                        className="mt-2"
+                      >
+                        Show future dates
+                      </Button>
+                    )}
                     <p className="text-sm text-muted-foreground mt-2">Post a request and wait for drivers to respond!</p>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="grid md:grid-cols-2 gap-4">
-                  {driverRoutes.map((route) => (
+                  {filteredAndSortedRoutes.map((route) => (
                   <Card key={route.id} className="group hover:border-primary/50 transition-all hover:shadow-md cursor-pointer" data-testid={`card-route-${route.id}`}>
                     <CardContent className="p-6">
                       <div className="flex justify-between items-start mb-4">
@@ -407,6 +575,19 @@ export default function RiderPage() {
                             <p className="text-sm font-medium">{route.endLocation}</p>
                           </div>
                         </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 mt-4">
+                        <Badge variant="outline" className="text-xs">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {getTimeUntilDeparture(route.departureTime)}
+                        </Badge>
+                        {getDistanceFromUser(route) && (
+                          <Badge variant="outline" className="text-xs">
+                            <Navigation className="h-3 w-3 mr-1" />
+                            {getDistanceFromUser(route)}
+                          </Badge>
+                        )}
                       </div>
                     </CardContent>
                     <CardFooter className="bg-muted/10 p-3 flex justify-end">
