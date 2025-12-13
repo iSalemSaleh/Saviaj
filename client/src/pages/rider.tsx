@@ -62,17 +62,31 @@ export default function RiderPage() {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
   const [showFutureDates, setShowFutureDates] = useState(false);
+  const [isCurrentLocationPickup, setIsCurrentLocationPickup] = useState(false);
 
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           setUserLocation({ lat, lng });
-          setPickupLocation("Your location");
           setPickupCoords({ lat, lon: lng });
+          setIsCurrentLocationPickup(true);
           setLocationLoading(false);
+          
+          try {
+            const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${lat}&lon=${lng}`);
+            const data = await response.json();
+            if (data.address) {
+              setPickupLocation(data.address);
+            } else {
+              setPickupLocation("Your current location");
+            }
+          } catch (error) {
+            console.log("Reverse geocode error:", error);
+            setPickupLocation("Your current location");
+          }
         },
         (error) => {
           console.log("Geolocation error:", error.message);
@@ -87,6 +101,7 @@ export default function RiderPage() {
 
   const handlePickupChange = (value: string, lat?: number, lon?: number) => {
     setPickupLocation(value);
+    setIsCurrentLocationPickup(false);
     if (lat !== undefined && lon !== undefined) {
       setPickupCoords({ lat, lon });
     } else if (!value) {
@@ -168,7 +183,7 @@ export default function RiderPage() {
     });
   }, [filteredAndSortedRoutes, pickupCoords, dropoffCoords]);
 
-  const getDistanceFromUser = (route: DriverRoute): string | null => {
+  const getDistanceAndETA = (route: DriverRoute): { distance: string; eta: string } | null => {
     if (!userLocation || !route.startLat || !route.startLng) return null;
     const distance = calculateDistance(
       userLocation.lat,
@@ -176,10 +191,13 @@ export default function RiderPage() {
       parseFloat(route.startLat),
       parseFloat(route.startLng)
     );
+    const etaMinutes = Math.round((distance / 20) * 60);
+    const etaText = etaMinutes < 60 ? `${etaMinutes} min` : `${Math.round(etaMinutes / 60)}h ${etaMinutes % 60}m`;
+    
     if (distance < 1) {
-      return `${Math.round(distance * 1760)} yards away`;
+      return { distance: `${Math.round(distance * 1760)} yards`, eta: etaText };
     }
-    return `${distance.toFixed(1)} miles away`;
+    return { distance: `${distance.toFixed(1)} mi`, eta: etaText };
   };
 
   const createOfferMutation = useMutation({
@@ -187,16 +205,36 @@ export default function RiderPage() {
       const response = await apiRequest("POST", "/api/rider-offers", data);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Success",
         description: "Your ride request has been posted!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/rider-offers"] });
-      setPickupLocation("");
       setDropoffLocation("");
+      setDropoffCoords(null);
       setRequestedTime("");
       setOfferPrice("");
+      
+      if (userLocation) {
+        setPickupCoords({ lat: userLocation.lat, lon: userLocation.lng });
+        setIsCurrentLocationPickup(true);
+        try {
+          const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${userLocation.lat}&lon=${userLocation.lng}`);
+          const data = await response.json();
+          if (data.address) {
+            setPickupLocation(data.address);
+          } else {
+            setPickupLocation("Your current location");
+          }
+        } catch {
+          setPickupLocation("Your current location");
+        }
+      } else {
+        setPickupLocation("");
+        setPickupCoords(null);
+        setIsCurrentLocationPickup(false);
+      }
     },
     onError: (error: Error) => {
       toast({
@@ -302,7 +340,7 @@ export default function RiderPage() {
                       label="Pickup Location"
                       iconColor="text-muted-foreground"
                       testId="input-pickup"
-                      isCurrentLocation={pickupLocation === "Your location"}
+                      isCurrentLocation={isCurrentLocationPickup}
                     />
                     
                     <PostcodeSearch

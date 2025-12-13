@@ -41,6 +41,17 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
+function getDistanceAndETA(startLat: number, startLon: number, endLat: number, endLon: number): { distance: string; eta: string } {
+  const distance = calculateDistance(startLat, startLon, endLat, endLon);
+  const etaMinutes = Math.round((distance / 20) * 60);
+  const etaText = etaMinutes < 60 ? `${etaMinutes} min` : `${Math.round(etaMinutes / 60)}h ${etaMinutes % 60}m`;
+  
+  if (distance < 1) {
+    return { distance: `${Math.round(distance * 1760)} yards`, eta: etaText };
+  }
+  return { distance: `${distance.toFixed(1)} mi`, eta: etaText };
+}
+
 interface Ride {
   id: number;
   riderId: string;

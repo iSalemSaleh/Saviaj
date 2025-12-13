@@ -49,6 +49,34 @@ export async function searchAddress(query: string): Promise<GeocodingResult[]> {
   })) || [];
 }
 
+export async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
+  if (!AZURE_MAPS_KEY) {
+    throw new Error('Azure Maps key not configured');
+  }
+
+  const params = new URLSearchParams({
+    'api-version': '1.0',
+    'subscription-key': AZURE_MAPS_KEY,
+    query: `${lat},${lon}`,
+  });
+
+  const response = await fetch(
+    `https://atlas.microsoft.com/search/address/reverse/json?${params}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`Azure Maps reverse geocoding failed: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  if (data.addresses && data.addresses.length > 0) {
+    return data.addresses[0].address?.freeformAddress || null;
+  }
+  
+  return null;
+}
+
 export async function getRoute(
   startLat: number,
   startLon: number,

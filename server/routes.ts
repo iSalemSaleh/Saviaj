@@ -79,6 +79,21 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  app.get('/api/azure-maps/reverse-geocode', async (req, res) => {
+    try {
+      const { lat, lon } = req.query;
+      if (!lat || !lon) {
+        return res.status(400).json({ message: 'Latitude and longitude required' });
+      }
+      const { reverseGeocode } = await import('./azureMapsService');
+      const address = await reverseGeocode(parseFloat(lat as string), parseFloat(lon as string));
+      res.json({ address });
+    } catch (error: any) {
+      console.error('Azure Maps reverse geocode error:', error);
+      res.status(500).json({ message: error.message || 'Reverse geocoding failed' });
+    }
+  });
+
   app.get('/api/azure-maps/route', async (req, res) => {
     try {
       const { startLat, startLon, endLat, endLon } = req.query;
