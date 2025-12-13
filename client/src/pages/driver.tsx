@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, CalendarDays, Calendar } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -88,6 +89,15 @@ export default function DriverPage() {
   const [selectedOffer, setSelectedOffer] = useState<RiderOffer | null>(null);
   const [bidPrice, setBidPrice] = useState("");
   const [bidMessage, setBidMessage] = useState("");
+  const [showFutureDates, setShowFutureDates] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const { data: riderOffers = [], isLoading: offersLoading } = useQuery<RiderOffer[]>({
     queryKey: ["/api/rider-offers", "pending"],
@@ -97,8 +107,20 @@ export default function DriverPage() {
     },
   });
 
+  const filteredOffers = useMemo(() => {
+    const now = new Date(currentTime);
+    const twentyFourHoursLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    
+    return riderOffers.filter(offer => {
+      const requestedTime = new Date(offer.requestedTime);
+      if (requestedTime < now) return false;
+      if (!showFutureDates && requestedTime > twentyFourHoursLater) return false;
+      return offer.status === "pending";
+    });
+  }, [riderOffers, showFutureDates, currentTime]);
+
   const detourDistance = parseFloat(maxDetour) || 2;
-  const nearbyOffers = (startCoords && endCoords) ? riderOffers.filter(offer => {
+  const nearbyOffers = (startCoords && endCoords) ? filteredOffers.filter(offer => {
     if (!offer.pickupLat || !offer.pickupLng || !offer.dropoffLat || !offer.dropoffLng) return false;
     const offerPickupLat = parseFloat(offer.pickupLat);
     const offerPickupLng = parseFloat(offer.pickupLng);
@@ -524,7 +546,37 @@ export default function DriverPage() {
 
                 {/* All Offers Section */}
                 <div>
-                  {startCoords && endCoords && <h3 className="text-xl font-bold text-primary mb-4">All Rider Offers</h3>}
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-primary">
+                      {startCoords && endCoords ? "All Rider Offers" : "Rider Offers"}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="future-dates-driver"
+                        checked={showFutureDates}
+                        onCheckedChange={setShowFutureDates}
+                        data-testid="switch-future-dates-driver"
+                      />
+                      <label htmlFor="future-dates-driver" className="text-sm flex items-center gap-1 cursor-pointer">
+                        <CalendarDays className="h-4 w-4" />
+                        Show future dates
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 mb-4">
+                    <Badge variant={!showFutureDates ? "default" : "outline"}>
+                      Next 24 hours
+                    </Badge>
+                    {showFutureDates && (
+                      <Badge variant="secondary">
+                        + Future dates
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="ml-auto">
+                      {filteredOffers.length} offers
+                    </Badge>
+                  </div>
                   
                   {offersLoading ? (
                     <div className="space-y-4">
@@ -536,16 +588,30 @@ export default function DriverPage() {
                         </Card>
                       ))}
                     </div>
-                  ) : riderOffers.length === 0 ? (
+                  ) : filteredOffers.length === 0 ? (
                     <Card className="border-dashed">
                       <CardContent className="p-12 text-center">
-                        <p className="text-muted-foreground">No rider offers available at the moment.</p>
+                        <Calendar className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+                        <p className="text-muted-foreground">
+                          {showFutureDates 
+                            ? "No rider offers available at the moment."
+                            : "No offers available in the next 24 hours."}
+                        </p>
+                        {!showFutureDates && (
+                          <Button 
+                            variant="link" 
+                            onClick={() => setShowFutureDates(true)}
+                            className="mt-2"
+                          >
+                            Show future dates
+                          </Button>
+                        )}
                         <p className="text-sm text-muted-foreground mt-2">Check back soon for new ride requests!</p>
                       </CardContent>
                     </Card>
                   ) : (
                     <div className="space-y-4">
-                      {riderOffers.map((offer) => (
+                      {filteredOffers.map((offer) => (
                     <Card key={offer.id} className="overflow-hidden hover:shadow-md transition-shadow" data-testid={`card-offer-${offer.id}`}>
                       <div className="flex flex-col sm:flex-row">
                         <div className="p-6 flex-1">

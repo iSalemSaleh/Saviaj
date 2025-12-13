@@ -302,7 +302,7 @@ export default function RiderPage() {
                       label="Pickup Location"
                       iconColor="text-muted-foreground"
                       testId="input-pickup"
-                      showLocationPulse={pickupLocation === "Your location"}
+                      isCurrentLocation={pickupLocation === "Your location"}
                     />
                     
                     <PostcodeSearch
