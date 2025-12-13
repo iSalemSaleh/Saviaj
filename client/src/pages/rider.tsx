@@ -472,11 +472,16 @@ export default function RiderPage() {
                                 <Clock className="h-3 w-3 mr-1" />
                                 {getTimeUntilDeparture(route.departureTime)}
                               </Badge>
-                              {getDistanceFromUser(route) && (
-                                <Badge variant="outline" className="text-xs">
-                                  <Navigation className="h-3 w-3 mr-1" />
-                                  {getDistanceFromUser(route)}
-                                </Badge>
+                              {getDistanceAndETA(route) && (
+                                <>
+                                  <Badge variant="outline" className="text-xs">
+                                    <Navigation className="h-3 w-3 mr-1" />
+                                    {getDistanceAndETA(route)!.distance}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs text-muted-foreground">
+                                    ~{getDistanceAndETA(route)!.eta} away
+                                  </Badge>
+                                </>
                               )}
                             </div>
                           </div>
@@ -622,11 +627,16 @@ export default function RiderPage() {
                           <Clock className="h-3 w-3 mr-1" />
                           {getTimeUntilDeparture(route.departureTime)}
                         </Badge>
-                        {getDistanceFromUser(route) && (
-                          <Badge variant="outline" className="text-xs">
-                            <Navigation className="h-3 w-3 mr-1" />
-                            {getDistanceFromUser(route)}
-                          </Badge>
+                        {getDistanceAndETA(route) && (
+                          <>
+                            <Badge variant="outline" className="text-xs">
+                              <Navigation className="h-3 w-3 mr-1" />
+                              {getDistanceAndETA(route)!.distance}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs text-muted-foreground">
+                              ~{getDistanceAndETA(route)!.eta} away
+                            </Badge>
+                          </>
                         )}
                       </div>
                     </CardContent>

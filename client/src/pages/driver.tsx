@@ -63,11 +63,18 @@ interface Ride {
   status: string;
 }
 
+interface UserLocation {
+  lat: number;
+  lng: number;
+}
+
 export default function DriverPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
 
   const [startLocation, setStartLocation] = useState("");
   const [startCoords, setStartCoords] = useState<{lat: number; lon: number} | null>(null);
@@ -109,6 +116,33 @@ export default function DriverPage() {
     }, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.log("Geolocation error:", error.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  }, []);
+
+  const getOfferDistanceAndETA = (offer: RiderOffer): { distance: string; eta: string } | null => {
+    if (!userLocation || !offer.pickupLat || !offer.pickupLng) return null;
+    return getDistanceAndETA(
+      userLocation.lat,
+      userLocation.lng,
+      parseFloat(offer.pickupLat),
+      parseFloat(offer.pickupLng)
+    );
+  };
 
   const { data: riderOffers = [], isLoading: offersLoading } = useQuery<RiderOffer[]>({
     queryKey: ["/api/rider-offers", "pending"],
@@ -536,6 +570,17 @@ export default function DriverPage() {
                                     <p className="font-medium truncate">{offer.dropoffLocation}</p>
                                   </div>
                                 </div>
+                                {getOfferDistanceAndETA(offer) && (
+                                  <div className="flex items-center gap-2 mt-3">
+                                    <Badge variant="outline" className="text-xs">
+                                      <Navigation className="h-3 w-3 mr-1" />
+                                      {getOfferDistanceAndETA(offer)!.distance}
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs text-muted-foreground">
+                                      ~{getOfferDistanceAndETA(offer)!.eta} away
+                                    </Badge>
+                                  </div>
+                                )}
                               </div>
                               <div className="bg-accent/10 p-4 sm:w-32 flex sm:flex-col gap-2 justify-center border-t sm:border-t-0 sm:border-l">
                                 <Button 
@@ -656,6 +701,17 @@ export default function DriverPage() {
                               <p className="font-medium truncate">{offer.dropoffLocation}</p>
                             </div>
                           </div>
+                          {getOfferDistanceAndETA(offer) && (
+                            <div className="flex items-center gap-2 mt-3">
+                              <Badge variant="outline" className="text-xs">
+                                <Navigation className="h-3 w-3 mr-1" />
+                                {getOfferDistanceAndETA(offer)!.distance}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs text-muted-foreground">
+                                ~{getOfferDistanceAndETA(offer)!.eta} away
+                              </Badge>
+                            </div>
+                          )}
                         </div>
 
                         <div className="bg-muted/30 p-4 sm:w-32 flex sm:flex-col gap-2 justify-center border-t sm:border-t-0 sm:border-l">
