@@ -23,6 +23,20 @@ interface Notification {
   createdAt: string;
 }
 
+function formatTimeAgo(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+}
+
 export default function Navbar() {
   const [location] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
@@ -63,38 +77,7 @@ export default function Navbar() {
 
   const unreadCount = unreadData?.count ?? 0;
 
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
-  };
-
-  const NavLinks = () => (
-    <>
-      <Link 
-        href="/rider"
-        className={`text-sm font-medium transition-colors hover:text-primary ${location === "/rider" ? "text-primary" : "text-muted-foreground"}`}
-      >
-        Find a Ride
-      </Link>
-      <Link 
-        href="/driver"
-        className={`text-sm font-medium transition-colors hover:text-primary ${location === "/driver" ? "text-primary" : "text-muted-foreground"}`}
-      >
-        Offer a Ride
-      </Link>
-    </>
-  );
-
-  const NotificationsDropdown = () => (
+  const notificationsDropdown = (
     <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative" data-testid="button-notifications">
@@ -181,13 +164,24 @@ export default function Navbar() {
 
         {/* Desktop Nav */}
         <div className="hidden md:flex md:items-center md:gap-8">
-          <NavLinks />
+          <Link 
+            href="/rider"
+            className={`text-sm font-medium transition-colors hover:text-primary ${location === "/rider" ? "text-primary" : "text-muted-foreground"}`}
+          >
+            Find a Ride
+          </Link>
+          <Link 
+            href="/driver"
+            className={`text-sm font-medium transition-colors hover:text-primary ${location === "/driver" ? "text-primary" : "text-muted-foreground"}`}
+          >
+            Offer a Ride
+          </Link>
           <div className="flex items-center gap-2">
             {isLoading ? (
               <div className="h-8 w-20 bg-muted animate-pulse rounded" />
             ) : user ? (
               <>
-                <NotificationsDropdown />
+                {notificationsDropdown}
                 <span className="text-sm text-muted-foreground ml-2">
                   Welcome, {(user as any).firstName || 'User'}
                 </span>
@@ -210,7 +204,7 @@ export default function Navbar() {
 
         {/* Mobile Nav */}
         <div className="md:hidden flex items-center gap-2">
-          {user && <NotificationsDropdown />}
+          {user && notificationsDropdown}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
