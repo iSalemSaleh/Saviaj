@@ -123,13 +123,16 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/callback", (req, res, next) => {
+  // Handle both GET and POST for callback (Azure may use form_post response mode)
+  const callbackHandler = (req: any, res: any, next: any) => {
     ensureStrategy(req.hostname);
     passport.authenticate(`entra:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
-  });
+  };
+  app.get("/api/callback", callbackHandler);
+  app.post("/api/callback", callbackHandler);
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
