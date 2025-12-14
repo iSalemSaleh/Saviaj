@@ -775,4 +775,221 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(500).json({ message: "Failed to get Stripe key" });
     }
   });
+
+  // User Availability Routes
+  app.post('/api/user/availability', isAuthenticated, isProfileComplete, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { activeMode, isAvailable, lat, lng } = req.body;
+      const user = await storage.updateUserAvailability(userId, activeMode, isAvailable, lat, lng);
+      res.json(user);
+    } catch (error) {
+      console.error("Error updating availability:", error);
+      res.status(500).json({ message: "Failed to update availability" });
+    }
+  });
+
+  app.get('/api/users/available-drivers', async (req, res) => {
+    try {
+      const drivers = await storage.getAvailableDrivers();
+      res.json(drivers);
+    } catch (error) {
+      console.error("Error fetching available drivers:", error);
+      res.status(500).json({ message: "Failed to fetch available drivers" });
+    }
+  });
+
+  // Rating Routes
+  app.post('/api/ratings', isAuthenticated, async (req: any, res) => {
+    try {
+      const raterId = req.user.claims.sub;
+      const { rideId, ratedUserId, raterRole, rating, comment } = req.body;
+      
+      // Check if already rated
+      const hasRated = await storage.hasUserRatedRide(rideId, raterId);
+      if (hasRated) {
+        return res.status(400).json({ message: "You have already rated this ride" });
+      }
+      
+      // Verify the ride exists and user was part of it
+      const ride = await storage.getRideById(rideId);
+      if (!ride) {
+        return res.status(404).json({ message: "Ride not found" });
+      }
+      
+      if (ride.riderId !== raterId && ride.driverId !== raterId) {
+        return res.status(403).json({ message: "You are not authorized to rate this ride" });
+      }
+      
+      const newRating = await storage.createRating({
+        rideId,
+        raterId,
+        ratedUserId,
+        raterRole,
+        rating,
+        comment,
+      });
+      
+      // Update the rated user's average rating
+      const roleToUpdate = raterRole === 'rider' ? 'driver' : 'rider';
+      await storage.updateUserRating(ratedUserId, roleToUpdate);
+      
+      res.status(201).json(newRating);
+    } catch (error) {
+      console.error("Error creating rating:", error);
+      res.status(500).json({ message: "Failed to create rating" });
+    }
+  });
+
+  app.get('/api/ratings/ride/:rideId', isAuthenticated, async (req, res) => {
+    try {
+      const rideId = parseInt(req.params.rideId);
+      const ratings = await storage.getRatingsByRideId(rideId);
+      res.json(ratings);
+    } catch (error) {
+      console.error("Error fetching ride ratings:", error);
+      res.status(500).json({ message: "Failed to fetch ride ratings" });
+    }
+  });
+
+  app.get('/api/ratings/user/:userId', async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const ratings = await storage.getRatingsForUser(userId);
+      res.json(ratings);
+    } catch (error) {
+      console.error("Error fetching user ratings:", error);
+      res.status(500).json({ message: "Failed to fetch user ratings" });
+    }
+  });
+
+  app.get('/api/ratings/check/:rideId', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.rideId);
+      const raterId = req.user.claims.sub;
+      const hasRated = await storage.hasUserRatedRide(rideId, raterId);
+      res.json({ hasRated });
+    } catch (error) {
+      console.error("Error checking rating:", error);
+      res.status(500).json({ message: "Failed to check rating" });
+    }
+  });
+
+  // Enhanced Ride Lifecycle Routes
+  app.patch('/api/rides/:id/start-pickup', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const ride = await storage.getRideById(id);
+      if (!ride) return res.status(404).json({ message: "Ride not found" });
+      if (ride.driverId !== userId) return res.status(403).json({ message: "Unauthorized" });
+      
+      const updatedRide = await storage.updateRideStatus(id, 'en_route_pickup');
+      res.json(updatedRide);
+    } catch (error) {
+      console.error("Error starting pickup:", error);
+      res.status(500).json({ message: "Failed to start pickup" });
+    }
+  });
+
+  app.patch('/api/rides/:id/start-trip', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const ride = await storage.getRideById(id);
+      if (!ride) return res.status(404).json({ message: "Ride not found" });
+      if (ride.driverId !== userId) return res.status(403).json({ message: "Unauthorized" });
+      
+      const updatedRide = await storage.updateRideStatus(id, 'in_progress');
+      res.json(updatedRide);
+    } catch (error) {
+      console.error("Error starting trip:", error);
+      res.status(500).json({ message: "Failed to start trip" });
+    }
+  });
+
+  app.patch('/api/rides/:id/complete', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const ride = await storage.getRideById(id);
+      if (!ride) return res.status(404).json({ message: "Ride not found" });
+      if (ride.driverId !== userId) return res.status(403).json({ message: "Unauthorized" });
+      
+      const updatedRide = await storage.updateRideStatus(id, 'completed');
+      
+      // Set both users back to inactive
+      await storage.updateUserAvailability(ride.riderId, null, false);
+      await storage.updateUserAvailability(ride.driverId, null, false);
+      
+      res.json(updatedRide);
+    } catch (error) {
+      console.error("Error completing trip:", error);
+      res.status(500).json({ message: "Failed to complete trip" });
+    }
+  });
+
+  app.patch('/api/rides/:id/cancel', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const ride = await storage.getRideById(id);
+      if (!ride) return res.status(404).json({ message: "Ride not found" });
+      if (ride.riderId !== userId && ride.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      const updatedRide = await storage.updateRideStatus(id, 'cancelled');
+      
+      // If there was a route, restore the seat
+      if (ride.driverRouteId) {
+        await storage.incrementRouteSeats(ride.driverRouteId);
+      }
+      
+      // Set both users back to available for matching
+      await storage.updateUserAvailability(ride.riderId, 'rider', true);
+      if (ride.driverId) {
+        await storage.updateUserAvailability(ride.driverId, 'driver', true);
+      }
+      
+      res.json(updatedRide);
+    } catch (error) {
+      console.error("Error cancelling ride:", error);
+      res.status(500).json({ message: "Failed to cancel ride" });
+    }
+  });
+
+  // Driver route management
+  app.patch('/api/driver-routes/:id/close', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const route = await storage.getDriverRouteById(id);
+      if (!route) return res.status(404).json({ message: "Route not found" });
+      if (route.driverId !== userId) return res.status(403).json({ message: "Unauthorized" });
+      
+      const updatedRoute = await storage.updateDriverRouteStatus(id, 'cancelled');
+      res.json(updatedRoute);
+    } catch (error) {
+      console.error("Error closing route:", error);
+      res.status(500).json({ message: "Failed to close route" });
+    }
+  });
+
+  // Get rides for a specific route (for multi-stop info)
+  app.get('/api/driver-routes/:id/rides', isAuthenticated, async (req: any, res) => {
+    try {
+      const routeId = parseInt(req.params.id);
+      const rides = await storage.getRidesByRouteId(routeId);
+      res.json(rides);
+    } catch (error) {
+      console.error("Error fetching route rides:", error);
+      res.status(500).json({ message: "Failed to fetch route rides" });
+    }
+  });
 }

@@ -58,9 +58,20 @@ export const users = pgTable("users", {
   bankAccountName: varchar("bank_account_name"),
   bankSortCode: varchar("bank_sort_code"),
   bankAccountNumber: varchar("bank_account_number"),
+  // Availability states
+  activeMode: varchar("active_mode", { length: 20 }), // 'rider', 'driver', or null (inactive)
+  isAvailable: boolean("is_available").default(false), // true when actively searching/available
+  currentLat: decimal("current_lat", { precision: 10, scale: 7 }),
+  currentLng: decimal("current_lng", { precision: 10, scale: 7 }),
+  lastLocationUpdate: timestamp("last_location_update"),
   // Stats and Stripe
   rating: decimal("rating", { precision: 3, scale: 2 }),
+  riderRating: decimal("rider_rating", { precision: 3, scale: 2 }),
+  driverRating: decimal("driver_rating", { precision: 3, scale: 2 }),
   totalRides: integer("total_rides").default(0),
+  totalRidesAsDriver: integer("total_rides_as_driver").default(0),
+  totalRatingsAsRider: integer("total_ratings_as_rider").default(0),
+  totalRatingsAsDriver: integer("total_ratings_as_driver").default(0),
   stripeCustomerId: varchar("stripe_customer_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -126,8 +137,10 @@ export const driverRoutes = pgTable("driver_routes", {
   departureTime: timestamp("departure_time").notNull(),
   maxDetourMiles: decimal("max_detour_miles", { precision: 5, scale: 2 }).notNull(),
   availableSeats: integer("available_seats").notNull().default(3),
+  totalSeats: integer("total_seats").notNull().default(3),
   pricePerSeat: decimal("price_per_seat", { precision: 10, scale: 2 }),
-  status: varchar("status", { length: 50 }).default("active"), // active, completed, cancelled
+  paymentTimeoutMinutes: integer("payment_timeout_minutes").default(5),
+  status: varchar("status", { length: 50 }).default("active"), // active, full, completed, cancelled
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -142,7 +155,9 @@ export const driverRoutesRelations = relations(driverRoutes, ({ one }) => ({
 export const insertDriverRouteSchema = createInsertSchema(driverRoutes, {
   maxDetourMiles: z.coerce.number().min(0.5).max(20),
   availableSeats: z.coerce.number().min(1).max(7),
+  totalSeats: z.coerce.number().min(1).max(7).optional(),
   pricePerSeat: z.coerce.number().min(1).max(100).optional().nullable(),
+  paymentTimeoutMinutes: z.coerce.number().min(1).max(30).optional(),
   departureTime: z.coerce.date(),
   startLat: z.coerce.number().optional(),
   startLng: z.coerce.number().optional(),
@@ -169,8 +184,14 @@ export const rides = pgTable("rides", {
   dropoffLng: decimal("dropoff_lng", { precision: 10, scale: 7 }),
   agreedPrice: decimal("agreed_price", { precision: 10, scale: 2 }).notNull(),
   scheduledTime: timestamp("scheduled_time").notNull(),
-  status: varchar("status", { length: 50 }).default("scheduled"), // scheduled, in_progress, completed, cancelled
-  paymentStatus: varchar("payment_status", { length: 50 }).default("pending"), // pending, completed, refunded
+  status: varchar("status", { length: 50 }).default("pending_payment"), // pending_payment, matched, en_route_pickup, in_progress, completed, cancelled, expired
+  paymentStatus: varchar("payment_status", { length: 50 }).default("pending"), // pending, completed, refunded, failed
+  paymentDeadline: timestamp("payment_deadline"),
+  stopOrder: integer("stop_order"),
+  estimatedPickupTime: timestamp("estimated_pickup_time"),
+  estimatedDropoffTime: timestamp("estimated_dropoff_time"),
+  actualPickupTime: timestamp("actual_pickup_time"),
+  actualDropoffTime: timestamp("actual_dropoff_time"),
   riderOfferId: integer("rider_offer_id").references(() => riderOffers.id),
   driverRouteId: integer("driver_route_id").references(() => driverRoutes.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -283,3 +304,39 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 });
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
+
+// Ratings - Mutual ratings between riders and drivers
+export const ratings = pgTable("ratings", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  rideId: integer("ride_id").notNull().references(() => rides.id),
+  raterId: varchar("rater_id").notNull().references(() => users.id),
+  ratedUserId: varchar("rated_user_id").notNull().references(() => users.id),
+  raterRole: varchar("rater_role", { length: 20 }).notNull(), // 'rider' or 'driver'
+  rating: integer("rating").notNull(), // 1-5 stars
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const ratingsRelations = relations(ratings, ({ one }) => ({
+  ride: one(rides, {
+    fields: [ratings.rideId],
+    references: [rides.id],
+  }),
+  rater: one(users, {
+    fields: [ratings.raterId],
+    references: [users.id],
+  }),
+  ratedUser: one(users, {
+    fields: [ratings.ratedUserId],
+    references: [users.id],
+  }),
+}));
+
+export const insertRatingSchema = createInsertSchema(ratings, {
+  rating: z.coerce.number().min(1).max(5),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertRating = z.infer<typeof insertRatingSchema>;
+export type Rating = typeof ratings.$inferSelect;

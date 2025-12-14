@@ -5,6 +5,7 @@ import {
   rides,
   bids,
   notifications,
+  ratings,
   type User,
   type UpsertUser,
   type RiderOffer,
@@ -17,9 +18,11 @@ import {
   type InsertBid,
   type Notification,
   type InsertNotification,
+  type Rating,
+  type InsertRating,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, lt, gt } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -81,6 +84,25 @@ export interface IStorage {
   markNotificationRead(id: number, userId: string): Promise<Notification | undefined>;
   markAllNotificationsRead(userId: string): Promise<void>;
   getUnreadNotificationCount(userId: string): Promise<number>;
+  
+  // User availability operations
+  updateUserAvailability(id: string, activeMode: string | null, isAvailable: boolean, lat?: number, lng?: number): Promise<User>;
+  getAvailableDrivers(): Promise<User[]>;
+  getActiveRiders(): Promise<User[]>;
+  
+  // Rating operations
+  createRating(rating: InsertRating): Promise<Rating>;
+  getRatingsByRideId(rideId: number): Promise<Rating[]>;
+  getRatingsForUser(userId: string): Promise<Rating[]>;
+  hasUserRatedRide(rideId: number, raterId: string): Promise<boolean>;
+  updateUserRating(userId: string, role: 'rider' | 'driver'): Promise<User>;
+  
+  // Enhanced ride operations
+  updateRidePaymentStatus(id: number, status: string): Promise<Ride>;
+  getExpiredPendingPayments(): Promise<Ride[]>;
+  getRidesByRouteId(routeId: number): Promise<Ride[]>;
+  decrementRouteSeats(routeId: number): Promise<DriverRoute>;
+  incrementRouteSeats(routeId: number): Promise<DriverRoute>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -388,6 +410,158 @@ export class DatabaseStorage implements IStorage {
       .from(notifications)
       .where(and(eq(notifications.userId, userId), eq(notifications.read, false)));
     return result[0]?.count ?? 0;
+  }
+
+  // User availability operations
+  async updateUserAvailability(id: string, activeMode: string | null, isAvailable: boolean, lat?: number, lng?: number): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        activeMode,
+        isAvailable,
+        currentLat: lat?.toString(),
+        currentLng: lng?.toString(),
+        lastLocationUpdate: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async getAvailableDrivers(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(and(eq(users.activeMode, 'driver'), eq(users.isAvailable, true)));
+  }
+
+  async getActiveRiders(): Promise<User[]> {
+    return await db
+      .select()
+      .from(users)
+      .where(and(eq(users.activeMode, 'rider'), eq(users.isAvailable, true)));
+  }
+
+  // Rating operations
+  async createRating(rating: InsertRating): Promise<Rating> {
+    const [newRating] = await db
+      .insert(ratings)
+      .values(rating as any)
+      .returning();
+    return newRating;
+  }
+
+  async getRatingsByRideId(rideId: number): Promise<Rating[]> {
+    return await db
+      .select()
+      .from(ratings)
+      .where(eq(ratings.rideId, rideId));
+  }
+
+  async getRatingsForUser(userId: string): Promise<Rating[]> {
+    return await db
+      .select()
+      .from(ratings)
+      .where(eq(ratings.ratedUserId, userId))
+      .orderBy(desc(ratings.createdAt));
+  }
+
+  async hasUserRatedRide(rideId: number, raterId: string): Promise<boolean> {
+    const existing = await db
+      .select()
+      .from(ratings)
+      .where(and(eq(ratings.rideId, rideId), eq(ratings.raterId, raterId)));
+    return existing.length > 0;
+  }
+
+  async updateUserRating(userId: string, role: 'rider' | 'driver'): Promise<User> {
+    const userRatings = await db
+      .select({ rating: ratings.rating })
+      .from(ratings)
+      .where(and(eq(ratings.ratedUserId, userId), eq(ratings.raterRole, role === 'rider' ? 'driver' : 'rider')));
+    
+    if (userRatings.length === 0) {
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      return user;
+    }
+    
+    const avgRating = userRatings.reduce((sum, r) => sum + r.rating, 0) / userRatings.length;
+    
+    const updateData = role === 'rider' 
+      ? { riderRating: avgRating.toFixed(2), totalRatingsAsRider: userRatings.length }
+      : { driverRating: avgRating.toFixed(2), totalRatingsAsDriver: userRatings.length };
+    
+    const [user] = await db
+      .update(users)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  // Enhanced ride operations
+  async updateRidePaymentStatus(id: number, status: string): Promise<Ride> {
+    const updateData: any = { paymentStatus: status, updatedAt: new Date() };
+    if (status === 'completed') {
+      updateData.status = 'matched';
+    }
+    const [ride] = await db
+      .update(rides)
+      .set(updateData)
+      .where(eq(rides.id, id))
+      .returning();
+    return ride;
+  }
+
+  async getExpiredPendingPayments(): Promise<Ride[]> {
+    return await db
+      .select()
+      .from(rides)
+      .where(
+        and(
+          eq(rides.status, 'pending_payment'),
+          lt(rides.paymentDeadline, new Date())
+        )
+      );
+  }
+
+  async getRidesByRouteId(routeId: number): Promise<Ride[]> {
+    return await db
+      .select()
+      .from(rides)
+      .where(eq(rides.driverRouteId, routeId))
+      .orderBy(desc(rides.createdAt));
+  }
+
+  async decrementRouteSeats(routeId: number): Promise<DriverRoute> {
+    const route = await this.getDriverRouteById(routeId);
+    if (!route) throw new Error('Route not found');
+    
+    const newSeats = Math.max(0, route.availableSeats - 1);
+    const newStatus = newSeats === 0 ? 'full' : 'active';
+    
+    const [updated] = await db
+      .update(driverRoutes)
+      .set({ availableSeats: newSeats, status: newStatus, updatedAt: new Date() })
+      .where(eq(driverRoutes.id, routeId))
+      .returning();
+    return updated;
+  }
+
+  async incrementRouteSeats(routeId: number): Promise<DriverRoute> {
+    const route = await this.getDriverRouteById(routeId);
+    if (!route) throw new Error('Route not found');
+    
+    const newSeats = Math.min(route.totalSeats, route.availableSeats + 1);
+    const newStatus = newSeats > 0 ? 'active' : 'full';
+    
+    const [updated] = await db
+      .update(driverRoutes)
+      .set({ availableSeats: newSeats, status: newStatus, updatedAt: new Date() })
+      .where(eq(driverRoutes.id, routeId))
+      .returning();
+    return updated;
   }
 }
 
