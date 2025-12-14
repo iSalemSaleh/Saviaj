@@ -6,6 +6,7 @@ import {
   bids,
   notifications,
   ratings,
+  chatMessages,
   type User,
   type UpsertUser,
   type RiderOffer,
@@ -20,6 +21,8 @@ import {
   type InsertNotification,
   type Rating,
   type InsertRating,
+  type ChatMessage,
+  type InsertChatMessage,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, lt, gt } from "drizzle-orm";
@@ -105,6 +108,11 @@ export interface IStorage {
   getRidesByRouteId(routeId: number): Promise<Ride[]>;
   decrementRouteSeats(routeId: number): Promise<DriverRoute>;
   incrementRouteSeats(routeId: number): Promise<DriverRoute>;
+  
+  // Chat operations
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  getChatMessagesByRide(rideId: number): Promise<ChatMessage[]>;
+  markMessagesAsRead(rideId: number, receiverId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -584,6 +592,35 @@ export class DatabaseStorage implements IStorage {
       .where(eq(driverRoutes.id, routeId))
       .returning();
     return updated;
+  }
+
+  // Chat operations
+  async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const [chatMessage] = await db
+      .insert(chatMessages)
+      .values(message as any)
+      .returning();
+    return chatMessage;
+  }
+
+  async getChatMessagesByRide(rideId: number): Promise<ChatMessage[]> {
+    return await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.rideId, rideId))
+      .orderBy(chatMessages.createdAt);
+  }
+
+  async markMessagesAsRead(rideId: number, receiverId: string): Promise<void> {
+    await db
+      .update(chatMessages)
+      .set({ read: true })
+      .where(
+        and(
+          eq(chatMessages.rideId, rideId),
+          eq(chatMessages.receiverId, receiverId)
+        )
+      );
   }
 }
 
