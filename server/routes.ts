@@ -121,12 +121,18 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Support both local auth (session.userId) and Replit auth (req.user.claims.sub)
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const user = await storage.getUser(userId);
       
       if (user) {
         const maskedUser = {
           ...user,
+          passwordHash: undefined, // Never send password hash
           bankAccountNumber: user.bankAccountNumber ? '****' + user.bankAccountNumber.slice(-4) : null,
           bankSortCode: user.bankSortCode ? '**-**-' + user.bankSortCode.slice(-2) : null,
         };
@@ -252,8 +258,23 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // Upload driver's license
+  // Upload driver's license (authenticated - for profile updates)
   app.post('/api/user/upload-license', isAuthenticated, licenseUpload.single('license'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const licenseUrl = `/uploads/licenses/${req.file.filename}`;
+      res.json({ url: licenseUrl, filename: req.file.filename });
+    } catch (error) {
+      console.error("Error uploading license:", error);
+      res.status(500).json({ message: "Failed to upload license" });
+    }
+  });
+
+  // Upload driver's license during registration (no auth required)
+  app.post('/api/registration/upload-license', licenseUpload.single('license'), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });

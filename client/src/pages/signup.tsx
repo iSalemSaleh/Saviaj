@@ -130,7 +130,8 @@ export default function Signup() {
       const uploadFormData = new FormData();
       uploadFormData.append("license", file);
 
-      const response = await fetch("/api/user/upload-license", {
+      // Use registration-specific endpoint (no auth required)
+      const response = await fetch("/api/registration/upload-license", {
         method: "POST",
         body: uploadFormData,
         credentials: "include",

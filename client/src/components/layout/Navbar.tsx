@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, Bell, Check } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -76,6 +76,25 @@ export default function Navbar() {
   });
 
   const unreadCount = unreadData?.count ?? 0;
+
+  // Handle logout for both local auth and Replit auth
+  const handleLogout = useCallback(async () => {
+    const authProvider = (user as any)?.authProvider;
+    
+    if (authProvider === 'local') {
+      // Local auth logout
+      try {
+        await fetch('/api/auth/local-logout', { method: 'POST', credentials: 'include' });
+        queryClient.clear();
+        window.location.href = '/';
+      } catch (error) {
+        console.error('Logout failed:', error);
+      }
+    } else {
+      // Replit auth logout - redirect to OIDC logout
+      window.location.href = '/api/logout';
+    }
+  }, [user, queryClient]);
 
   const notificationsDropdown = (
     <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
@@ -172,9 +191,14 @@ export default function Navbar() {
                 <span className="text-sm text-muted-foreground ml-2">
                   Welcome, {(user as any).firstName || 'User'}
                 </span>
-                <a href="/api/logout">
-                  <Button variant="ghost" size="sm" data-testid="button-logout">Log out</Button>
-                </a>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleLogout}
+                  data-testid="button-logout"
+                >
+                  Log out
+                </Button>
               </>
             ) : (
               <>
@@ -200,9 +224,16 @@ export default function Navbar() {
             <SheetContent side="right">
               <div className="flex flex-col gap-6 mt-8">
                 {user ? (
-                  <a href="/api/logout" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full" variant="outline">Log out</Button>
-                  </a>
+                  <Button 
+                    className="w-full" 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsOpen(false);
+                      handleLogout();
+                    }}
+                  >
+                    Log out
+                  </Button>
                 ) : (
                   <>
                     <Link href="/login" onClick={() => setIsOpen(false)}>
