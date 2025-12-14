@@ -40,7 +40,8 @@ function calculateDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: 
   return R * c;
 }
 
-// Calculate minimum distance from a point to a route (start to end line segment)
+// Calculate minimum distance from a point to a route line segment
+// Uses projection onto the line segment to find the closest point
 function distanceToRouteMiles(
   pointLat: number, 
   pointLon: number, 
@@ -49,14 +50,31 @@ function distanceToRouteMiles(
   endLat: number, 
   endLon: number
 ): number {
-  // Check distance to start point
-  const distToStart = calculateDistanceMiles(pointLat, pointLon, startLat, startLon);
-  // Check distance to end point
-  const distToEnd = calculateDistanceMiles(pointLat, pointLon, endLat, endLon);
+  // Convert to radians for calculations
+  const toRad = (deg: number) => deg * Math.PI / 180;
   
-  // For simplicity, use minimum of distances to start/end points
-  // A more accurate implementation would calculate perpendicular distance to the route line
-  return Math.min(distToStart, distToEnd);
+  // Calculate the projection of point onto the line segment
+  // Using a simplified planar approximation for short distances
+  const dx = endLon - startLon;
+  const dy = endLat - startLat;
+  
+  // If start and end are the same point, return distance to that point
+  if (dx === 0 && dy === 0) {
+    return calculateDistanceMiles(pointLat, pointLon, startLat, startLon);
+  }
+  
+  // Calculate parameter t for the projection of point onto the line
+  // t = 0 means closest to start, t = 1 means closest to end
+  const t = Math.max(0, Math.min(1, 
+    ((pointLon - startLon) * dx + (pointLat - startLat) * dy) / (dx * dx + dy * dy)
+  ));
+  
+  // Find the closest point on the line segment
+  const closestLat = startLat + t * dy;
+  const closestLon = startLon + t * dx;
+  
+  // Return the distance from the point to the closest point on the segment
+  return calculateDistanceMiles(pointLat, pointLon, closestLat, closestLon);
 }
 
 export interface IStorage {
