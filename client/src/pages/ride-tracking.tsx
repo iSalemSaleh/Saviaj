@@ -158,7 +158,16 @@ export default function RideTrackingPage() {
     if ((window as any).__chatAddMessage) {
       (window as any).__chatAddMessage(message);
     }
-  }, []);
+    // Show toast notification for incoming messages (not messages we sent)
+    if (message.type === 'chat_message' && message.senderId !== currentUserId && !showChat) {
+      toast({
+        title: "New Message",
+        description: message.message.length > 50 
+          ? message.message.substring(0, 50) + "..." 
+          : message.message,
+      });
+    }
+  }, [currentUserId, showChat, toast]);
 
   const {
     driverLocation,

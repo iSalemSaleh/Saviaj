@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, Bell, Check } from "lucide-react";
+import { Menu, Bell, Check, MessageSquare } from "lucide-react";
 import { useState, useCallback } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -55,6 +55,12 @@ export default function Navbar() {
     refetchInterval: 30000,
   });
 
+  const { data: unreadMessagesData } = useQuery<{ count: number }>({
+    queryKey: ["/api/messages/unread-count"],
+    enabled: !!user,
+    refetchInterval: 15000,
+  });
+
   const markReadMutation = useMutation({
     mutationFn: async (id: number) => {
       return apiRequest("PATCH", `/api/notifications/${id}/read`);
@@ -76,6 +82,7 @@ export default function Navbar() {
   });
 
   const unreadCount = unreadData?.count ?? 0;
+  const unreadMessagesCount = unreadMessagesData?.count ?? 0;
 
   // Handle logout for both local auth and Replit auth
   const handleLogout = useCallback(async () => {
@@ -187,6 +194,16 @@ export default function Navbar() {
               <div className="h-8 w-20 bg-muted animate-pulse rounded" />
             ) : user ? (
               <>
+                {unreadMessagesCount > 0 && (
+                  <Link href="/dashboard">
+                    <Button variant="ghost" size="icon" className="relative" data-testid="button-messages-badge">
+                      <MessageSquare className="h-5 w-5" />
+                      <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-secondary text-[10px] font-medium text-secondary-foreground flex items-center justify-center" data-testid="messages-badge">
+                        {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
+                      </span>
+                    </Button>
+                  </Link>
+                )}
                 {notificationsDropdown}
                 <span className="text-sm text-muted-foreground ml-2">
                   Welcome, {(user as any).firstName || 'User'}
@@ -214,6 +231,16 @@ export default function Navbar() {
 
         {/* Mobile Nav */}
         <div className="md:hidden flex items-center gap-2">
+          {user && unreadMessagesCount > 0 && (
+            <Link href="/dashboard">
+              <Button variant="ghost" size="icon" className="relative" data-testid="button-messages-badge-mobile">
+                <MessageSquare className="h-5 w-5" />
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-secondary text-[10px] font-medium text-secondary-foreground flex items-center justify-center">
+                  {unreadMessagesCount > 9 ? "9+" : unreadMessagesCount}
+                </span>
+              </Button>
+            </Link>
+          )}
           {user && notificationsDropdown}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>

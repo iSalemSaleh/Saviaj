@@ -828,6 +828,18 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Unread messages count endpoint
+  app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.getUnreadMessageCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread message count:", error);
+      res.status(500).json({ message: "Failed to fetch unread message count" });
+    }
+  });
+
   app.patch('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);

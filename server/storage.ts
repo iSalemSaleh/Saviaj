@@ -130,6 +130,7 @@ export interface IStorage {
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   getChatMessagesByRide(rideId: number): Promise<ChatMessage[]>;
   markMessagesAsRead(rideId: number, receiverId: string): Promise<void>;
+  getUnreadMessageCount(userId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -701,6 +702,14 @@ export class DatabaseStorage implements IStorage {
           eq(chatMessages.receiverId, receiverId)
         )
       );
+  }
+
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(chatMessages)
+      .where(and(eq(chatMessages.receiverId, userId), eq(chatMessages.read, false)));
+    return result[0]?.count ?? 0;
   }
 }
 
