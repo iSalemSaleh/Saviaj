@@ -9,11 +9,26 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X } from "lucide-react";
+import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car } from "lucide-react";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import PostcodeSearch from "@/components/PostcodeSearch";
+
+interface DriverInfo {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  profileImageUrl: string | null;
+  driverRating: string | null;
+  totalRatingsAsDriver: number | null;
+  vehicleMake: string | null;
+  vehicleModel: string | null;
+  vehicleYear: string | null;
+  vehicleColor: string | null;
+  driverVerified: boolean | null;
+}
 
 interface DriverRoute {
   id: number;
@@ -30,6 +45,7 @@ interface DriverRoute {
   pricePerSeat: string | null;
   maxDetourMiles: string;
   status: string;
+  driver?: DriverInfo;
 }
 
 interface RiderOffer {
@@ -653,18 +669,35 @@ export default function RiderPage() {
                       <Card key={route.id} className="group hover:border-accent transition-all hover:shadow-lg cursor-pointer border-accent/30 bg-accent/5" data-testid={`card-nearby-route-${route.id}`}>
                         <CardContent className="p-6">
                           <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-3">
+                            <Link href={`/driver/${route.driverId}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity" data-testid={`link-driver-profile-nearby-${route.id}`}>
                               <Avatar>
-                                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
-                                <AvatarFallback>D</AvatarFallback>
+                                <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
+                                <AvatarFallback>{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
                               </Avatar>
                               <div>
-                                <p className="font-semibold text-primary">Driver</p>
-                                <div className="flex items-center text-xs text-muted-foreground">
-                                  <span className="text-yellow-500">★</span> 4.8 • {route.availableSeats} seats
+                                <div className="flex items-center gap-1.5">
+                                  <p className="font-semibold text-primary" data-testid={`text-driver-name-${route.id}`}>
+                                    {route.driver?.firstName || 'Driver'}{route.driver?.lastName ? ` ${route.driver.lastName.charAt(0)}.` : ''}
+                                  </p>
+                                  {route.driver?.driverVerified && (
+                                    <Shield className="h-3.5 w-3.5 text-green-500" />
+                                  )}
                                 </div>
+                                <div className="flex items-center text-xs text-muted-foreground gap-1">
+                                  <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                                  <span>{route.driver?.driverRating ? parseFloat(route.driver.driverRating).toFixed(1) : 'New'}</span>
+                                  <span>•</span>
+                                  <span>{route.availableSeats} seats</span>
+                                </div>
+                                {route.driver?.vehicleMake && (
+                                  <div className="flex items-center text-xs text-muted-foreground mt-0.5">
+                                    <Car className="h-3 w-3 mr-1" />
+                                    {route.driver.vehicleColor && <span className="capitalize">{route.driver.vehicleColor} </span>}
+                                    {route.driver.vehicleMake} {route.driver.vehicleModel}
+                                  </div>
+                                )}
                               </div>
-                            </div>
+                            </Link>
                             {route.pricePerSeat && (
                               <Badge variant="secondary" className="text-lg px-3 py-1 bg-accent text-white">
                                 £{route.pricePerSeat}
@@ -797,18 +830,35 @@ export default function RiderPage() {
                   <Card key={route.id} className="group hover:border-primary/50 transition-all hover:shadow-md cursor-pointer" data-testid={`card-route-${route.id}`}>
                     <CardContent className="p-6">
                       <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-3">
+                        <Link href={`/driver/${route.driverId}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity" data-testid={`link-driver-profile-${route.id}`}>
                           <Avatar>
-                            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
-                            <AvatarFallback>D</AvatarFallback>
+                            <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
+                            <AvatarFallback>{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-semibold text-primary">Driver</p>
-                            <div className="flex items-center text-xs text-muted-foreground">
-                              <span className="text-yellow-500">★</span> 4.8 • {route.availableSeats} seats left
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-semibold text-primary" data-testid={`text-driver-name-route-${route.id}`}>
+                                {route.driver?.firstName || 'Driver'}{route.driver?.lastName ? ` ${route.driver.lastName.charAt(0)}.` : ''}
+                              </p>
+                              {route.driver?.driverVerified && (
+                                <Shield className="h-3.5 w-3.5 text-green-500" />
+                              )}
                             </div>
+                            <div className="flex items-center text-xs text-muted-foreground gap-1">
+                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                              <span>{route.driver?.driverRating ? parseFloat(route.driver.driverRating).toFixed(1) : 'New'}</span>
+                              <span>•</span>
+                              <span>{route.availableSeats} seats left</span>
+                            </div>
+                            {route.driver?.vehicleMake && (
+                              <div className="flex items-center text-xs text-muted-foreground mt-0.5">
+                                <Car className="h-3 w-3 mr-1" />
+                                {route.driver.vehicleColor && <span className="capitalize">{route.driver.vehicleColor} </span>}
+                                {route.driver.vehicleMake} {route.driver.vehicleModel}
+                              </div>
+                            )}
                           </div>
-                        </div>
+                        </Link>
                         {route.pricePerSeat && (
                           <Badge variant="secondary" className="text-lg px-3 py-1 bg-primary/10 text-primary">
                             £{route.pricePerSeat}

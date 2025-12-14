@@ -70,6 +70,21 @@ export interface IStorage {
   // Driver Route operations
   createDriverRoute(route: InsertDriverRoute): Promise<DriverRoute>;
   getDriverRoutes(status?: string): Promise<DriverRoute[]>;
+  getDriverRoutesWithDriverInfo(status?: string): Promise<Array<DriverRoute & {
+    driver: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      profileImageUrl: string | null;
+      driverRating: string | null;
+      totalRatingsAsDriver: number | null;
+      vehicleMake: string | null;
+      vehicleModel: string | null;
+      vehicleYear: string | null;
+      vehicleColor: string | null;
+      driverVerified: boolean | null;
+    }
+  }>>;
   getDriverRouteById(id: number): Promise<DriverRoute | undefined>;
   updateDriverRouteStatus(id: number, status: string): Promise<DriverRoute>;
   
@@ -317,6 +332,56 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(driverRoutes)
       .orderBy(desc(driverRoutes.createdAt));
+  }
+
+  async getDriverRoutesWithDriverInfo(status?: string): Promise<Array<DriverRoute & {
+    driver: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      profileImageUrl: string | null;
+      driverRating: string | null;
+      totalRatingsAsDriver: number | null;
+      vehicleMake: string | null;
+      vehicleModel: string | null;
+      vehicleYear: string | null;
+      vehicleColor: string | null;
+      driverVerified: boolean | null;
+    }
+  }>> {
+    const query = db
+      .select({
+        route: driverRoutes,
+        driver: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          driverRating: users.driverRating,
+          totalRatingsAsDriver: users.totalRatingsAsDriver,
+          vehicleMake: users.vehicleMake,
+          vehicleModel: users.vehicleModel,
+          vehicleYear: users.vehicleYear,
+          vehicleColor: users.vehicleColor,
+          driverVerified: users.driverVerified,
+        }
+      })
+      .from(driverRoutes)
+      .innerJoin(users, eq(driverRoutes.driverId, users.id));
+    
+    let results;
+    if (status) {
+      results = await query
+        .where(eq(driverRoutes.status, status))
+        .orderBy(desc(driverRoutes.createdAt));
+    } else {
+      results = await query.orderBy(desc(driverRoutes.createdAt));
+    }
+    
+    return results.map(r => ({
+      ...r.route,
+      driver: r.driver
+    }));
   }
 
   async getDriverRouteById(id: number): Promise<DriverRoute | undefined> {
