@@ -163,20 +163,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Nav */}
-        <div className="hidden md:flex md:items-center md:gap-8">
-          <Link 
-            href="/rider"
-            className={`text-sm font-medium transition-colors hover:text-primary ${location === "/rider" ? "text-primary" : "text-muted-foreground"}`}
-          >
-            Find a Ride
-          </Link>
-          <Link 
-            href="/driver"
-            className={`text-sm font-medium transition-colors hover:text-primary ${location === "/driver" ? "text-primary" : "text-muted-foreground"}`}
-          >
-            Offer a Ride
-          </Link>
-          <div className="flex items-center gap-2">
+        <div className="hidden md:flex md:items-center md:gap-4">
             {isLoading ? (
               <div className="h-8 w-20 bg-muted animate-pulse rounded" />
             ) : user ? (
@@ -199,7 +186,6 @@ export default function Navbar() {
                 </Link>
               </>
             )}
-          </div>
         </div>
 
         {/* Mobile Nav */}
@@ -213,13 +199,6 @@ export default function Navbar() {
             </SheetTrigger>
             <SheetContent side="right">
               <div className="flex flex-col gap-6 mt-8">
-                <Link href="/rider" onClick={() => setIsOpen(false)} className="text-lg font-medium">
-                  Find a Ride
-                </Link>
-                <Link href="/driver" onClick={() => setIsOpen(false)} className="text-lg font-medium">
-                  Offer a Ride
-                </Link>
-                <div className="h-px bg-border my-2" />
                 {user ? (
                   <a href="/api/logout" onClick={() => setIsOpen(false)}>
                     <Button className="w-full" variant="outline">Log out</Button>
