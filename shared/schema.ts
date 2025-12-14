@@ -340,3 +340,36 @@ export const insertRatingSchema = createInsertSchema(ratings, {
 });
 export type InsertRating = z.infer<typeof insertRatingSchema>;
 export type Rating = typeof ratings.$inferSelect;
+
+// Chat Messages - Real-time messaging between riders and drivers
+export const chatMessages = pgTable("chat_messages", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  rideId: integer("ride_id").notNull().references(() => rides.id),
+  senderId: varchar("sender_id").notNull().references(() => users.id),
+  receiverId: varchar("receiver_id").notNull().references(() => users.id),
+  message: text("message").notNull(),
+  read: boolean("read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  ride: one(rides, {
+    fields: [chatMessages.rideId],
+    references: [rides.id],
+  }),
+  sender: one(users, {
+    fields: [chatMessages.senderId],
+    references: [users.id],
+  }),
+  receiver: one(users, {
+    fields: [chatMessages.receiverId],
+    references: [users.id],
+  }),
+}));
+
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
