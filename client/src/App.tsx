@@ -13,6 +13,8 @@ import DriverPage from "@/pages/driver";
 import AuthPage from "@/pages/auth";
 import OnboardingPage from "@/pages/onboarding";
 import RideTrackingPage from "@/pages/ride-tracking";
+import SignupPage from "@/pages/signup";
+import LoginPage from "@/pages/login";
 import SplashScreen from "@/components/SplashScreen";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -103,6 +105,8 @@ function Router() {
         <ProtectedRoute component={DriverPage} />
       </Route>
       <Route path="/auth" component={AuthRoute} />
+      <Route path="/signup" component={SignupPage} />
+      <Route path="/login" component={LoginPage} />
       <Route path="/onboarding" component={OnboardingRoute} />
       <Route path="/ride/:id">
         <ProtectedRoute component={RideTrackingPage} />

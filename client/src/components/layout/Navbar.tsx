@@ -178,10 +178,10 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <a href="/api/login">
+                <Link href="/login">
                   <Button variant="ghost" size="sm" data-testid="button-login">Sign In</Button>
-                </a>
-                <Link href="/onboarding">
+                </Link>
+                <Link href="/signup">
                   <Button size="sm" data-testid="button-signup">Sign Up</Button>
                 </Link>
               </>
@@ -205,10 +205,10 @@ export default function Navbar() {
                   </a>
                 ) : (
                   <>
-                    <a href="/api/login" onClick={() => setIsOpen(false)}>
+                    <Link href="/login" onClick={() => setIsOpen(false)}>
                       <Button className="w-full" variant="outline">Sign In</Button>
-                    </a>
-                    <Link href="/onboarding" onClick={() => setIsOpen(false)}>
+                    </Link>
+                    <Link href="/signup" onClick={() => setIsOpen(false)}>
                       <Button className="w-full">Sign Up</Button>
                     </Link>
                   </>

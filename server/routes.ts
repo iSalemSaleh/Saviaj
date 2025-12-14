@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupLocalAuth } from "./localAuth";
 import { setupWebSocket } from "./websocket";
 import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema } from "@shared/schema";
 
@@ -59,6 +60,9 @@ const licenseUpload = multer({
 export async function registerRoutes(app: Express, httpServer: Server): Promise<void> {
   // Auth middleware
   await setupAuth(app);
+  
+  // Local auth routes (email/password registration and login)
+  setupLocalAuth(app);
   
   // Setup WebSocket for real-time location tracking on the main server
   setupWebSocket(httpServer);
