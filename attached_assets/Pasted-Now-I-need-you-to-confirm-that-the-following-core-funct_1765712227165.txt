@@ -1,0 +1,147 @@
+Now I need you to confirm that the following core functionalities are available on the app. Make all the necessary modifications needed. Use python based platforms where possible and PostgreSQL for databases
+PHASE 1 — USER ACCESS & STATUS
+1. User Identity
+•	Users can create an account
+•	Users can sign in and out
+•	Users can switch between Rider and Driver roles
+•	User profiles store basic identity information
+
+2. User Availability States
+•	Riders can enter an “active” state (searching)
+•	Drivers can enter an “available” state
+•	Users are removed from search when matched or locked
+
+PHASE 2 — LOCATION & ROUTING
+3. Location Input
+•	Rider can enter pickup location
+•	Rider can enter destination
+•	Driver can enter route start and final destination
+
+4. Distance & ETA Calculation
+•	System calculates distance between users
+•	System calculates ETA based on:
+o	current location
+o	traffic
+o	route geometry
+
+PHASE 3 — DRIVER ROUTE ADVERTISING
+5. Route Creation
+•	Driver can advertise a route
+•	Driver can set:
+o	departure time
+o	detour radius
+o	number of seats (1–4)
+o	payment timeout window
+
+6. Route Visibility
+•	Routes are visible to riders until seats are filled
+•	Route automatically disappears when full
+•	Route can be manually closed by driver
+
+PHASE 4 — RIDER DISCOVERY & TRANSPARENCY
+7. Route Listing for Riders
+•	Rider sees available routes
+•	Routes sorted by:
+o	distance
+o	ETA to rider’s destination
+
+8. Route Transparency
+Each route displays:
+•	Seats available
+•	Total number of stops
+•	Stops before rider’s drop-off
+•	ETA to rider’s destination
+•	Driver distance to pickup
+
+PHASE 5 — BIDDING & MATCHING
+9. Rider Offer & Bidding
+•	Rider can accept listed price
+•	Rider can submit a bid
+•	Rider can revise bid before acceptance
+
+10. Driver Decision
+•	Driver can accept offer
+•	Driver can reject offer
+•	Driver sees bids sorted by:
+o	distance
+o	ETA
+o	offer amount
+
+PHASE 6 — TENTATIVE MATCH & TIMEOUT
+11. Tentative Match Creation
+•	Tentative match is created when driver accepts
+•	Rider enters “payment pending” state
+•	Countdown timer starts
+
+12. Timeout Handling
+•	Driver defines payment timeout duration
+•	Match auto-cancels if timer expires
+•	Driver returns to available
+•	Rider returns to discovery
+
+PHASE 7 — PAYMENT (PRE-TRIP)
+13. Payment Completion
+•	Rider must complete payment before trip
+•	Payment confirmation locks match
+•	Payment failure cancels match
+
+14. Locking Rules
+•	Paid rider is removed from marketplace
+•	Driver is removed from marketplace
+•	Seat count decreases by one
+
+PHASE 8 — MULTI-SEAT & MULTI-STOP LOGIC
+15. Seat Management
+•	Each route supports up to 4 seats
+•	Seat is reserved during payment
+•	Seat is released if payment fails
+
+16. Stop Ordering
+•	System orders drop-offs efficiently
+•	Stop list recalculates when new rider joins
+•	ETA recalculates dynamically
+
+PHASE 9 — PRE-PICKUP TRACKING
+17. Live Tracking
+•	Rider sees driver moving on map
+•	Rider sees updated ETA
+•	Driver sees pickup navigation
+
+PHASE 10 — TRIP LIFECYCLE
+18. Trip States
+•	Matched
+•	En route to pickup
+•	In trip
+•	Completed
+•	Cancelled
+
+19. Completion Logic
+•	Driver ends trip
+•	Trip marked completed
+•	Payment released to driver
+
+PHASE 11 — RATINGS & TRUST
+20. Ratings
+•	Rider rates driver
+•	Driver rates rider
+•	Ratings saved to profiles
+
+PHASE 12 — SAFETY & EDGE CASES
+21. Cancellation Rules
+•	Cancel before payment → no penalty
+•	Cancel after payment → rule-based handling
+
+22. Data Integrity
+•	No double booking
+•	No ghost matches
+•	No seat over-allocation
+
+MVP SUCCESS CRITERIA
+AtlasRide MVP is complete if:
+•	✔ A driver can post a multi-seat route
+•	✔ A rider can see full route impact (stops + ETA)
+•	✔ A rider can bid
+•	✔ Payment happens before trip
+•	✔ Timeout auto-cancels unpaid matches
+•	✔ Both users lock out after payment
+•	✔ Multi-stop ETAs update correctly
