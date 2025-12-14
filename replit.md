@@ -36,6 +36,7 @@ Preferred communication style: Simple, everyday language.
   - `driverRoutes` - Routes posted by drivers with available seats
   - `rides` - Matched rides between riders and drivers
   - `bids` - Driver bids on rider offers
+  - `chatMessages` - Real-time chat messages between riders and drivers
 
 ### External Integrations
 - **Stripe**: Payment processing via stripe-replit-sync for managed webhooks
@@ -47,8 +48,9 @@ Preferred communication style: Simple, everyday language.
 - **Shared Schema**: Database schema and TypeScript types are defined once in `shared/schema.ts` and used by both frontend and backend
 - **API Request Helper**: Centralized `apiRequest` function in `lib/queryClient.ts` handles all HTTP requests with proper error handling
 - **Storage Interface**: `IStorage` interface in `server/storage.ts` abstracts database operations for testability
-- **WebSocket Rooms**: Location tracking uses room-based WebSocket connections per ride
+- **WebSocket Rooms**: Location tracking and real-time chat use room-based WebSocket connections per ride
 - **Secure API Proxying**: Azure Maps API key is never exposed to frontend; all requests go through backend proxy
+- **Real-time Chat**: WebSocket-based chat between riders and drivers with messages persisted to database
 
 ## External Dependencies
 
