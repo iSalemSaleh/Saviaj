@@ -1060,4 +1060,49 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(500).json({ message: "Failed to fetch route rides" });
     }
   });
+
+  // Chat message endpoints
+  app.get('/api/rides/:id/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const ride = await storage.getRideById(rideId);
+      if (!ride) {
+        return res.status(404).json({ message: "Ride not found" });
+      }
+      
+      if (ride.riderId !== userId && ride.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      const messages = await storage.getChatMessagesByRide(rideId);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching chat messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  app.patch('/api/rides/:id/messages/read', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const ride = await storage.getRideById(rideId);
+      if (!ride) {
+        return res.status(404).json({ message: "Ride not found" });
+      }
+      
+      if (ride.riderId !== userId && ride.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      await storage.markMessagesAsRead(rideId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ message: "Failed to mark messages as read" });
+    }
+  });
 }

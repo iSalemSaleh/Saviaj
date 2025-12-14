@@ -28,8 +28,8 @@ type WebSocketMessage = LocationMessage | ChatMessage;
 interface RideRoom {
   rider: WebSocket | null;
   driver: WebSocket | null;
-  riderUserId?: string;
-  driverUserId?: string;
+  riderUserId: string;
+  driverUserId: string;
 }
 
 const rideRooms = new Map<number, RideRoom>();
@@ -41,6 +41,7 @@ export function setupWebSocket(server: Server) {
     let currentRideId: number | null = null;
     let currentUserType: 'rider' | 'driver' | null = null;
     let currentUserId: string | null = null;
+    let verifiedRide: { riderId: string; driverId: string } | null = null;
 
     ws.on('message', async (data: Buffer) => {
       try {
@@ -49,37 +50,85 @@ export function setupWebSocket(server: Server) {
         switch (message.type) {
           case 'join_ride': {
             const locMessage = message as LocationMessage & { userId?: string };
+            const userId = locMessage.userId;
+
+            if (!userId) {
+              ws.send(JSON.stringify({ type: 'error', message: 'User ID required' }));
+              return;
+            }
+
+            // Verify ride exists and user is a participant
+            const ride = await storage.getRideById(locMessage.rideId);
+            if (!ride) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Ride not found' }));
+              return;
+            }
+
+            // Verify user is actually a participant in this ride
+            const isRider = ride.riderId === userId;
+            const isDriver = ride.driverId === userId;
+
+            if (!isRider && !isDriver) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Unauthorized: not a participant' }));
+              return;
+            }
+
+            // Verify claimed userType matches actual role
+            const actualUserType = isRider ? 'rider' : 'driver';
+            if (locMessage.userType !== actualUserType) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Unauthorized: role mismatch' }));
+              return;
+            }
+
             currentRideId = locMessage.rideId;
-            currentUserType = locMessage.userType;
-            currentUserId = locMessage.userId || null;
+            currentUserType = actualUserType;
+            currentUserId = userId;
+            verifiedRide = { riderId: ride.riderId, driverId: ride.driverId };
 
             if (!rideRooms.has(locMessage.rideId)) {
-              rideRooms.set(locMessage.rideId, { rider: null, driver: null });
+              rideRooms.set(locMessage.rideId, { 
+                rider: null, 
+                driver: null,
+                riderUserId: ride.riderId,
+                driverUserId: ride.driverId,
+              });
             }
 
             const room = rideRooms.get(locMessage.rideId)!;
-            if (locMessage.userType === 'rider') {
+            if (actualUserType === 'rider') {
               room.rider = ws;
-              room.riderUserId = locMessage.userId;
             } else {
               room.driver = ws;
-              room.driverUserId = locMessage.userId;
             }
 
-            console.log(`[WebSocket] ${locMessage.userType} joined ride ${locMessage.rideId}`);
+            ws.send(JSON.stringify({ type: 'joined', rideId: locMessage.rideId, userType: actualUserType }));
+            console.log(`[WebSocket] ${actualUserType} (${userId}) joined ride ${locMessage.rideId}`);
             break;
           }
 
           case 'location_update': {
+            // Must be in a verified ride room
+            if (!currentRideId || !currentUserId || !currentUserType) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Must join ride first' }));
+              return;
+            }
+
             const locMessage = message as LocationMessage;
-            const room = rideRooms.get(locMessage.rideId);
+            
+            // Verify the update is for the current ride
+            if (locMessage.rideId !== currentRideId) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Cannot update different ride' }));
+              return;
+            }
+
+            const room = rideRooms.get(currentRideId);
             if (!room) return;
 
-            const targetWs = locMessage.userType === 'rider' ? room.driver : room.rider;
+            const targetWs = currentUserType === 'rider' ? room.driver : room.rider;
             if (targetWs && targetWs.readyState === WebSocket.OPEN) {
               targetWs.send(JSON.stringify({
                 type: 'location_update',
-                userType: locMessage.userType,
+                userType: currentUserType,
                 location: locMessage.location,
               }));
             }
@@ -88,13 +137,30 @@ export function setupWebSocket(server: Server) {
 
           case 'chat_message': {
             const chatMsg = message as ChatMessage;
-            const room = rideRooms.get(chatMsg.rideId);
             
-            // Save message to database
+            // Must be in a verified ride room
+            if (!currentRideId || !currentUserId || !verifiedRide) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Must join ride first' }));
+              return;
+            }
+
+            // Verify the message is for the current ride
+            if (chatMsg.rideId !== currentRideId) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Cannot send to different ride' }));
+              return;
+            }
+
+            // Derive sender and receiver from verified data - don't trust client
+            const senderId = currentUserId;
+            const receiverId = currentUserType === 'rider' ? verifiedRide.driverId : verifiedRide.riderId;
+
+            const room = rideRooms.get(currentRideId);
+            
+            // Save message to database with server-derived IDs
             const savedMessage = await storage.createChatMessage({
-              rideId: chatMsg.rideId,
-              senderId: chatMsg.senderId,
-              receiverId: chatMsg.receiverId,
+              rideId: currentRideId,
+              senderId,
+              receiverId,
               message: chatMsg.message,
             });
 
@@ -112,7 +178,7 @@ export function setupWebSocket(server: Server) {
 
             // Send to receiver if connected
             if (room) {
-              const receiverWs = chatMsg.senderId === room.riderUserId ? room.driver : room.rider;
+              const receiverWs = currentUserType === 'rider' ? room.driver : room.rider;
               if (receiverWs && receiverWs.readyState === WebSocket.OPEN) {
                 receiverWs.send(JSON.stringify(outgoingMessage));
               }
@@ -124,27 +190,35 @@ export function setupWebSocket(server: Server) {
               type: 'chat_message_sent',
             }));
 
-            console.log(`[WebSocket] Chat message sent in ride ${chatMsg.rideId}`);
+            console.log(`[WebSocket] Chat message sent in ride ${currentRideId} from ${senderId}`);
             break;
           }
 
           case 'leave_ride': {
-            const locMessage = message as LocationMessage;
-            const room = rideRooms.get(locMessage.rideId);
+            // Use verified session data, not client data
+            if (!currentRideId || !currentUserType) {
+              return;
+            }
+
+            const room = rideRooms.get(currentRideId);
             if (room) {
-              if (locMessage.userType === 'rider') {
+              if (currentUserType === 'rider') {
                 room.rider = null;
-                room.riderUserId = undefined;
               } else {
                 room.driver = null;
-                room.driverUserId = undefined;
               }
 
               if (!room.rider && !room.driver) {
-                rideRooms.delete(locMessage.rideId);
+                rideRooms.delete(currentRideId);
               }
             }
-            console.log(`[WebSocket] ${locMessage.userType} left ride ${locMessage.rideId}`);
+            console.log(`[WebSocket] ${currentUserType} left ride ${currentRideId}`);
+            
+            // Clear session state
+            currentRideId = null;
+            currentUserType = null;
+            currentUserId = null;
+            verifiedRide = null;
             break;
           }
         }
@@ -159,10 +233,8 @@ export function setupWebSocket(server: Server) {
         if (room) {
           if (currentUserType === 'rider') {
             room.rider = null;
-            room.riderUserId = undefined;
           } else {
             room.driver = null;
-            room.driverUserId = undefined;
           }
 
           if (!room.rider && !room.driver) {

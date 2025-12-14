@@ -6,23 +6,38 @@ interface Location {
   timestamp: number;
 }
 
+interface ChatMessage {
+  id?: number;
+  rideId: number;
+  senderId: string;
+  receiverId: string;
+  message: string;
+  createdAt?: Date;
+  read?: boolean;
+}
+
 interface UseLocationTrackingOptions {
   rideId: number;
   userType: 'rider' | 'driver';
+  userId?: string;
   enableTracking?: boolean;
+  onChatMessage?: (message: ChatMessage) => void;
 }
 
 interface LocationMessage {
-  type: 'location_update' | 'join_ride' | 'leave_ride';
+  type: 'location_update' | 'join_ride' | 'leave_ride' | 'chat_message';
   rideId: number;
   userType: 'rider' | 'driver';
+  userId?: string;
   location?: Location;
 }
 
 export function useLocationTracking({
   rideId,
   userType,
+  userId,
   enableTracking = true,
+  onChatMessage,
 }: UseLocationTrackingOptions) {
   const [myLocation, setMyLocation] = useState<Location | null>(null);
   const [otherLocation, setOtherLocation] = useState<Location | null>(null);
@@ -43,6 +58,19 @@ export function useLocationTracking({
     }
   }, [rideId, userType]);
 
+  const sendChatMessage = useCallback((receiverId: string, message: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN && userId) {
+      const chatMessage = {
+        type: 'chat_message',
+        rideId,
+        senderId: userId,
+        receiverId,
+        message,
+      };
+      wsRef.current.send(JSON.stringify(chatMessage));
+    }
+  }, [rideId, userId]);
+
   useEffect(() => {
     if (!enableTracking) return;
 
@@ -55,10 +83,11 @@ export function useLocationTracking({
       setIsConnected(true);
       setError(null);
       
-      const joinMessage: LocationMessage = {
+      const joinMessage: LocationMessage & { userId?: string } = {
         type: 'join_ride',
         rideId,
         userType,
+        userId,
       };
       wsRef.current?.send(JSON.stringify(joinMessage));
     };
@@ -69,6 +98,10 @@ export function useLocationTracking({
         
         if (data.type === 'location_update' && data.userType !== userType) {
           setOtherLocation(data.location);
+        } else if (data.type === 'chat_message' || data.type === 'chat_message_sent') {
+          if (onChatMessage) {
+            onChatMessage(data);
+          }
         }
       } catch (err) {
         console.error('Error parsing WebSocket message:', err);
@@ -97,7 +130,7 @@ export function useLocationTracking({
         wsRef.current.close();
       }
     };
-  }, [rideId, userType, enableTracking]);
+  }, [rideId, userType, userId, enableTracking, onChatMessage]);
 
   useEffect(() => {
     if (!enableTracking || !navigator.geolocation) {
@@ -143,5 +176,7 @@ export function useLocationTracking({
     error,
     driverLocation: userType === 'rider' ? otherLocation : myLocation,
     riderLocation: userType === 'driver' ? otherLocation : myLocation,
+    sendChatMessage,
+    wsRef,
   };
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/layout/Navbar";
@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import PaymentButton from "@/components/PaymentButton";
+import Chat from "@/components/Chat";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   MapPin, 
@@ -58,6 +59,7 @@ export default function RideTrackingPage() {
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(5);
   const [ratingComment, setRatingComment] = useState("");
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -148,17 +150,28 @@ export default function RideTrackingPage() {
   });
 
   const userType = (user as any)?.id === ride?.driverId ? 'driver' : 'rider';
-  const isRideActive = ride?.status === 'in_progress' || ride?.status === 'scheduled';
+  const currentUserId = (user as any)?.id;
+  const otherUserId = userType === 'rider' ? ride?.driverId : ride?.riderId;
+  const isRideActive = ride?.status === 'in_progress' || ride?.status === 'scheduled' || ride?.status === 'en_route_pickup' || ride?.status === 'matched';
+
+  const handleChatMessage = useCallback((message: any) => {
+    if ((window as any).__chatAddMessage) {
+      (window as any).__chatAddMessage(message);
+    }
+  }, []);
 
   const {
     driverLocation,
     riderLocation,
     isConnected,
     error: locationError,
+    sendChatMessage,
   } = useLocationTracking({
     rideId,
     userType,
+    userId: currentUserId,
     enableTracking: isRideActive,
+    onChatMessage: handleChatMessage,
   });
 
   const pickupLocation = {
@@ -363,13 +376,31 @@ export default function RideTrackingPage() {
                     <Phone className="h-4 w-4 mr-2" />
                     Call
                   </Button>
-                  <Button variant="outline" className="flex-1" data-testid="button-message">
+                  <Button 
+                    variant={showChat ? "default" : "outline"} 
+                    className="flex-1" 
+                    onClick={() => setShowChat(!showChat)}
+                    data-testid="button-message"
+                  >
                     <MessageSquare className="h-4 w-4 mr-2" />
-                    Message
+                    {showChat ? "Hide Chat" : "Message"}
                   </Button>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Chat Panel */}
+            {showChat && currentUserId && otherUserId && (
+              <Chat
+                rideId={rideId}
+                currentUserId={currentUserId}
+                otherUserId={otherUserId}
+                sendChatMessage={sendChatMessage}
+                isConnected={isConnected}
+                isOpen={showChat}
+                onClose={() => setShowChat(false)}
+              />
+            )}
 
             {/* Pre-pickup Status for Rider */}
             {isPrePickup && userType === 'rider' && (
