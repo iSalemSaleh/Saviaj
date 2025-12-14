@@ -315,6 +315,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  app.get('/api/rider-offers/mine', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const offers = await storage.getRiderOffersByUser(userId);
+      res.json(offers);
+    } catch (error) {
+      console.error("Error fetching user rider offers:", error);
+      res.status(500).json({ message: "Failed to fetch your offers" });
+    }
+  });
+
   app.get('/api/rider-offers/:id', async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -357,6 +368,63 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     } catch (error) {
       console.error("Error accepting rider offer:", error);
       res.status(500).json({ message: "Failed to accept rider offer" });
+    }
+  });
+
+  app.patch('/api/rider-offers/:id/revise', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      const { offerPrice } = req.body;
+      
+      if (!offerPrice || offerPrice < 1 || offerPrice > 500) {
+        return res.status(400).json({ message: "Price must be between £1 and £500" });
+      }
+      
+      const existingOffer = await storage.getRiderOfferById(id);
+      if (!existingOffer) {
+        return res.status(404).json({ message: "Offer not found" });
+      }
+      
+      if (existingOffer.riderId !== userId) {
+        return res.status(403).json({ message: "You can only revise your own offers" });
+      }
+      
+      if (existingOffer.status !== "pending") {
+        return res.status(400).json({ message: "Can only revise pending offers" });
+      }
+      
+      const offer = await storage.updateRiderOfferPrice(id, offerPrice);
+      res.json(offer);
+    } catch (error) {
+      console.error("Error revising rider offer:", error);
+      res.status(500).json({ message: "Failed to revise rider offer" });
+    }
+  });
+
+  app.patch('/api/rider-offers/:id/cancel', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.claims.sub;
+      
+      const existingOffer = await storage.getRiderOfferById(id);
+      if (!existingOffer) {
+        return res.status(404).json({ message: "Offer not found" });
+      }
+      
+      if (existingOffer.riderId !== userId) {
+        return res.status(403).json({ message: "You can only cancel your own offers" });
+      }
+      
+      if (existingOffer.status !== "pending") {
+        return res.status(400).json({ message: "Can only cancel pending offers" });
+      }
+      
+      const offer = await storage.updateRiderOfferStatus(id, "cancelled");
+      res.json(offer);
+    } catch (error) {
+      console.error("Error cancelling rider offer:", error);
+      res.status(500).json({ message: "Failed to cancel rider offer" });
     }
   });
 

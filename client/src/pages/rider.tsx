@@ -8,7 +8,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,8 +26,23 @@ interface DriverRoute {
   endLng: string | null;
   departureTime: string;
   availableSeats: number;
+  totalSeats: number;
   pricePerSeat: string | null;
   maxDetourMiles: string;
+  status: string;
+}
+
+interface RiderOffer {
+  id: number;
+  riderId: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  pickupLat: string | null;
+  pickupLng: string | null;
+  dropoffLat: string | null;
+  dropoffLng: string | null;
+  offerPrice: string;
+  requestedTime: string;
   status: string;
 }
 
@@ -63,6 +79,10 @@ export default function RiderPage() {
   const [locationLoading, setLocationLoading] = useState(true);
   const [showFutureDates, setShowFutureDates] = useState(false);
   const [isCurrentLocationPickup, setIsCurrentLocationPickup] = useState(false);
+  
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<RiderOffer | null>(null);
+  const [editPrice, setEditPrice] = useState("");
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -121,6 +141,78 @@ export default function RiderPage() {
   const { data: driverRoutes = [], isLoading: routesLoading } = useQuery<DriverRoute[]>({
     queryKey: ["/api/driver-routes"],
   });
+
+  const { data: myOffers = [], isLoading: myOffersLoading } = useQuery<RiderOffer[]>({
+    queryKey: ["/api/rider-offers/mine"],
+    queryFn: async () => {
+      const response = await fetch("/api/rider-offers/mine");
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  const myPendingOffers = useMemo(() => {
+    return myOffers.filter(offer => offer.status === "pending");
+  }, [myOffers]);
+
+  const reviseOfferMutation = useMutation({
+    mutationFn: async ({ offerId, newPrice }: { offerId: number; newPrice: number }) => {
+      const response = await apiRequest("PATCH", `/api/rider-offers/${offerId}/revise`, { offerPrice: newPrice });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Price Updated",
+        description: "Your offer price has been revised.",
+      });
+      setEditDialogOpen(false);
+      setEditPrice("");
+      setSelectedOffer(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/rider-offers/mine"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to revise offer",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelOfferMutation = useMutation({
+    mutationFn: async (offerId: number) => {
+      const response = await apiRequest("PATCH", `/api/rider-offers/${offerId}/cancel`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Offer Cancelled",
+        description: "Your ride request has been cancelled.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/rider-offers/mine"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel offer",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRevisePrice = () => {
+    if (!selectedOffer || !editPrice) return;
+    const price = parseFloat(editPrice);
+    if (isNaN(price) || price < 1 || price > 500) {
+      toast({
+        title: "Invalid Price",
+        description: "Please enter a price between £1 and £500",
+        variant: "destructive",
+      });
+      return;
+    }
+    reviseOfferMutation.mutate({ offerId: selectedOffer.id, newPrice: price });
+  };
 
   const [currentTime, setCurrentTime] = useState(Date.now());
   
@@ -317,6 +409,10 @@ export default function RiderPage() {
     return formatDate(dateString);
   };
 
+  const getConfirmedRiders = (route: DriverRoute): number => {
+    return (route.totalSeats || route.availableSeats) - route.availableSeats;
+  };
+
   return (
     <div className="min-h-screen bg-muted/20">
       <Navbar />
@@ -413,6 +509,117 @@ export default function RiderPage() {
                   Offers within 10% of the recommended market rate are accepted 3x faster.
                 </p>
               </div>
+
+              {/* My Pending Offers Section */}
+              {user && myPendingOffers.length > 0 && (
+                <Card className="mt-6 border-none shadow-lg">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center justify-between">
+                      <span>My Pending Requests</span>
+                      <Badge variant="outline">{myPendingOffers.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {myPendingOffers.map((offer) => (
+                      <div 
+                        key={offer.id} 
+                        className="p-3 bg-muted/50 rounded-lg border"
+                        data-testid={`my-offer-${offer.id}`}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{offer.pickupLocation}</p>
+                            <p className="text-xs text-muted-foreground">to</p>
+                            <p className="text-sm font-medium truncate">{offer.dropoffLocation}</p>
+                          </div>
+                          <Badge className="bg-primary text-white shrink-0">
+                            £{offer.offerPrice}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(offer.requestedTime)} at {formatTime(offer.requestedTime)}
+                          </p>
+                          <div className="flex gap-1">
+                            <Dialog open={editDialogOpen && selectedOffer?.id === offer.id} onOpenChange={(open) => {
+                              setEditDialogOpen(open);
+                              if (open) {
+                                setSelectedOffer(offer);
+                                setEditPrice(offer.offerPrice);
+                              } else {
+                                setSelectedOffer(null);
+                                setEditPrice("");
+                              }
+                            }}>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-7 px-2"
+                                  data-testid={`button-edit-offer-${offer.id}`}
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Revise Offer Price</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 pt-4">
+                                  <p className="text-sm text-muted-foreground">
+                                    Current price: <strong>£{offer.offerPrice}</strong>
+                                  </p>
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium">New Price (£)</label>
+                                    <div className="relative">
+                                      <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                      <Input 
+                                        type="number"
+                                        placeholder="Enter new price"
+                                        min="1"
+                                        max="500"
+                                        className="pl-9"
+                                        value={editPrice}
+                                        onChange={(e) => setEditPrice(e.target.value)}
+                                        data-testid="input-edit-price"
+                                      />
+                                    </div>
+                                  </div>
+                                  <Button 
+                                    onClick={handleRevisePrice}
+                                    className="w-full"
+                                    disabled={reviseOfferMutation.isPending || !editPrice}
+                                    data-testid="button-submit-revision"
+                                  >
+                                    {reviseOfferMutation.isPending ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Updating...
+                                      </>
+                                    ) : (
+                                      "Update Price"
+                                    )}
+                                  </Button>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-7 px-2 text-red-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => cancelOfferMutation.mutate(offer.id)}
+                              disabled={cancelOfferMutation.isPending}
+                              data-testid={`button-cancel-offer-${offer.id}`}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
 
@@ -467,11 +674,17 @@ export default function RiderPage() {
                           <div className="space-y-2">
                             <p className="text-sm"><span className="text-accent">●</span> {route.startLocation}</p>
                             <p className="text-sm"><span className="text-secondary">●</span> {route.endLocation}</p>
-                            <div className="flex items-center gap-2 mt-2">
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
                               <Badge variant="outline" className="text-xs">
                                 <Clock className="h-3 w-3 mr-1" />
                                 {getTimeUntilDeparture(route.departureTime)}
                               </Badge>
+                              {getConfirmedRiders(route) > 0 && (
+                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                  <Users className="h-3 w-3 mr-1" />
+                                  {getConfirmedRiders(route)} rider{getConfirmedRiders(route) > 1 ? 's' : ''} confirmed
+                                </Badge>
+                              )}
                               {getDistanceAndETA(route) && (
                                 <>
                                   <Badge variant="outline" className="text-xs">
@@ -614,6 +827,15 @@ export default function RiderPage() {
                           </div>
                         </div>
                         
+                        {getConfirmedRiders(route) > 0 && (
+                          <div className="flex items-center gap-3 pl-1">
+                            <div className="h-2 w-2 rounded-full bg-green-500 z-10" />
+                            <p className="text-xs text-green-600 dark:text-green-400">
+                              {getConfirmedRiders(route)} stop{getConfirmedRiders(route) > 1 ? 's' : ''} on this route
+                            </p>
+                          </div>
+                        )}
+                        
                         <div className="flex items-center gap-3">
                           <div className="h-4 w-4 rounded-full border-2 border-secondary bg-background z-10" />
                           <div>
@@ -622,11 +844,17 @@ export default function RiderPage() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2 mt-4">
+                      <div className="flex flex-wrap items-center gap-2 mt-4">
                         <Badge variant="outline" className="text-xs">
                           <Clock className="h-3 w-3 mr-1" />
                           {getTimeUntilDeparture(route.departureTime)}
                         </Badge>
+                        {getConfirmedRiders(route) > 0 && (
+                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            <Users className="h-3 w-3 mr-1" />
+                            {getConfirmedRiders(route)} confirmed
+                          </Badge>
+                        )}
                         {getDistanceAndETA(route) && (
                           <>
                             <Badge variant="outline" className="text-xs">

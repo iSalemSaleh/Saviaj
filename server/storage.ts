@@ -57,8 +57,10 @@ export interface IStorage {
   // Rider Offer operations
   createRiderOffer(offer: InsertRiderOffer): Promise<RiderOffer>;
   getRiderOffers(status?: string): Promise<RiderOffer[]>;
+  getRiderOffersByUser(userId: string): Promise<RiderOffer[]>;
   getRiderOfferById(id: number): Promise<RiderOffer | undefined>;
   updateRiderOfferStatus(id: number, status: string, driverId?: string): Promise<RiderOffer>;
+  updateRiderOfferPrice(id: number, offerPrice: number): Promise<RiderOffer>;
   
   // Driver Route operations
   createDriverRoute(route: InsertDriverRoute): Promise<DriverRoute>;
@@ -230,6 +232,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(riderOffers.createdAt));
   }
 
+  async getRiderOffersByUser(userId: string): Promise<RiderOffer[]> {
+    return await db
+      .select()
+      .from(riderOffers)
+      .where(eq(riderOffers.riderId, userId))
+      .orderBy(desc(riderOffers.createdAt));
+  }
+
   async getRiderOfferById(id: number): Promise<RiderOffer | undefined> {
     const [offer] = await db
       .select()
@@ -244,6 +254,18 @@ export class DatabaseStorage implements IStorage {
       .set({
         status,
         acceptedDriverId: driverId,
+        updatedAt: new Date(),
+      })
+      .where(eq(riderOffers.id, id))
+      .returning();
+    return offer;
+  }
+
+  async updateRiderOfferPrice(id: number, offerPrice: number): Promise<RiderOffer> {
+    const [offer] = await db
+      .update(riderOffers)
+      .set({
+        offerPrice: offerPrice.toString(),
         updatedAt: new Date(),
       })
       .where(eq(riderOffers.id, id))
