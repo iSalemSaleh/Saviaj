@@ -117,8 +117,9 @@ export default function PostcodeSearch({
       <div className="relative">
         {showPulse ? (
           <div className="absolute left-3 top-3 z-10">
-            <div className="relative h-4 w-4 flex items-center justify-center">
-              <div className="absolute h-3 w-3 rounded-full bg-sky-400 animate-ping opacity-75" />
+            <div className="relative h-6 w-6 flex items-center justify-center">
+              <div className="absolute h-6 w-6 rounded-full bg-sky-400/30 animate-ripple-slow" />
+              <div className="absolute h-5 w-5 rounded-full bg-sky-400/50 animate-ripple-slow animation-delay-300" />
               <div className="h-2.5 w-2.5 rounded-full bg-sky-500 border-2 border-white shadow-sm" />
             </div>
           </div>
