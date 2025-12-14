@@ -956,6 +956,44 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Public driver profile endpoint
+  app.get('/api/drivers/:id/profile', async (req, res) => {
+    try {
+      const userId = req.params.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+      
+      if (!user.isDriver) {
+        return res.status(404).json({ message: "User is not a driver" });
+      }
+      
+      // Return only public driver information
+      const publicProfile = {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName ? user.lastName.charAt(0) + '.' : null,
+        profileImageUrl: user.profileImageUrl,
+        driverRating: user.driverRating,
+        totalRatingsAsDriver: user.totalRatingsAsDriver,
+        totalRidesAsDriver: user.totalRidesAsDriver,
+        vehicleMake: user.vehicleMake,
+        vehicleModel: user.vehicleModel,
+        vehicleYear: user.vehicleYear,
+        vehicleColor: user.vehicleColor,
+        driverVerified: user.driverVerified,
+        createdAt: user.createdAt,
+      };
+      
+      res.json(publicProfile);
+    } catch (error) {
+      console.error("Error fetching driver profile:", error);
+      res.status(500).json({ message: "Failed to fetch driver profile" });
+    }
+  });
+
   app.get('/api/ratings/check/:rideId', isAuthenticated, async (req: any, res) => {
     try {
       const rideId = parseInt(req.params.rideId);

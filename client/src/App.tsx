@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import RiderPage from "@/pages/rider";
 import DriverPage from "@/pages/driver";
+import DriverProfilePage from "@/pages/driver-profile";
 import AuthPage from "@/pages/auth";
 import OnboardingPage from "@/pages/onboarding";
 import RideTrackingPage from "@/pages/ride-tracking";
@@ -111,6 +112,7 @@ function Router() {
       <Route path="/ride/:id">
         <ProtectedRoute component={RideTrackingPage} />
       </Route>
+      <Route path="/driver/:id" component={DriverProfilePage} />
       <Route component={NotFound} />
     </Switch>
   );
