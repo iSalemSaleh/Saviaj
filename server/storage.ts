@@ -27,6 +27,38 @@ import {
 import { db } from "./db";
 import { eq, and, desc, sql, lt, gt } from "drizzle-orm";
 
+// Haversine formula to calculate distance between two points in miles
+function calculateDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// Calculate minimum distance from a point to a route (start to end line segment)
+function distanceToRouteMiles(
+  pointLat: number, 
+  pointLon: number, 
+  startLat: number, 
+  startLon: number, 
+  endLat: number, 
+  endLon: number
+): number {
+  // Check distance to start point
+  const distToStart = calculateDistanceMiles(pointLat, pointLon, startLat, startLon);
+  // Check distance to end point
+  const distToEnd = calculateDistanceMiles(pointLat, pointLon, endLat, endLon);
+  
+  // For simplicity, use minimum of distances to start/end points
+  // A more accurate implementation would calculate perpendicular distance to the route line
+  return Math.min(distToStart, distToEnd);
+}
+
 export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
@@ -70,7 +102,7 @@ export interface IStorage {
   // Driver Route operations
   createDriverRoute(route: InsertDriverRoute): Promise<DriverRoute>;
   getDriverRoutes(status?: string): Promise<DriverRoute[]>;
-  getDriverRoutesWithDriverInfo(status?: string): Promise<Array<DriverRoute & {
+  getDriverRoutesWithDriverInfo(status?: string, riderLat?: number, riderLng?: number): Promise<Array<DriverRoute & {
     driver: {
       id: string;
       firstName: string | null;
@@ -83,7 +115,8 @@ export interface IStorage {
       vehicleYear: string | null;
       vehicleColor: string | null;
       driverVerified: boolean | null;
-    }
+    };
+    distanceToRider?: number;
   }>>;
   getDriverRouteById(id: number): Promise<DriverRoute | undefined>;
   updateDriverRouteStatus(id: number, status: string): Promise<DriverRoute>;
@@ -335,7 +368,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(driverRoutes.createdAt));
   }
 
-  async getDriverRoutesWithDriverInfo(status?: string): Promise<Array<DriverRoute & {
+  async getDriverRoutesWithDriverInfo(status?: string, riderLat?: number, riderLng?: number): Promise<Array<DriverRoute & {
     driver: {
       id: string;
       firstName: string | null;
@@ -348,7 +381,8 @@ export class DatabaseStorage implements IStorage {
       vehicleYear: string | null;
       vehicleColor: string | null;
       driverVerified: boolean | null;
-    }
+    };
+    distanceToRider?: number;
   }>> {
     const query = db
       .select({
@@ -377,6 +411,41 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(driverRoutes.createdAt));
     } else {
       results = await query.orderBy(desc(driverRoutes.createdAt));
+    }
+    
+    // If rider location is provided, filter routes based on proximity
+    if (riderLat !== undefined && riderLng !== undefined) {
+      return results
+        .map(r => {
+          const routeStartLat = parseFloat(r.route.startLat?.toString() || "0");
+          const routeStartLng = parseFloat(r.route.startLng?.toString() || "0");
+          const routeEndLat = parseFloat(r.route.endLat?.toString() || "0");
+          const routeEndLng = parseFloat(r.route.endLng?.toString() || "0");
+          const maxDetour = parseFloat(r.route.maxDetourMiles?.toString() || "0");
+          
+          // Calculate distance from rider's pickup to the route
+          const distanceToRoute = distanceToRouteMiles(
+            riderLat, 
+            riderLng, 
+            routeStartLat, 
+            routeStartLng, 
+            routeEndLat, 
+            routeEndLng
+          );
+          
+          return {
+            ...r.route,
+            driver: r.driver,
+            distanceToRider: Math.round(distanceToRoute * 10) / 10
+          };
+        })
+        // Filter: only show routes where rider is within driver's max detour radius
+        .filter(route => {
+          const maxDetour = parseFloat(route.maxDetourMiles?.toString() || "0");
+          return route.distanceToRider !== undefined && route.distanceToRider <= maxDetour;
+        })
+        // Sort by distance (closest first)
+        .sort((a, b) => (a.distanceToRider || 0) - (b.distanceToRider || 0));
     }
     
     return results.map(r => ({

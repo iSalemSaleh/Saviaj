@@ -473,7 +473,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.get('/api/driver-routes', async (req, res) => {
     try {
       const status = req.query.status as string | undefined;
-      const routes = await storage.getDriverRoutesWithDriverInfo(status);
+      const riderLat = req.query.riderLat ? parseFloat(req.query.riderLat as string) : undefined;
+      const riderLng = req.query.riderLng ? parseFloat(req.query.riderLng as string) : undefined;
+      const routes = await storage.getDriverRoutesWithDriverInfo(status, riderLat, riderLng);
       res.json(routes);
     } catch (error) {
       console.error("Error fetching driver routes:", error);

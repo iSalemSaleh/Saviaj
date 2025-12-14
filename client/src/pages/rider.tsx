@@ -155,7 +155,17 @@ export default function RiderPage() {
   };
 
   const { data: driverRoutes = [], isLoading: routesLoading } = useQuery<DriverRoute[]>({
-    queryKey: ["/api/driver-routes"],
+    queryKey: ["/api/driver-routes", pickupCoords?.lat, pickupCoords?.lon],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (pickupCoords) {
+        params.append('riderLat', pickupCoords.lat.toString());
+        params.append('riderLng', pickupCoords.lon.toString());
+      }
+      const url = `/api/driver-routes${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetch(url);
+      return response.json();
+    },
   });
 
   const { data: myOffers = [], isLoading: myOffersLoading } = useQuery<RiderOffer[]>({
