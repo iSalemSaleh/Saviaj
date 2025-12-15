@@ -1,9 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { Car, MapPin } from "lucide-react";
+import { Car, MapPin, UserPlus } from "lucide-react";
 import heroBg from "@assets/generated_images/modern_abstract_city_map_with_motion_blur_lines.png";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Hero() {
+  const { user } = useAuth();
+  const isDriver = (user as any)?.isDriver === true;
+
   return (
     <div className="relative overflow-hidden bg-background py-24 sm:py-32">
       {/* Background Image with Overlay */}
@@ -26,16 +30,30 @@ export default function Hero() {
             No algorithms, just fair connections.
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Button asChild size="lg" className="h-12 px-8 text-md shadow-lg shadow-primary/20">
+            <Button asChild size="lg" className="h-12 px-8 text-md shadow-lg shadow-primary/20" data-testid="button-find-ride">
               <Link href="/rider">
                 Find a Ride <MapPin className="ml-2 h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-12 px-8 text-md bg-white/50 backdrop-blur-sm hover:bg-white/80">
-              <Link href="/driver">
-                Offer a Ride <Car className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
+            {isDriver ? (
+              <Button asChild size="lg" variant="outline" className="h-12 px-8 text-md bg-white/50 backdrop-blur-sm hover:bg-white/80" data-testid="button-offer-ride">
+                <Link href="/driver">
+                  Offer a Ride <Car className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            ) : user ? (
+              <Button asChild size="lg" variant="outline" className="h-12 px-8 text-md bg-white/50 backdrop-blur-sm hover:bg-white/80" data-testid="button-become-driver">
+                <Link href="/become-driver">
+                  Become a Driver <UserPlus className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild size="lg" variant="outline" className="h-12 px-8 text-md bg-white/50 backdrop-blur-sm hover:bg-white/80" data-testid="button-offer-ride">
+                <Link href="/driver">
+                  Offer a Ride <Car className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>

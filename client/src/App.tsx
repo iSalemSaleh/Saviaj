@@ -16,6 +16,7 @@ import OnboardingPage from "@/pages/onboarding";
 import RideTrackingPage from "@/pages/ride-tracking";
 import SignupPage from "@/pages/signup";
 import LoginPage from "@/pages/login";
+import BecomeDriverPage from "@/pages/become-driver";
 import SplashScreen from "@/components/SplashScreen";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -36,6 +37,32 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
   if (user && !user.firstName && location !== "/onboarding") {
     return <Redirect to="/onboarding" />;
+  }
+
+  return <Component />;
+}
+
+function DriverProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect to="/auth" />;
+  }
+
+  if (user && !user.firstName) {
+    return <Redirect to="/onboarding" />;
+  }
+
+  if (user && !(user as any).isDriver) {
+    return <Redirect to="/become-driver" />;
   }
 
   return <Component />;
@@ -103,7 +130,10 @@ function Router() {
         <ProtectedRoute component={RiderPage} />
       </Route>
       <Route path="/driver">
-        <ProtectedRoute component={DriverPage} />
+        <DriverProtectedRoute component={DriverPage} />
+      </Route>
+      <Route path="/become-driver">
+        <ProtectedRoute component={BecomeDriverPage} />
       </Route>
       <Route path="/auth" component={AuthRoute} />
       <Route path="/signup" component={SignupPage} />

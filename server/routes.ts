@@ -7,7 +7,9 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth } from "./localAuth";
 import { setupWebSocket } from "./websocket";
-import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema } from "@shared/schema";
+import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema, users } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 const isProfileComplete: RequestHandler = async (req: any, res, next) => {
   try {
@@ -255,6 +257,80 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     } catch (error) {
       console.error("Error completing profile:", error);
       res.status(500).json({ message: "Failed to complete profile" });
+    }
+  });
+
+  // Upgrade existing user to driver
+  app.post('/api/user/upgrade-to-driver', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { 
+        driverLicenseUrl,
+        driverLicenseNumber,
+        driverLicenseExpiry,
+        backgroundCheckConsent,
+        vehicleMake,
+        vehicleModel,
+        vehicleYear,
+        vehicleColor,
+        vehicleRegistration,
+        vehicleInsuranceExpiry,
+        bankAccountName,
+        bankSortCode,
+        bankAccountNumber,
+      } = req.body;
+      
+      // Driver-specific validation
+      if (!driverLicenseUrl) {
+        return res.status(400).json({ message: "Driver's license upload is required" });
+      }
+      if (!driverLicenseNumber || !driverLicenseExpiry) {
+        return res.status(400).json({ message: "License number and expiry date are required" });
+      }
+      if (!backgroundCheckConsent) {
+        return res.status(400).json({ message: "Background check consent is required" });
+      }
+      if (!vehicleMake || !vehicleModel || !vehicleRegistration) {
+        return res.status(400).json({ message: "Vehicle information (make, model, registration) is required" });
+      }
+      if (!bankAccountName || !bankSortCode || !bankAccountNumber) {
+        return res.status(400).json({ message: "Bank details are required to receive payments" });
+      }
+      
+      const [user] = await db
+        .update(users)
+        .set({
+          isDriver: true,
+          driverLicenseUrl,
+          driverLicenseNumber,
+          driverLicenseExpiry,
+          backgroundCheckConsent,
+          backgroundCheckStatus: 'pending',
+          vehicleMake,
+          vehicleModel,
+          vehicleYear,
+          vehicleColor,
+          vehicleRegistration,
+          vehicleInsuranceExpiry,
+          bankAccountName,
+          bankSortCode,
+          bankAccountNumber,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      
+      // Mask sensitive data in response
+      const maskedUser = {
+        ...user,
+        bankAccountNumber: user.bankAccountNumber ? '****' + user.bankAccountNumber.slice(-4) : null,
+        bankSortCode: user.bankSortCode ? '**-**-' + user.bankSortCode.slice(-2) : null,
+      };
+      
+      res.json(maskedUser);
+    } catch (error) {
+      console.error("Error upgrading to driver:", error);
+      res.status(500).json({ message: "Failed to upgrade to driver" });
     }
   });
 
