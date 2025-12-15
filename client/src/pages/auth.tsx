@@ -116,7 +116,7 @@ export default function AuthPage() {
 
           <div className="pt-4 border-t">
             <p className="text-xs text-center text-muted-foreground">
-              Sign in with Google, GitHub, or email. By continuing, you agree to our Terms of Service and Privacy Policy.
+              Sign in with Google, Apple, X, or email. By continuing, you agree to our Terms of Service and Privacy Policy.
             </p>
           </div>
         </CardContent>
