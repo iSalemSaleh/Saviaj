@@ -11,6 +11,54 @@ import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema, users
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
+// UK-specific validation functions
+// DVLA format: 16 alphanumeric characters (SSSSS YYMMDD IICCC)
+function validateUkDrivingLicense(license: string): { valid: boolean; error?: string } {
+  const normalized = license.toUpperCase().replace(/\s/g, '');
+  if (normalized.length !== 16) {
+    return { valid: false, error: "UK license must be 16 characters" };
+  }
+  // UK DVLA format: 5 letters/9 + 6 digits + 5 alphanumeric
+  // Examples: MORGA753116SM9IJ, SMITH701019AB9CD
+  const pattern = /^[A-Z9]{5}[0-9]{6}[A-Z0-9]{5}$/;
+  if (!pattern.test(normalized)) {
+    return { valid: false, error: "Invalid UK license format" };
+  }
+  return { valid: true };
+}
+
+function validateInsuranceExpiry(dateStr: string): { valid: boolean; error?: string } {
+  if (!dateStr) {
+    return { valid: false, error: "Insurance expiry date is required" };
+  }
+  const expiryDate = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const minDate = new Date(today);
+  minDate.setDate(minDate.getDate() + 30);
+  
+  if (expiryDate < minDate) {
+    return { valid: false, error: "Insurance must be valid for at least 30 days" };
+  }
+  return { valid: true };
+}
+
+function validateUkSortCode(sortCode: string): { valid: boolean; error?: string } {
+  const digitsOnly = sortCode.replace(/\D/g, '');
+  if (digitsOnly.length !== 6) {
+    return { valid: false, error: "Sort code must be 6 digits" };
+  }
+  return { valid: true };
+}
+
+function validateUkAccountNumber(accountNumber: string): { valid: boolean; error?: string } {
+  const digitsOnly = accountNumber.replace(/\D/g, '');
+  if (digitsOnly.length !== 8) {
+    return { valid: false, error: "Account number must be 8 digits" };
+  }
+  return { valid: true };
+}
+
 const isProfileComplete: RequestHandler = async (req: any, res, next) => {
   try {
     const userId = req.user?.claims?.sub;
@@ -297,12 +345,38 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Bank details are required to receive payments" });
       }
       
+      // UK-specific format validations
+      const licenseValidation = validateUkDrivingLicense(driverLicenseNumber);
+      if (!licenseValidation.valid) {
+        return res.status(400).json({ message: licenseValidation.error });
+      }
+      
+      const insuranceValidation = validateInsuranceExpiry(vehicleInsuranceExpiry);
+      if (!insuranceValidation.valid) {
+        return res.status(400).json({ message: insuranceValidation.error });
+      }
+      
+      const sortCodeValidation = validateUkSortCode(bankSortCode);
+      if (!sortCodeValidation.valid) {
+        return res.status(400).json({ message: sortCodeValidation.error });
+      }
+      
+      const accountValidation = validateUkAccountNumber(bankAccountNumber);
+      if (!accountValidation.valid) {
+        return res.status(400).json({ message: accountValidation.error });
+      }
+      
+      // Normalize the data before saving
+      const normalizedLicense = driverLicenseNumber.toUpperCase().replace(/\s/g, '');
+      const normalizedSortCode = bankSortCode.replace(/\D/g, '');
+      const normalizedAccountNumber = bankAccountNumber.replace(/\D/g, '');
+      
       const [user] = await db
         .update(users)
         .set({
           isDriver: true,
           driverLicenseUrl,
-          driverLicenseNumber,
+          driverLicenseNumber: normalizedLicense,
           driverLicenseExpiry,
           backgroundCheckConsent,
           backgroundCheckStatus: 'pending',
@@ -313,14 +387,14 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           vehicleRegistration,
           vehicleInsuranceExpiry,
           bankAccountName,
-          bankSortCode,
-          bankAccountNumber,
+          bankSortCode: normalizedSortCode,
+          bankAccountNumber: normalizedAccountNumber,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId))
         .returning();
       
-      // Mask sensitive data in response
+      // Mask sensitive data in response (sort code stored as 6 digits)
       const maskedUser = {
         ...user,
         bankAccountNumber: user.bankAccountNumber ? '****' + user.bankAccountNumber.slice(-4) : null,

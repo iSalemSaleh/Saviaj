@@ -7,10 +7,66 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Car, Shield, PoundSterling, Upload, Loader2, CheckCircle2 } from "lucide-react";
+import { Car, Shield, PoundSterling, Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+
+// UK Driving License validation (DVLA format: 16 alphanumeric characters)
+// Format: SSSSS YYMMDD IICCC where:
+// - SSSSS: First 5 chars of surname (9 as filler for short names)
+// - YYMMDD: Date of birth encoding (6 digits)
+// - II: Initials (can include 9 as filler)
+// - CCC: Check characters (alphanumeric)
+function validateUkDrivingLicense(license: string): { valid: boolean; error?: string } {
+  const normalized = license.toUpperCase().replace(/\s/g, '');
+  if (normalized.length !== 16) {
+    return { valid: false, error: "UK license must be 16 characters" };
+  }
+  // UK DVLA format: 5 letters/9 + 6 digits + 5 alphanumeric
+  // Examples: MORGA753116SM9IJ, SMITH701019AB9CD
+  const pattern = /^[A-Z9]{5}[0-9]{6}[A-Z0-9]{5}$/;
+  if (!pattern.test(normalized)) {
+    return { valid: false, error: "Invalid UK license format (e.g., MORGA753116SM9IJ)" };
+  }
+  return { valid: true };
+}
+
+// Insurance expiry validation (must be at least 30 days from now)
+function validateInsuranceExpiry(dateStr: string): { valid: boolean; error?: string } {
+  if (!dateStr) {
+    return { valid: false, error: "Insurance expiry date is required" };
+  }
+  const expiryDate = new Date(dateStr);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const minDate = new Date(today);
+  minDate.setDate(minDate.getDate() + 30);
+  
+  if (expiryDate < minDate) {
+    return { valid: false, error: "Insurance must be valid for at least 30 days" };
+  }
+  return { valid: true };
+}
+
+// UK Sort Code validation (6 digits, accepts XX-XX-XX or XXXXXX format)
+function validateUkSortCode(sortCode: string): { valid: boolean; error?: string; formatted?: string } {
+  const digitsOnly = sortCode.replace(/\D/g, '');
+  if (digitsOnly.length !== 6) {
+    return { valid: false, error: "Sort code must be 6 digits (e.g., 12-34-56)" };
+  }
+  const formatted = `${digitsOnly.slice(0, 2)}-${digitsOnly.slice(2, 4)}-${digitsOnly.slice(4, 6)}`;
+  return { valid: true, formatted };
+}
+
+// UK Bank Account Number validation (exactly 8 digits)
+function validateUkAccountNumber(accountNumber: string): { valid: boolean; error?: string } {
+  const digitsOnly = accountNumber.replace(/\D/g, '');
+  if (digitsOnly.length !== 8) {
+    return { valid: false, error: "Account number must be 8 digits" };
+  }
+  return { valid: true };
+}
 
 export default function BecomeDriverPage() {
   const { user } = useAuth();
@@ -38,6 +94,14 @@ export default function BecomeDriverPage() {
   const [bankSortCode, setBankSortCode] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+
+  // Validation error states
+  const [errors, setErrors] = useState<{
+    licenseNumber?: string;
+    insuranceExpiry?: string;
+    sortCode?: string;
+    accountNumber?: string;
+  }>({});
 
   const handleLicenseUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -101,6 +165,9 @@ export default function BecomeDriverPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Clear previous errors
+    const newErrors: typeof errors = {};
+
     if (!driverLicenseUrl) {
       toast({
         title: "Missing Information",
@@ -114,6 +181,45 @@ export default function BecomeDriverPage() {
       toast({
         title: "Missing Information",
         description: "Please enter your license number and expiry date",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate UK driving license format
+    const licenseValidation = validateUkDrivingLicense(driverLicenseNumber);
+    if (!licenseValidation.valid) {
+      newErrors.licenseNumber = licenseValidation.error;
+    }
+
+    // Validate insurance expiry (at least 30 days)
+    if (vehicleInsuranceExpiry) {
+      const insuranceValidation = validateInsuranceExpiry(vehicleInsuranceExpiry);
+      if (!insuranceValidation.valid) {
+        newErrors.insuranceExpiry = insuranceValidation.error;
+      }
+    } else {
+      newErrors.insuranceExpiry = "Insurance expiry date is required";
+    }
+
+    // Validate UK sort code format
+    const sortCodeValidation = validateUkSortCode(bankSortCode);
+    if (!sortCodeValidation.valid) {
+      newErrors.sortCode = sortCodeValidation.error;
+    }
+
+    // Validate UK account number format
+    const accountValidation = validateUkAccountNumber(bankAccountNumber);
+    if (!accountValidation.valid) {
+      newErrors.accountNumber = accountValidation.error;
+    }
+
+    // Set errors and stop if any exist
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the highlighted fields before submitting",
         variant: "destructive",
       });
       return;
@@ -146,9 +252,10 @@ export default function BecomeDriverPage() {
       return;
     }
 
+    // Send digits only - backend will normalize
     upgradeMutation.mutate({
       driverLicenseUrl,
-      driverLicenseNumber,
+      driverLicenseNumber: driverLicenseNumber.toUpperCase().replace(/\s/g, ''),
       driverLicenseExpiry,
       backgroundCheckConsent,
       vehicleMake,
@@ -158,8 +265,8 @@ export default function BecomeDriverPage() {
       vehicleRegistration,
       vehicleInsuranceExpiry,
       bankAccountName,
-      bankSortCode,
-      bankAccountNumber,
+      bankSortCode: bankSortCode.replace(/\D/g, ''),
+      bankAccountNumber: bankAccountNumber.replace(/\D/g, ''),
     });
   };
 
@@ -233,10 +340,20 @@ export default function BecomeDriverPage() {
                     <Input
                       id="licenseNumber"
                       value={driverLicenseNumber}
-                      onChange={(e) => setDriverLicenseNumber(e.target.value)}
-                      placeholder="XXXXX-XXXXX-XXXXX"
+                      onChange={(e) => {
+                        setDriverLicenseNumber(e.target.value);
+                        if (errors.licenseNumber) setErrors(prev => ({ ...prev, licenseNumber: undefined }));
+                      }}
+                      placeholder="e.g. SMITH701019AB9CD"
+                      className={errors.licenseNumber ? "border-red-500" : ""}
                       data-testid="input-license-number"
                     />
+                    {errors.licenseNumber && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.licenseNumber}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="licenseExpiry">Expiry Date</Label>
@@ -329,9 +446,19 @@ export default function BecomeDriverPage() {
                       id="insuranceExpiry"
                       type="date"
                       value={vehicleInsuranceExpiry}
-                      onChange={(e) => setVehicleInsuranceExpiry(e.target.value)}
+                      onChange={(e) => {
+                        setVehicleInsuranceExpiry(e.target.value);
+                        if (errors.insuranceExpiry) setErrors(prev => ({ ...prev, insuranceExpiry: undefined }));
+                      }}
+                      className={errors.insuranceExpiry ? "border-red-500" : ""}
                       data-testid="input-insurance-expiry"
                     />
+                    {errors.insuranceExpiry && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.insuranceExpiry}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -359,20 +486,40 @@ export default function BecomeDriverPage() {
                     <Input
                       id="sortCode"
                       value={bankSortCode}
-                      onChange={(e) => setBankSortCode(e.target.value)}
-                      placeholder="00-00-00"
+                      onChange={(e) => {
+                        setBankSortCode(e.target.value);
+                        if (errors.sortCode) setErrors(prev => ({ ...prev, sortCode: undefined }));
+                      }}
+                      placeholder="12-34-56"
+                      className={errors.sortCode ? "border-red-500" : ""}
                       data-testid="input-sort-code"
                     />
+                    {errors.sortCode && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.sortCode}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="accountNumber">Account Number</Label>
                     <Input
                       id="accountNumber"
                       value={bankAccountNumber}
-                      onChange={(e) => setBankAccountNumber(e.target.value)}
+                      onChange={(e) => {
+                        setBankAccountNumber(e.target.value);
+                        if (errors.accountNumber) setErrors(prev => ({ ...prev, accountNumber: undefined }));
+                      }}
                       placeholder="12345678"
+                      className={errors.accountNumber ? "border-red-500" : ""}
                       data-testid="input-account-number"
                     />
+                    {errors.accountNumber && (
+                      <p className="text-sm text-red-500 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {errors.accountNumber}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
