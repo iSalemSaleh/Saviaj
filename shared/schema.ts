@@ -381,7 +381,7 @@ export type ChatMessage = typeof chatMessages.$inferSelect;
 export const phoneVerifications = pgTable("phone_verifications", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   phoneNumber: varchar("phone_number", { length: 20 }).notNull(),
-  otpCode: varchar("otp_code", { length: 6 }).notNull(),
+  otpCode: varchar("otp_code", { length: 72 }).notNull(), // bcrypt hash is 60 chars
   verificationToken: varchar("verification_token", { length: 64 }),
   status: varchar("status", { length: 20 }).default("pending"), // pending, verified, expired
   attempts: integer("attempts").default(0),
