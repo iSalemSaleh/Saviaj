@@ -5,10 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { MapPin, Car, Users, Shield, Loader2, UserPlus, LogIn } from "lucide-react";
 import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
+import { PhoneVerificationModal } from "@/components/PhoneVerificationModal";
 
 export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState<'signin' | 'signup' | null>(null);
+  const [showPhoneVerification, setShowPhoneVerification] = useState(false);
 
   const handleSignIn = () => {
     setIsLoading('signin');
@@ -16,9 +18,16 @@ export default function AuthPage() {
     window.location.href = loginUrl;
   };
 
-  const handleSignUp = () => {
+  const handleSignUpClick = () => {
+    setShowPhoneVerification(true);
+  };
+
+  const handlePhoneVerified = (phoneNumber: string, verificationToken: string) => {
+    setShowPhoneVerification(false);
     setIsLoading('signup');
     localStorage.setItem('atlasride_signup', 'true');
+    localStorage.setItem('atlasride_verified_phone', phoneNumber);
+    localStorage.setItem('atlasride_phone_token', verificationToken);
     const loginUrl = rememberMe ? "/api/login?remember=true" : "/api/login";
     window.location.href = loginUrl;
   };
@@ -78,7 +87,7 @@ export default function AuthPage() {
             </Button>
 
             <Button 
-              onClick={handleSignUp}
+              onClick={handleSignUpClick}
               variant="outline"
               className="w-full h-12 text-lg"
               size="lg"
@@ -125,6 +134,12 @@ export default function AuthPage() {
       <p className="mt-6 text-sm text-muted-foreground">
         Powered by secure authentication
       </p>
+
+      <PhoneVerificationModal
+        open={showPhoneVerification}
+        onClose={() => setShowPhoneVerification(false)}
+        onVerified={handlePhoneVerified}
+      />
     </div>
   );
 }
