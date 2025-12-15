@@ -38,6 +38,8 @@ export function PhoneVerificationModal({ open, onClose, onVerified }: PhoneVerif
       setDemoCode(null);
       setError(null);
       setCountdown(0);
+      localStorage.removeItem('atlasride_verified_phone');
+      localStorage.removeItem('atlasride_phone_token');
     }
   }, [open]);
 

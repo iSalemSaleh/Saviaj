@@ -48,6 +48,16 @@ export default function OnboardingPage() {
   const [lastName, setLastName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+
+  // Auto-populate verified phone number from registration
+  useEffect(() => {
+    const verifiedPhone = localStorage.getItem('atlasride_verified_phone');
+    if (verifiedPhone) {
+      setPhoneNumber(verifiedPhone);
+      setIsPhoneVerified(true);
+    }
+  }, []);
   const [homeAddress, setHomeAddress] = useState("");
   const [city, setCity] = useState("");
   const [postcode, setPostcode] = useState("");
@@ -81,6 +91,9 @@ export default function OnboardingPage() {
       return response.json();
     },
     onSuccess: () => {
+      localStorage.removeItem('atlasride_signup');
+      localStorage.removeItem('atlasride_verified_phone');
+      localStorage.removeItem('atlasride_phone_token');
       toast({
         title: "Profile Complete!",
         description: isDriver 
@@ -351,16 +364,25 @@ export default function OnboardingPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phoneNumber">Phone Number *</Label>
+                  <Label htmlFor="phoneNumber" className="flex items-center gap-2">
+                    Phone Number *
+                    {isPhoneVerified && (
+                      <span className="text-green-600 text-xs flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Verified
+                      </span>
+                    )}
+                  </Label>
                   <div className="relative">
                     <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="phoneNumber"
                       type="tel"
                       placeholder="+44 7700 900000"
-                      className="pl-9"
+                      className={`pl-9 ${isPhoneVerified ? "bg-muted" : ""}`}
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
+                      disabled={isPhoneVerified}
                       data-testid="input-phone-number"
                     />
                   </div>

@@ -156,12 +156,21 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // Generate 6-digit OTP
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
       
+      // Hash the OTP code for secure storage
+      const bcrypt = await import("bcrypt");
+      const hashedOtp = await bcrypt.default.hash(otpCode, 10);
+      
       // Create verification record (expires in 5 minutes)
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
       
+      // Invalidate any existing pending verifications for this phone
+      await db.update(phoneVerifications)
+        .set({ status: "expired" })
+        .where(eq(phoneVerifications.phoneNumber, normalizedPhone));
+      
       await db.insert(phoneVerifications).values({
         phoneNumber: normalizedPhone,
-        otpCode,
+        otpCode: hashedOtp,
         status: "pending",
         attempts: 0,
         expiresAt,
@@ -176,7 +185,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           success: true, 
           message: "Verification code sent",
           demoMode: true,
-          demoCode: otpCode // Only in demo mode!
+          demoCode: otpCode // Only in demo mode - plaintext for display only!
         });
       }
       
@@ -198,6 +207,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       const normalizedPhone = phoneNumber.replace(/\s/g, '');
       const { phoneVerifications } = await import("@shared/schema");
+      const bcrypt = await import("bcrypt");
       
       // Find the most recent pending verification for this phone
       const [verification] = await db
@@ -215,14 +225,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "This code has already been used. Please request a new code." });
       }
       
-      if (new Date() > verification.expiresAt) {
-        await db.update(phoneVerifications)
-          .set({ status: "expired" })
-          .where(eq(phoneVerifications.id, verification.id));
-        return res.status(400).json({ message: "Code has expired. Please request a new code." });
-      }
-      
-      // Check attempts
+      // Check attempts BEFORE verifying (strict lockout)
       if ((verification.attempts || 0) >= 3) {
         await db.update(phoneVerifications)
           .set({ status: "expired" })
@@ -230,15 +233,24 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Too many attempts. Please request a new code." });
       }
       
-      // Verify the code
-      if (verification.otpCode !== code) {
+      if (new Date() > verification.expiresAt) {
+        await db.update(phoneVerifications)
+          .set({ status: "expired" })
+          .where(eq(phoneVerifications.id, verification.id));
+        return res.status(400).json({ message: "Code has expired. Please request a new code." });
+      }
+      
+      // Verify the hashed code
+      const isValidCode = await bcrypt.default.compare(code, verification.otpCode);
+      
+      if (!isValidCode) {
         await db.update(phoneVerifications)
           .set({ attempts: (verification.attempts || 0) + 1 })
           .where(eq(phoneVerifications.id, verification.id));
         return res.status(400).json({ message: "Invalid code. Please try again." });
       }
       
-      // Code is correct - generate verification token
+      // Code is correct - generate cryptographically secure verification token
       const crypto = await import("crypto");
       const verificationToken = crypto.randomBytes(32).toString("hex");
       
@@ -261,7 +273,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // Validate phone verification token
+  // Validate phone verification token (used during registration)
   app.post('/api/auth/otp/validate-token', async (req, res) => {
     try {
       const { verificationToken, phoneNumber } = req.body;

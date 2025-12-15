@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
 
@@ -75,6 +75,15 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+
+  useEffect(() => {
+    const verifiedPhone = localStorage.getItem('atlasride_verified_phone');
+    if (verifiedPhone) {
+      setFormData(prev => ({ ...prev, phoneNumber: verifiedPhone }));
+      setIsPhoneVerified(true);
+    }
+  }, []);
 
   const totalSteps = formData.accountType === "driver" ? 5 : 3;
   const progress = (step / totalSteps) * 100;
@@ -109,6 +118,9 @@ export default function Signup() {
       return response;
     },
     onSuccess: () => {
+      localStorage.removeItem('atlasride_signup');
+      localStorage.removeItem('atlasride_verified_phone');
+      localStorage.removeItem('atlasride_phone_token');
       window.location.href = "/";
     },
     onError: (error: any) => {
@@ -375,13 +387,23 @@ export default function Signup() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Phone Number *</Label>
+                <Label htmlFor="phoneNumber" className="flex items-center gap-2">
+                  Phone Number *
+                  {isPhoneVerified && (
+                    <span className="text-green-600 text-xs flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Verified
+                    </span>
+                  )}
+                </Label>
                 <Input
                   id="phoneNumber"
                   type="tel"
                   placeholder="+44 7XXX XXXXXX"
                   value={formData.phoneNumber}
                   onChange={(e) => handleChange("phoneNumber", e.target.value)}
+                  disabled={isPhoneVerified}
+                  className={isPhoneVerified ? "bg-muted" : ""}
                   data-testid="input-phone"
                 />
               </div>
