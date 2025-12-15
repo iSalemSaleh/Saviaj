@@ -376,3 +376,23 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
 });
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// Phone Verifications - OTP verification before registration
+export const phoneVerifications = pgTable("phone_verifications", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  phoneNumber: varchar("phone_number", { length: 20 }).notNull(),
+  otpCode: varchar("otp_code", { length: 6 }).notNull(),
+  verificationToken: varchar("verification_token", { length: 64 }),
+  status: varchar("status", { length: 20 }).default("pending"), // pending, verified, expired
+  attempts: integer("attempts").default(0),
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPhoneVerificationSchema = createInsertSchema(phoneVerifications).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPhoneVerification = z.infer<typeof insertPhoneVerificationSchema>;
+export type PhoneVerification = typeof phoneVerifications.$inferSelect;

@@ -9,7 +9,7 @@ import { setupLocalAuth } from "./localAuth";
 import { setupWebSocket } from "./websocket";
 import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema, users } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 // UK-specific validation functions
 // DVLA format: 16 alphanumeric characters (SSSSS YYMMDD IICCC)
@@ -116,6 +116,185 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   
   // Setup WebSocket for real-time location tracking on the main server
   setupWebSocket(httpServer);
+
+  // Phone OTP verification endpoints (unauthenticated - for pre-registration)
+  app.post('/api/auth/otp/request', async (req, res) => {
+    try {
+      const { phoneNumber } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+      
+      // Validate UK phone number format
+      const ukPhonePattern = /^(\+44|0)7\d{9}$/;
+      const normalizedPhone = phoneNumber.replace(/\s/g, '');
+      if (!ukPhonePattern.test(normalizedPhone)) {
+        return res.status(400).json({ message: "Please enter a valid UK mobile number" });
+      }
+      
+      // Rate limiting: check for recent requests from this phone number
+      const { phoneVerifications } = await import("@shared/schema");
+      const recentVerification = await db
+        .select()
+        .from(phoneVerifications)
+        .where(eq(phoneVerifications.phoneNumber, normalizedPhone))
+        .orderBy(sql`${phoneVerifications.createdAt} DESC`)
+        .limit(1);
+      
+      if (recentVerification.length > 0) {
+        const lastRequest = recentVerification[0];
+        const timeSinceLastRequest = Date.now() - new Date(lastRequest.createdAt!).getTime();
+        if (timeSinceLastRequest < 60000) { // 1 minute cooldown
+          return res.status(429).json({ 
+            message: "Please wait before requesting another code",
+            waitSeconds: Math.ceil((60000 - timeSinceLastRequest) / 1000)
+          });
+        }
+      }
+      
+      // Generate 6-digit OTP
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Create verification record (expires in 5 minutes)
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+      
+      await db.insert(phoneVerifications).values({
+        phoneNumber: normalizedPhone,
+        otpCode,
+        status: "pending",
+        attempts: 0,
+        expiresAt,
+      });
+      
+      // In demo mode, return the code (in production, send via SMS)
+      const isDemoMode = !process.env.TWILIO_ACCOUNT_SID;
+      
+      if (isDemoMode) {
+        console.log(`[DEMO MODE] OTP for ${normalizedPhone}: ${otpCode}`);
+        return res.json({ 
+          success: true, 
+          message: "Verification code sent",
+          demoMode: true,
+          demoCode: otpCode // Only in demo mode!
+        });
+      }
+      
+      // TODO: Integrate real SMS provider when credentials are available
+      res.json({ success: true, message: "Verification code sent" });
+    } catch (error) {
+      console.error("OTP request error:", error);
+      res.status(500).json({ message: "Failed to send verification code" });
+    }
+  });
+
+  app.post('/api/auth/otp/verify', async (req, res) => {
+    try {
+      const { phoneNumber, code } = req.body;
+      
+      if (!phoneNumber || !code) {
+        return res.status(400).json({ message: "Phone number and code are required" });
+      }
+      
+      const normalizedPhone = phoneNumber.replace(/\s/g, '');
+      const { phoneVerifications } = await import("@shared/schema");
+      
+      // Find the most recent pending verification for this phone
+      const [verification] = await db
+        .select()
+        .from(phoneVerifications)
+        .where(eq(phoneVerifications.phoneNumber, normalizedPhone))
+        .orderBy(sql`${phoneVerifications.createdAt} DESC`)
+        .limit(1);
+      
+      if (!verification) {
+        return res.status(400).json({ message: "No verification request found. Please request a new code." });
+      }
+      
+      if (verification.status !== "pending") {
+        return res.status(400).json({ message: "This code has already been used. Please request a new code." });
+      }
+      
+      if (new Date() > verification.expiresAt) {
+        await db.update(phoneVerifications)
+          .set({ status: "expired" })
+          .where(eq(phoneVerifications.id, verification.id));
+        return res.status(400).json({ message: "Code has expired. Please request a new code." });
+      }
+      
+      // Check attempts
+      if ((verification.attempts || 0) >= 3) {
+        await db.update(phoneVerifications)
+          .set({ status: "expired" })
+          .where(eq(phoneVerifications.id, verification.id));
+        return res.status(400).json({ message: "Too many attempts. Please request a new code." });
+      }
+      
+      // Verify the code
+      if (verification.otpCode !== code) {
+        await db.update(phoneVerifications)
+          .set({ attempts: (verification.attempts || 0) + 1 })
+          .where(eq(phoneVerifications.id, verification.id));
+        return res.status(400).json({ message: "Invalid code. Please try again." });
+      }
+      
+      // Code is correct - generate verification token
+      const crypto = await import("crypto");
+      const verificationToken = crypto.randomBytes(32).toString("hex");
+      
+      await db.update(phoneVerifications)
+        .set({ 
+          status: "verified",
+          verificationToken,
+          verifiedAt: new Date()
+        })
+        .where(eq(phoneVerifications.id, verification.id));
+      
+      res.json({ 
+        success: true, 
+        verificationToken,
+        phoneNumber: normalizedPhone
+      });
+    } catch (error) {
+      console.error("OTP verification error:", error);
+      res.status(500).json({ message: "Failed to verify code" });
+    }
+  });
+
+  // Validate phone verification token
+  app.post('/api/auth/otp/validate-token', async (req, res) => {
+    try {
+      const { verificationToken, phoneNumber } = req.body;
+      
+      if (!verificationToken || !phoneNumber) {
+        return res.status(400).json({ valid: false });
+      }
+      
+      const { phoneVerifications } = await import("@shared/schema");
+      const normalizedPhone = phoneNumber.replace(/\s/g, '');
+      
+      const [verification] = await db
+        .select()
+        .from(phoneVerifications)
+        .where(eq(phoneVerifications.verificationToken, verificationToken))
+        .limit(1);
+      
+      if (!verification || verification.phoneNumber !== normalizedPhone || verification.status !== "verified") {
+        return res.status(400).json({ valid: false });
+      }
+      
+      // Token is valid for 30 minutes after verification
+      const tokenValidUntil = new Date(verification.verifiedAt!.getTime() + 30 * 60 * 1000);
+      if (new Date() > tokenValidUntil) {
+        return res.status(400).json({ valid: false, message: "Verification expired" });
+      }
+      
+      res.json({ valid: true, phoneNumber: normalizedPhone });
+    } catch (error) {
+      console.error("Token validation error:", error);
+      res.status(500).json({ valid: false });
+    }
+  });
 
   // Azure Maps endpoints (secure - key never exposed to frontend)
   app.get('/api/azure-maps/search', async (req, res) => {
