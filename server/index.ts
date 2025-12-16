@@ -45,7 +45,13 @@ async function initStripe() {
     const stripeSync = await getStripeSync();
 
     console.log('Setting up managed webhook...');
-    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+    // Support both Replit and Azure hosting
+    const hostname = process.env.REPLIT_DOMAINS?.split(',')[0] || process.env.WEBSITE_HOSTNAME;
+    if (!hostname) {
+      console.log('No hostname found (REPLIT_DOMAINS or WEBSITE_HOSTNAME), skipping webhook setup');
+      return;
+    }
+    const webhookBaseUrl = hostname.startsWith('http') ? hostname : `https://${hostname}`;
     const { webhook, uuid } = await stripeSync.findOrCreateManagedWebhook(
       `${webhookBaseUrl}/api/stripe/webhook`,
       {

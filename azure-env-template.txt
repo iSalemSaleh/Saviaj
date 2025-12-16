@@ -1,0 +1,52 @@
+# Azure App Service Environment Variables Template
+# Copy these to Azure Portal > App Service > Settings > Configuration > Application settings
+
+# ===========================================
+# REQUIRED - Database Connection
+# ===========================================
+DATABASE_URL=postgresql://username:password@your-server.postgres.database.azure.com:5432/atlasride?sslmode=require
+
+# ===========================================
+# REQUIRED - Session Security
+# ===========================================
+# Generate with: openssl rand -base64 32
+SESSION_SECRET=your-secure-random-string-at-least-32-characters
+
+# ===========================================
+# REQUIRED - Azure Maps
+# ===========================================
+AZURE_MAPS_KEY=your-azure-maps-subscription-key
+
+# ===========================================
+# REQUIRED - Stripe Payment Processing
+# ===========================================
+STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key
+
+# ===========================================
+# REQUIRED FOR PRODUCTION
+# ===========================================
+NODE_ENV=production
+
+# ===========================================
+# AZURE APP SERVICE AUTO-PROVIDES
+# ===========================================
+# DO NOT SET THESE - Azure provides them automatically:
+# - WEBSITE_HOSTNAME (your app's hostname, e.g., atlasride-app.azurewebsites.net)
+# - PORT (internal port, usually 8080)
+
+# ===========================================
+# SETUP NOTES
+# ===========================================
+# 1. DATABASE_URL: Create Azure Database for PostgreSQL Flexible Server
+#    - Enable SSL: Required (sslmode=require in connection string)
+#
+# 2. SESSION_SECRET: Generate secure random string:
+#    openssl rand -base64 32
+#
+# 3. AZURE_MAPS_KEY: Get from Azure Portal > Azure Maps > Authentication
+#
+# 4. STRIPE_SECRET_KEY: Get from Stripe Dashboard > Developers > API Keys
+#    - Use live key (sk_live_) for production
+#    - Use test key (sk_test_) for testing
+#
+# 5. Stripe webhook will auto-register using WEBSITE_HOSTNAME
