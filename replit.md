@@ -76,3 +76,25 @@ Preferred communication style: Simple, everyday language.
 - `SESSION_SECRET`: Secret for session encryption
 - `AZURE_MAPS_KEY`: Azure Maps subscription key (for geocoding and routing)
 - Stripe credentials are managed via Replit connector
+
+## Azure Deployment
+
+The app is configured for deployment to Azure App Service (Linux):
+
+### Deployment Files
+- `AZURE_DEPLOYMENT.md`: Complete step-by-step deployment guide
+- `azure-env-template.txt`: Template for Azure environment variables
+- `.azure/config`: Azure CLI configuration
+
+### Azure Configuration
+- **App Service**: Linux with Node.js 20 runtime
+- **Database**: Azure Database for PostgreSQL Flexible Server
+- **WebSockets**: Enabled for real-time features
+- **Startup Command**: `npm start`
+
+### Hostname Detection
+The server automatically detects the hosting environment:
+- Replit: Uses `REPLIT_DOMAINS` environment variable
+- Azure: Uses `WEBSITE_HOSTNAME` environment variable
+
+This allows Stripe webhooks to work correctly in both environments.
