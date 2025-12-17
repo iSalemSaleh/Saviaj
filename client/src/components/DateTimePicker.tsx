@@ -231,11 +231,7 @@ export function DateTimePicker({
             <AlertDialogDescription>
               {pendingDateTime && (
                 <>
-                  You selected <span className="font-semibold">{format(pendingDateTime, "HH:mm")}</span>.
-                  Since this time has already passed today, your ride will be scheduled for{" "}
-                  <span className="font-semibold text-foreground">
-                    tomorrow ({format(pendingDateTime, "EEEE, d MMMM")})
-                  </span>.
+                  You selected <span className="font-semibold">{format(pendingDateTime, "HH:mm")}</span>. Your ride will be scheduled for tomorrow ({format(pendingDateTime, "EEEE, d MMMM")}).
                 </>
               )}
             </AlertDialogDescription>

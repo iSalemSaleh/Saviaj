@@ -480,14 +480,15 @@ export default function RiderPage() {
                       testId="input-dropoff"
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-5 gap-4">
                       <DateTimePicker
                         value={requestedTime}
                         onChange={setRequestedTime}
                         label="When"
                         testId="input-time"
+                        className="col-span-3"
                       />
-                      <div className="space-y-2">
+                      <div className="space-y-2 col-span-2">
                         <label className="text-sm font-medium text-muted-foreground">Your Offer (£)</label>
                         <div className="relative">
                           <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-accent" />
