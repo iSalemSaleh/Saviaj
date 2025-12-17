@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, Bell, Check, MessageSquare } from "lucide-react";
+import { Menu, Bell, Check, MessageSquare, History } from "lucide-react";
 import { useState, useCallback } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -205,6 +205,11 @@ export default function Navbar() {
                   </Link>
                 )}
                 {notificationsDropdown}
+                <Link href="/history">
+                  <Button variant="ghost" size="icon" title="History" data-testid="button-history">
+                    <History className="h-5 w-5" />
+                  </Button>
+                </Link>
                 <span className="text-sm text-muted-foreground ml-2">
                   Welcome, {(user as any).firstName || 'User'}
                 </span>
@@ -251,16 +256,24 @@ export default function Navbar() {
             <SheetContent side="right">
               <div className="flex flex-col gap-6 mt-8">
                 {user ? (
-                  <Button 
-                    className="w-full" 
-                    variant="outline" 
-                    onClick={() => {
-                      setIsOpen(false);
-                      handleLogout();
-                    }}
-                  >
-                    Log out
-                  </Button>
+                  <>
+                    <Link href="/history" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full" variant="ghost">
+                        <History className="h-4 w-4 mr-2" />
+                        History
+                      </Button>
+                    </Link>
+                    <Button 
+                      className="w-full" 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsOpen(false);
+                        handleLogout();
+                      }}
+                    >
+                      Log out
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <Link href="/login" onClick={() => setIsOpen(false)}>

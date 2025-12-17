@@ -120,6 +120,7 @@ export interface IStorage {
   // Driver Route operations
   createDriverRoute(route: InsertDriverRoute): Promise<DriverRoute>;
   getDriverRoutes(status?: string): Promise<DriverRoute[]>;
+  getDriverRoutesByUser(userId: string): Promise<DriverRoute[]>;
   getDriverRoutesWithDriverInfo(status?: string, riderLat?: number, riderLng?: number): Promise<Array<DriverRoute & {
     driver: {
       id: string;
@@ -383,6 +384,14 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(driverRoutes)
+      .orderBy(desc(driverRoutes.createdAt));
+  }
+
+  async getDriverRoutesByUser(userId: string): Promise<DriverRoute[]> {
+    return await db
+      .select()
+      .from(driverRoutes)
+      .where(eq(driverRoutes.driverId, userId))
       .orderBy(desc(driverRoutes.createdAt));
   }
 

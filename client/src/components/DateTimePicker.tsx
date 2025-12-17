@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { format, addDays, isBefore, startOfDay, setHours, setMinutes } from "date-fns";
-import { CalendarDays, Clock, ChevronUp, ChevronDown } from "lucide-react";
+import { CalendarDays, Clock } from "lucide-react";
 
 interface DateTimePickerProps {
   value: string;
@@ -15,20 +16,6 @@ interface DateTimePickerProps {
   className?: string;
   testId?: string;
 }
-
-const generateTimeSlots = () => {
-  const slots = [];
-  for (let hour = 0; hour < 24; hour++) {
-    for (let minute = 0; minute < 60; minute += 15) {
-      const h = hour.toString().padStart(2, '0');
-      const m = minute.toString().padStart(2, '0');
-      slots.push(`${h}:${m}`);
-    }
-  }
-  return slots;
-};
-
-const timeSlots = generateTimeSlots();
 
 export function DateTimePicker({ 
   value, 
@@ -40,8 +27,9 @@ export function DateTimePicker({
 }: DateTimePickerProps) {
   const [showFutureDate, setShowFutureDate] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [timeInput, setTimeInput] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
+  const [timeError, setTimeError] = useState<string>("");
 
   useEffect(() => {
     if (value) {
@@ -49,8 +37,8 @@ export function DateTimePicker({
       if (!isNaN(date.getTime())) {
         setSelectedDate(date);
         const hours = date.getHours().toString().padStart(2, '0');
-        const minutes = (Math.floor(date.getMinutes() / 15) * 15).toString().padStart(2, '0');
-        setSelectedTime(`${hours}:${minutes}`);
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        setTimeInput(`${hours}:${minutes}`);
         
         const tomorrow = startOfDay(addDays(new Date(), 1));
         if (date >= tomorrow) {
@@ -60,34 +48,51 @@ export function DateTimePicker({
     }
   }, []);
 
-  const updateDateTime = (date: Date | undefined, time: string) => {
-    if (!date || !time) return;
+  const validateAndUpdateDateTime = (date: Date | undefined, time: string) => {
+    if (!date || !time) return false;
     
-    const [hours, minutes] = time.split(':').map(Number);
-    const newDate = setMinutes(setHours(date, hours), minutes);
-    
-    const now = new Date();
-    if (isBefore(newDate, now)) {
-      return;
+    const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
+    if (!timeMatch) {
+      setTimeError("Use format HH:MM");
+      return false;
     }
     
+    const hours = parseInt(timeMatch[1]);
+    const minutes = parseInt(timeMatch[2]);
+    
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      setTimeError("Invalid time");
+      return false;
+    }
+    
+    const newDate = setMinutes(setHours(date, hours), minutes);
+    const now = new Date();
+    
+    if (isBefore(newDate, now)) {
+      setTimeError("Time must be in the future");
+      return false;
+    }
+    
+    setTimeError("");
     const localISOString = format(newDate, "yyyy-MM-dd'T'HH:mm");
     onChange(localISOString);
+    return true;
   };
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
     setSelectedDate(date);
-    if (selectedTime) {
-      updateDateTime(date, selectedTime);
+    if (timeInput) {
+      validateAndUpdateDateTime(date, timeInput);
     }
   };
 
-  const handleTimeSelect = (time: string) => {
-    setSelectedTime(time);
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = e.target.value;
+    setTimeInput(time);
     const dateToUse = selectedDate || (showFutureDate ? undefined : new Date());
-    if (dateToUse) {
-      updateDateTime(dateToUse, time);
+    if (dateToUse && time.match(/^\d{1,2}:\d{2}$/)) {
+      validateAndUpdateDateTime(dateToUse, time);
     }
   };
 
@@ -95,22 +100,23 @@ export function DateTimePicker({
     setShowFutureDate(enabled);
     if (!enabled) {
       setSelectedDate(new Date());
-      if (selectedTime) {
-        updateDateTime(new Date(), selectedTime);
+      if (timeInput) {
+        validateAndUpdateDateTime(new Date(), timeInput);
       }
     }
   };
 
   const today = startOfDay(new Date());
   const now = new Date();
-  const currentHour = now.getHours();
-  const currentMinute = now.getMinutes();
 
-  const isTimeDisabled = (time: string) => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const dateToCheck = selectedDate || new Date();
-    const timeDate = setMinutes(setHours(dateToCheck, hours), minutes);
-    return isBefore(timeDate, now);
+  const getMinTime = () => {
+    if (!showFutureDate || (selectedDate && startOfDay(selectedDate).getTime() === today.getTime())) {
+      const oneMinuteLater = new Date(now.getTime() + 60000);
+      const hours = oneMinuteLater.getHours().toString().padStart(2, '0');
+      const minutes = oneMinuteLater.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
+    return "00:00";
   };
 
   const displayValue = value 
@@ -173,30 +179,24 @@ export function DateTimePicker({
                   }
                 </span>
               </div>
-              <div className="grid grid-cols-4 gap-1 max-h-48 overflow-y-auto p-1 border rounded-md">
-                {timeSlots.map((time) => {
-                  const disabled = !showFutureDate || 
-                    (selectedDate && startOfDay(selectedDate).getTime() === today.getTime())
-                    ? isTimeDisabled(time) 
-                    : false;
-                  
-                  return (
-                    <Button
-                      key={time}
-                      variant={selectedTime === time ? "default" : "ghost"}
-                      size="sm"
-                      className={cn(
-                        "text-xs",
-                        disabled && "opacity-40 cursor-not-allowed line-through"
-                      )}
-                      onClick={() => !disabled && handleTimeSelect(time)}
-                      disabled={disabled}
-                      data-testid={`${testId}-time-${time.replace(':', '')}`}
-                    >
-                      {time}
-                    </Button>
-                  );
-                })}
+              <div className="flex flex-col gap-2">
+                <Input
+                  type="time"
+                  value={timeInput}
+                  onChange={handleTimeChange}
+                  min={getMinTime()}
+                  className={cn(
+                    "h-12 text-lg text-center font-mono",
+                    timeError && "border-red-500 focus-visible:ring-red-500"
+                  )}
+                  data-testid={`${testId}-time-input`}
+                />
+                {timeError && (
+                  <p className="text-xs text-red-500 text-center">{timeError}</p>
+                )}
+                <p className="text-xs text-muted-foreground text-center">
+                  Enter any time (e.g., 14:30)
+                </p>
               </div>
             </div>
 

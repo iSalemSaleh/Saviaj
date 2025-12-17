@@ -18,6 +18,7 @@ import SignupPage from "@/pages/signup";
 import LoginPage from "@/pages/login";
 import BecomeDriverPage from "@/pages/become-driver";
 import SplashScreen from "@/components/SplashScreen";
+import HistoryPage from "@/pages/history";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -143,6 +144,9 @@ function Router() {
         <ProtectedRoute component={RideTrackingPage} />
       </Route>
       <Route path="/driver/:id" component={DriverProfilePage} />
+      <Route path="/history">
+        <ProtectedRoute component={HistoryPage} />
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );

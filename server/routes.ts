@@ -824,6 +824,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  app.get('/api/driver-routes/mine', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const routes = await storage.getDriverRoutesByUser(userId);
+      res.json(routes);
+    } catch (error) {
+      console.error("Error fetching user driver routes:", error);
+      res.status(500).json({ message: "Failed to fetch your routes" });
+    }
+  });
+
   // Bid Routes
   app.post('/api/bids', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {

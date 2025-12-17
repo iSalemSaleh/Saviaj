@@ -179,7 +179,12 @@ export default function RiderPage() {
   });
 
   const myPendingOffers = useMemo(() => {
-    return myOffers.filter(offer => offer.status === "pending");
+    const now = new Date();
+    return myOffers.filter(offer => {
+      if (offer.status !== "pending") return false;
+      const requestedTime = new Date(offer.requestedTime);
+      return requestedTime >= now;
+    });
   }, [myOffers]);
 
   const reviseOfferMutation = useMutation({
