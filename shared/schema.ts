@@ -61,6 +61,19 @@ export const users = pgTable("users", {
   bankAccountName: varchar("bank_account_name"),
   bankSortCode: varchar("bank_sort_code"),
   bankAccountNumber: varchar("bank_account_number"),
+  // Commercial driver (Pro Account) fields
+  isCommercialDriver: boolean("is_commercial_driver").default(false),
+  privateHireLicenseUrl: varchar("private_hire_license_url"),
+  privateHireLicenseNumber: varchar("private_hire_license_number"),
+  dvlaCheckCode: varchar("dvla_check_code"),
+  commercialInsuranceUrl: varchar("commercial_insurance_url"),
+  commercialInsuranceExpiry: varchar("commercial_insurance_expiry"),
+  vehicleInspectionUrl: varchar("vehicle_inspection_url"),
+  vehicleInspectionExpiry: varchar("vehicle_inspection_expiry"),
+  phvLicenseUrl: varchar("phv_license_url"),
+  phvLicenseNumber: varchar("phv_license_number"),
+  phvLicenseExpiry: varchar("phv_license_expiry"),
+  commercialStatusVerified: boolean("commercial_status_verified").default(false),
   // Availability states
   activeMode: varchar("active_mode", { length: 20 }), // 'rider', 'driver', or null (inactive)
   isAvailable: boolean("is_available").default(false), // true when actively searching/available
@@ -376,6 +389,32 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
 });
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// Daily driver activity tracking for private driver limits
+export const driverDailyActivity = pgTable("driver_daily_activity", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  driverId: varchar("driver_id").notNull().references(() => users.id),
+  date: varchar("date").notNull(), // YYYY-MM-DD format
+  ridesCount: integer("rides_count").default(0),
+  totalEarnings: decimal("total_earnings", { precision: 10, scale: 2 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const driverDailyActivityRelations = relations(driverDailyActivity, ({ one }) => ({
+  driver: one(users, {
+    fields: [driverDailyActivity.driverId],
+    references: [users.id],
+  }),
+}));
+
+export const insertDriverDailyActivitySchema = createInsertSchema(driverDailyActivity).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertDriverDailyActivity = z.infer<typeof insertDriverDailyActivitySchema>;
+export type DriverDailyActivity = typeof driverDailyActivity.$inferSelect;
 
 // Phone Verifications - OTP verification before registration
 export const phoneVerifications = pgTable("phone_verifications", {
