@@ -54,7 +54,7 @@ export async function sendVerificationSMS(toPhoneNumber: string, code: string): 
     const fromNumber = await getTwilioFromPhoneNumber();
     
     await client.messages.create({
-      body: `Your AtlasRide verification code is: ${code}. This code expires in 10 minutes.`,
+      body: `Your AtlasRide verification code is: ${code}. This code expires in 5 minutes.`,
       from: fromNumber,
       to: toPhoneNumber
     });
