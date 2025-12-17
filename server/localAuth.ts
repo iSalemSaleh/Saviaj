@@ -15,6 +15,7 @@ const registerSchema = z.object({
   homeAddress: z.string().optional(),
   city: z.string().optional(),
   postcode: z.string().optional(),
+  profileImageUrl: z.string().optional(),
   isDriver: z.boolean().default(false),
   driverLicenseUrl: z.string().optional(),
   driverLicenseNumber: z.string().optional(),
@@ -29,6 +30,18 @@ const registerSchema = z.object({
   bankAccountName: z.string().optional(),
   bankSortCode: z.string().optional(),
   bankAccountNumber: z.string().optional(),
+  // Commercial driver (Pro Account) fields
+  isCommercialDriver: z.boolean().default(false),
+  privateHireLicenseUrl: z.string().optional(),
+  privateHireLicenseNumber: z.string().optional(),
+  dvlaCheckCode: z.string().optional(),
+  commercialInsuranceUrl: z.string().optional(),
+  commercialInsuranceExpiry: z.string().optional(),
+  vehicleInspectionUrl: z.string().optional(),
+  vehicleInspectionExpiry: z.string().optional(),
+  phvLicenseUrl: z.string().optional(),
+  phvLicenseNumber: z.string().optional(),
+  phvLicenseExpiry: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -70,6 +83,7 @@ export function setupLocalAuth(app: Express) {
         emailVerified: false,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
+        profileImageUrl: validatedData.profileImageUrl,
         dateOfBirth: validatedData.dateOfBirth,
         phoneNumber: validatedData.phoneNumber,
         homeAddress: validatedData.homeAddress,
@@ -90,6 +104,18 @@ export function setupLocalAuth(app: Express) {
         bankAccountName: validatedData.bankAccountName,
         bankSortCode: validatedData.bankSortCode,
         bankAccountNumber: validatedData.bankAccountNumber,
+        isCommercialDriver: validatedData.isCommercialDriver,
+        privateHireLicenseUrl: validatedData.privateHireLicenseUrl,
+        privateHireLicenseNumber: validatedData.privateHireLicenseNumber,
+        dvlaCheckCode: validatedData.dvlaCheckCode,
+        commercialInsuranceUrl: validatedData.commercialInsuranceUrl,
+        commercialInsuranceExpiry: validatedData.commercialInsuranceExpiry,
+        vehicleInspectionUrl: validatedData.vehicleInspectionUrl,
+        vehicleInspectionExpiry: validatedData.vehicleInspectionExpiry,
+        phvLicenseUrl: validatedData.phvLicenseUrl,
+        phvLicenseNumber: validatedData.phvLicenseNumber,
+        phvLicenseExpiry: validatedData.phvLicenseExpiry,
+        commercialStatusVerified: false,
       });
 
       (req.session as any).userId = user.id;

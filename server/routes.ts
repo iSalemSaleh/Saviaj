@@ -59,6 +59,58 @@ function validateUkAccountNumber(accountNumber: string): { valid: boolean; error
   return { valid: true };
 }
 
+// Private driver limits (non-commercial drivers)
+const PRIVATE_DRIVER_RIDE_LIMIT = 5;
+const PRIVATE_DRIVER_EARNINGS_LIMIT = 99.99;
+
+async function checkPrivateDriverLimits(userId: string): Promise<{ allowed: boolean; message?: string }> {
+  const user = await storage.getUser(userId);
+  
+  // Commercial drivers have no limits
+  if (user?.isCommercialDriver && user?.commercialStatusVerified) {
+    return { allowed: true };
+  }
+  
+  // Check daily activity
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const activity = await storage.getDriverDailyActivity(userId, today);
+  
+  if (!activity) {
+    return { allowed: true };
+  }
+  
+  if (activity.ridesCount >= PRIVATE_DRIVER_RIDE_LIMIT) {
+    return { 
+      allowed: false, 
+      message: "You've reached the private driver limit.\nPrivate drivers are limited to 5 rides and up to £100 in earnings.\nUpgrade to Commercial status to publish more rides and earn more."
+    };
+  }
+  
+  if (activity.totalEarnings >= PRIVATE_DRIVER_EARNINGS_LIMIT) {
+    return { 
+      allowed: false, 
+      message: "You've reached the private driver limit.\nPrivate drivers are limited to 5 rides and up to £100 in earnings.\nUpgrade to Commercial status to publish more rides and earn more."
+    };
+  }
+  
+  return { allowed: true };
+}
+
+async function wouldExceedEarningsLimit(userId: string, newEarnings: number): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  
+  // Commercial drivers have no limits
+  if (user?.isCommercialDriver && user?.commercialStatusVerified) {
+    return false;
+  }
+  
+  const today = new Date().toISOString().split('T')[0];
+  const activity = await storage.getDriverDailyActivity(userId, today);
+  
+  const currentEarnings = activity?.totalEarnings || 0;
+  return (currentEarnings + newEarnings) > PRIVATE_DRIVER_EARNINGS_LIMIT;
+}
+
 const isProfileComplete: RequestHandler = async (req: any, res, next) => {
   try {
     const userId = req.user?.claims?.sub;
@@ -727,6 +779,30 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const id = parseInt(req.params.id);
       const driverId = req.user.claims.sub;
       
+      // Check private driver limits
+      const limitCheck = await checkPrivateDriverLimits(driverId);
+      if (!limitCheck.allowed) {
+        return res.status(403).json({ 
+          message: limitCheck.message,
+          limitReached: true 
+        });
+      }
+      
+      // Get the offer first to check earnings limit
+      const existingOffer = await storage.getRiderOfferById(id);
+      if (!existingOffer) {
+        return res.status(404).json({ message: "Offer not found" });
+      }
+      
+      // Check if this would exceed earnings limit
+      const price = parseFloat(existingOffer.offerPrice || "0");
+      if (await wouldExceedEarningsLimit(driverId, price)) {
+        return res.status(403).json({ 
+          message: "You've reached the private driver limit.\nPrivate drivers are limited to 5 rides and up to £100 in earnings.\nUpgrade to Commercial status to publish more rides and earn more.",
+          limitReached: true 
+        });
+      }
+      
       const offer = await storage.updateRiderOfferStatus(id, "accepted", driverId);
       
       // Create a ride record
@@ -743,6 +819,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         scheduledTime: offer.requestedTime,
         riderOfferId: offer.id,
       });
+      
+      // Track daily activity for private driver limits
+      await storage.incrementDriverDailyActivity(driverId, new Date().toISOString().split('T')[0], price);
       
       res.json(offer);
     } catch (error) {
@@ -812,6 +891,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.post('/api/driver-routes', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      
+      // Check private driver limits
+      const limitCheck = await checkPrivateDriverLimits(userId);
+      if (!limitCheck.allowed) {
+        return res.status(403).json({ 
+          message: limitCheck.message,
+          limitReached: true 
+        });
+      }
+      
       const validatedData = insertDriverRouteSchema.parse({
         ...req.body,
         driverId: userId,
@@ -849,6 +938,44 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Driver daily activity (for showing limits)
+  app.get('/api/driver/daily-activity', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      // Commercial drivers have no limits
+      if (user?.isCommercialDriver && user?.commercialStatusVerified) {
+        return res.json({
+          isCommercial: true,
+          ridesCount: 0,
+          totalEarnings: 0,
+          ridesLimit: null,
+          earningsLimit: null,
+          limitReached: false
+        });
+      }
+      
+      const today = new Date().toISOString().split('T')[0];
+      const activity = await storage.getDriverDailyActivity(userId, today);
+      
+      const ridesCount = activity?.ridesCount || 0;
+      const totalEarnings = activity?.totalEarnings || 0;
+      
+      res.json({
+        isCommercial: false,
+        ridesCount,
+        totalEarnings,
+        ridesLimit: PRIVATE_DRIVER_RIDE_LIMIT,
+        earningsLimit: PRIVATE_DRIVER_EARNINGS_LIMIT,
+        limitReached: ridesCount >= PRIVATE_DRIVER_RIDE_LIMIT || totalEarnings >= PRIVATE_DRIVER_EARNINGS_LIMIT
+      });
+    } catch (error) {
+      console.error("Error fetching driver daily activity:", error);
+      res.status(500).json({ message: "Failed to fetch daily activity" });
+    }
+  });
+
   // Bid Routes
   app.post('/api/bids', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
@@ -882,6 +1009,30 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const bidId = parseInt(req.params.id);
       const userId = req.user.claims.sub;
       
+      // Get the bid first to check the driver's limits
+      const existingBid = await storage.getBidById(bidId);
+      if (!existingBid) {
+        return res.status(404).json({ message: "Bid not found" });
+      }
+      
+      // Check if the driver has reached their daily limits before accepting
+      const limitCheck = await checkPrivateDriverLimits(existingBid.driverId);
+      if (!limitCheck.allowed) {
+        return res.status(403).json({ 
+          message: "This driver has reached their daily limit and cannot accept new rides.",
+          limitReached: true 
+        });
+      }
+      
+      // Check if this would exceed the driver's earnings limit
+      const price = parseFloat(existingBid.bidPrice || "0");
+      if (await wouldExceedEarningsLimit(existingBid.driverId, price)) {
+        return res.status(403).json({ 
+          message: "This driver has reached their daily limit and cannot accept new rides.",
+          limitReached: true 
+        });
+      }
+      
       // Update bid status
       const bid = await storage.updateBidStatus(bidId, "accepted");
       
@@ -913,6 +1064,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         scheduledTime: offer.requestedTime,
         riderOfferId: offer.id,
       });
+      
+      // Track daily activity for private driver limits
+      await storage.incrementDriverDailyActivity(bid.driverId, new Date().toISOString().split('T')[0], price);
       
       res.json(bid);
     } catch (error) {

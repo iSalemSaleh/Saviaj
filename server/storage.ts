@@ -7,6 +7,7 @@ import {
   notifications,
   ratings,
   chatMessages,
+  driverDailyActivity,
   type User,
   type UpsertUser,
   type RiderOffer,
@@ -183,6 +184,10 @@ export interface IStorage {
   getChatMessagesByRide(rideId: number): Promise<ChatMessage[]>;
   markMessagesAsRead(rideId: number, receiverId: string): Promise<void>;
   getUnreadMessageCount(userId: string): Promise<number>;
+  
+  // Driver daily activity (for private driver limits)
+  getDriverDailyActivity(driverId: string, date: string): Promise<{ ridesCount: number; totalEarnings: number } | null>;
+  incrementDriverDailyActivity(driverId: string, date: string, earnings: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -550,6 +555,14 @@ export class DatabaseStorage implements IStorage {
     return newBid;
   }
 
+  async getBidById(id: number): Promise<Bid | undefined> {
+    const [bid] = await db
+      .select()
+      .from(bids)
+      .where(eq(bids.id, id));
+    return bid;
+  }
+
   async getBidsByOfferId(offerId: number): Promise<Bid[]> {
     return await db
       .select()
@@ -806,6 +819,51 @@ export class DatabaseStorage implements IStorage {
       .from(chatMessages)
       .where(and(eq(chatMessages.receiverId, userId), eq(chatMessages.read, false)));
     return result[0]?.count ?? 0;
+  }
+
+  // Driver daily activity (for private driver limits)
+  async getDriverDailyActivity(driverId: string, date: string): Promise<{ ridesCount: number; totalEarnings: number } | null> {
+    const [activity] = await db
+      .select()
+      .from(driverDailyActivity)
+      .where(and(
+        eq(driverDailyActivity.driverId, driverId),
+        eq(driverDailyActivity.date, date)
+      ));
+    
+    if (!activity) return null;
+    
+    return {
+      ridesCount: activity.ridesCount || 0,
+      totalEarnings: parseFloat(activity.totalEarnings || "0"),
+    };
+  }
+
+  async incrementDriverDailyActivity(driverId: string, date: string, earnings: number): Promise<void> {
+    const existing = await this.getDriverDailyActivity(driverId, date);
+    
+    if (existing) {
+      await db
+        .update(driverDailyActivity)
+        .set({
+          ridesCount: (existing.ridesCount || 0) + 1,
+          totalEarnings: (existing.totalEarnings + earnings).toFixed(2),
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(driverDailyActivity.driverId, driverId),
+          eq(driverDailyActivity.date, date)
+        ));
+    } else {
+      await db
+        .insert(driverDailyActivity)
+        .values({
+          driverId,
+          date,
+          ridesCount: 1,
+          totalEarnings: earnings.toFixed(2),
+        });
+    }
   }
 }
 

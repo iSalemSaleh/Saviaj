@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCircle, Camera, Briefcase, Shield } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
 
@@ -25,6 +25,7 @@ interface FormData {
   homeAddress: string;
   city: string;
   postcode: string;
+  profileImageUrl: string;
   accountType: AccountType;
   driverLicenseUrl: string;
   driverLicenseNumber: string;
@@ -39,6 +40,18 @@ interface FormData {
   bankAccountName: string;
   bankSortCode: string;
   bankAccountNumber: string;
+  // Commercial driver (Pro Account) fields
+  isCommercialDriver: boolean;
+  privateHireLicenseUrl: string;
+  privateHireLicenseNumber: string;
+  dvlaCheckCode: string;
+  commercialInsuranceUrl: string;
+  commercialInsuranceExpiry: string;
+  vehicleInspectionUrl: string;
+  vehicleInspectionExpiry: string;
+  phvLicenseUrl: string;
+  phvLicenseNumber: string;
+  phvLicenseExpiry: string;
 }
 
 const initialFormData: FormData = {
@@ -52,6 +65,7 @@ const initialFormData: FormData = {
   homeAddress: "",
   city: "",
   postcode: "",
+  profileImageUrl: "",
   accountType: "rider",
   driverLicenseUrl: "",
   driverLicenseNumber: "",
@@ -66,6 +80,17 @@ const initialFormData: FormData = {
   bankAccountName: "",
   bankSortCode: "",
   bankAccountNumber: "",
+  isCommercialDriver: false,
+  privateHireLicenseUrl: "",
+  privateHireLicenseNumber: "",
+  dvlaCheckCode: "",
+  commercialInsuranceUrl: "",
+  commercialInsuranceExpiry: "",
+  vehicleInspectionUrl: "",
+  vehicleInspectionExpiry: "",
+  phvLicenseUrl: "",
+  phvLicenseNumber: "",
+  phvLicenseExpiry: "",
 };
 
 export default function Signup() {
@@ -75,6 +100,8 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isUploadingCommercial, setIsUploadingCommercial] = useState<string | null>(null);
   const [isPhoneVerified, setIsPhoneVerified] = useState(false);
 
   useEffect(() => {
@@ -85,7 +112,7 @@ export default function Signup() {
     }
   }, []);
 
-  const totalSteps = formData.accountType === "driver" ? 5 : 3;
+  const totalSteps = formData.accountType === "driver" ? 6 : 3;
   const progress = (step / totalSteps) * 100;
 
   const registerMutation = useMutation({
@@ -100,6 +127,7 @@ export default function Signup() {
         homeAddress: data.homeAddress,
         city: data.city,
         postcode: data.postcode,
+        profileImageUrl: data.profileImageUrl,
         isDriver: data.accountType === "driver",
         driverLicenseUrl: data.driverLicenseUrl,
         driverLicenseNumber: data.driverLicenseNumber,
@@ -114,6 +142,17 @@ export default function Signup() {
         bankAccountName: data.bankAccountName,
         bankSortCode: data.bankSortCode,
         bankAccountNumber: data.bankAccountNumber,
+        isCommercialDriver: data.isCommercialDriver,
+        privateHireLicenseUrl: data.privateHireLicenseUrl,
+        privateHireLicenseNumber: data.privateHireLicenseNumber,
+        dvlaCheckCode: data.dvlaCheckCode,
+        commercialInsuranceUrl: data.commercialInsuranceUrl,
+        commercialInsuranceExpiry: data.commercialInsuranceExpiry,
+        vehicleInspectionUrl: data.vehicleInspectionUrl,
+        vehicleInspectionExpiry: data.vehicleInspectionExpiry,
+        phvLicenseUrl: data.phvLicenseUrl,
+        phvLicenseNumber: data.phvLicenseNumber,
+        phvLicenseExpiry: data.phvLicenseExpiry,
       });
       return response;
     },
@@ -142,7 +181,6 @@ export default function Signup() {
       const uploadFormData = new FormData();
       uploadFormData.append("license", file);
 
-      // Use registration-specific endpoint (no auth required)
       const response = await fetch("/api/registration/upload-license", {
         method: "POST",
         body: uploadFormData,
@@ -159,6 +197,62 @@ export default function Signup() {
       setError("Failed to upload license. Please try again.");
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("license", file);
+
+      const response = await fetch("/api/registration/upload-license", {
+        method: "POST",
+        body: uploadFormData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await response.json();
+      handleChange("profileImageUrl", data.url);
+    } catch (err) {
+      setError("Failed to upload profile photo. Please try again.");
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const handleCommercialDocUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: keyof FormData) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingCommercial(field);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("license", file);
+
+      const response = await fetch("/api/registration/upload-license", {
+        method: "POST",
+        body: uploadFormData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await response.json();
+      handleChange(field, data.url);
+    } catch (err) {
+      setError("Failed to upload document. Please try again.");
+    } finally {
+      setIsUploadingCommercial(null);
     }
   };
 
@@ -193,6 +287,10 @@ export default function Signup() {
           setError("Please fill in all required fields");
           return false;
         }
+        if (formData.accountType === "driver" && !formData.profileImageUrl) {
+          setError("Profile photo is required for drivers");
+          return false;
+        }
         return true;
       case 4:
         if (formData.accountType === "driver") {
@@ -213,6 +311,9 @@ export default function Signup() {
             return false;
           }
         }
+        return true;
+      case 6:
+        // Pro Account (Commercial Driver) section is optional
         return true;
       default:
         return true;
@@ -441,6 +542,54 @@ export default function Signup() {
                   />
                 </div>
               </div>
+
+              {/* Profile Photo - Required for drivers */}
+              <div className="space-y-2">
+                <Label htmlFor="profilePhoto" className="flex items-center gap-2">
+                  Profile Photo {formData.accountType === "driver" && <span className="text-red-500">*</span>}
+                </Label>
+                <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                  {formData.profileImageUrl ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <img 
+                        src={formData.profileImageUrl} 
+                        alt="Profile" 
+                        className="w-24 h-24 rounded-full object-cover border-2 border-primary"
+                      />
+                      <span className="text-green-600 flex items-center gap-1 text-sm">
+                        <Check className="h-4 w-4" />
+                        Photo uploaded
+                      </span>
+                      <label className="cursor-pointer text-sm text-primary hover:underline">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleProfilePhotoUpload}
+                          className="hidden"
+                        />
+                        Change photo
+                      </label>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfilePhotoUpload}
+                        className="hidden"
+                        data-testid="input-profile-photo"
+                      />
+                      <Camera className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        {isUploadingPhoto ? "Uploading..." : "Click to upload your profile photo"}
+                      </p>
+                      {formData.accountType === "driver" && (
+                        <p className="text-xs text-amber-600 mt-1">Required for drivers</p>
+                      )}
+                    </label>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -646,6 +795,206 @@ export default function Signup() {
                 </p>
               </div>
             </div>
+          </div>
+        );
+
+      case 6:
+        if (formData.accountType !== "driver") return null;
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Briefcase className="h-6 w-6 text-primary" />
+                <h2 className="text-2xl font-bold">Pro Account</h2>
+              </div>
+              <p className="text-muted-foreground">Upgrade to Commercial Driver status (Optional)</p>
+            </div>
+
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800 mb-6">
+              <div className="flex items-start gap-3">
+                <Shield className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-800 dark:text-amber-200">Private Driver Limits</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    Without commercial verification, you're limited to 5 rides per day and £99.99 in daily earnings.
+                    Complete this section to remove these limits.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 mb-6">
+              <Checkbox
+                id="isCommercialDriver"
+                checked={formData.isCommercialDriver}
+                onCheckedChange={(checked) => handleChange("isCommercialDriver", checked as boolean)}
+                data-testid="checkbox-commercial-driver"
+              />
+              <label
+                htmlFor="isCommercialDriver"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                I want to register as a Commercial Driver
+              </label>
+            </div>
+
+            {formData.isCommercialDriver && (
+              <div className="space-y-4 animate-in fade-in">
+                <div className="space-y-2">
+                  <Label htmlFor="privateHireLicense">Private Hire Driving Licence</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                      {formData.privateHireLicenseUrl ? (
+                        <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
+                          <Check className="h-4 w-4" />
+                          <span>Uploaded</span>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleCommercialDocUpload(e, "privateHireLicenseUrl")}
+                            className="hidden"
+                          />
+                          <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">
+                            {isUploadingCommercial === "privateHireLicenseUrl" ? "Uploading..." : "Upload licence"}
+                          </p>
+                        </label>
+                      )}
+                    </div>
+                    <Input
+                      placeholder="Licence number"
+                      value={formData.privateHireLicenseNumber}
+                      onChange={(e) => handleChange("privateHireLicenseNumber", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="dvlaCheckCode">DVLA Electronic Counterpart Check Code</Label>
+                  <Input
+                    placeholder="Enter DVLA check code"
+                    value={formData.dvlaCheckCode}
+                    onChange={(e) => handleChange("dvlaCheckCode", e.target.value)}
+                    data-testid="input-dvla-code"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Insurance Certificate (+ supporting documents)</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                      {formData.commercialInsuranceUrl ? (
+                        <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
+                          <Check className="h-4 w-4" />
+                          <span>Uploaded</span>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleCommercialDocUpload(e, "commercialInsuranceUrl")}
+                            className="hidden"
+                          />
+                          <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">
+                            {isUploadingCommercial === "commercialInsuranceUrl" ? "Uploading..." : "Upload certificate"}
+                          </p>
+                        </label>
+                      )}
+                    </div>
+                    <Input
+                      type="date"
+                      placeholder="Expiry date"
+                      value={formData.commercialInsuranceExpiry}
+                      onChange={(e) => handleChange("commercialInsuranceExpiry", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>UK Vehicle Inspection</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                      {formData.vehicleInspectionUrl ? (
+                        <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
+                          <Check className="h-4 w-4" />
+                          <span>Uploaded</span>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleCommercialDocUpload(e, "vehicleInspectionUrl")}
+                            className="hidden"
+                          />
+                          <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">
+                            {isUploadingCommercial === "vehicleInspectionUrl" ? "Uploading..." : "Upload inspection"}
+                          </p>
+                        </label>
+                      )}
+                    </div>
+                    <Input
+                      type="date"
+                      placeholder="Expiry date"
+                      value={formData.vehicleInspectionExpiry}
+                      onChange={(e) => handleChange("vehicleInspectionExpiry", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Private Hire Vehicle Licence (PHV)</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                      {formData.phvLicenseUrl ? (
+                        <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
+                          <Check className="h-4 w-4" />
+                          <span>Uploaded</span>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*,.pdf"
+                            onChange={(e) => handleCommercialDocUpload(e, "phvLicenseUrl")}
+                            className="hidden"
+                          />
+                          <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">
+                            {isUploadingCommercial === "phvLicenseUrl" ? "Uploading..." : "Upload PHV"}
+                          </p>
+                        </label>
+                      )}
+                    </div>
+                    <Input
+                      placeholder="PHV licence number"
+                      value={formData.phvLicenseNumber}
+                      onChange={(e) => handleChange("phvLicenseNumber", e.target.value)}
+                    />
+                    <Input
+                      type="date"
+                      placeholder="Expiry date"
+                      value={formData.phvLicenseExpiry}
+                      onChange={(e) => handleChange("phvLicenseExpiry", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!formData.isCommercialDriver && (
+              <div className="p-4 bg-muted/50 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">
+                  You can skip this step and upgrade to Commercial status later from your profile.
+                </p>
+              </div>
+            )}
           </div>
         );
 
