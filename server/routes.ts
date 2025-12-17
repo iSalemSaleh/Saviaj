@@ -176,21 +176,35 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         expiresAt,
       });
       
-      // In demo mode, return the code (in production, send via SMS)
-      const isDemoMode = !process.env.TWILIO_ACCOUNT_SID;
-      
-      if (isDemoMode) {
-        console.log(`[DEMO MODE] OTP for ${normalizedPhone}: ${otpCode}`);
-        return res.json({ 
-          success: true, 
-          message: "Verification code sent",
-          demoMode: true,
-          demoCode: otpCode // Only in demo mode - plaintext for display only!
-        });
+      // Try to send via Twilio if available
+      try {
+        const { sendVerificationSMS } = await import("./twilio");
+        
+        // Format phone number for Twilio (ensure +44 format)
+        const twilioPhone = normalizedPhone.startsWith('0') 
+          ? '+44' + normalizedPhone.slice(1) 
+          : normalizedPhone;
+        
+        const smsSent = await sendVerificationSMS(twilioPhone, otpCode);
+        
+        if (smsSent) {
+          return res.json({ 
+            success: true, 
+            message: "Verification code sent to your phone"
+          });
+        }
+      } catch (twilioError) {
+        console.log("Twilio not available, falling back to demo mode:", twilioError);
       }
       
-      // TODO: Integrate real SMS provider when credentials are available
-      res.json({ success: true, message: "Verification code sent" });
+      // Fallback to demo mode if Twilio is not configured
+      console.log(`[DEMO MODE] OTP for ${normalizedPhone}: ${otpCode}`);
+      return res.json({ 
+        success: true, 
+        message: "Verification code sent",
+        demoMode: true,
+        demoCode: otpCode
+      });
     } catch (error) {
       console.error("OTP request error:", error);
       res.status(500).json({ message: "Failed to send verification code" });
