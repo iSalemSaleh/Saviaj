@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import PostcodeSearch from "@/components/PostcodeSearch";
+import { DateTimePicker } from "@/components/DateTimePicker";
 
 interface DriverInfo {
   id: string;
@@ -475,19 +476,12 @@ export default function RiderPage() {
                     />
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">When</label>
-                        <div className="relative">
-                          <Clock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input 
-                            type="datetime-local" 
-                            className="pl-9 h-11"
-                            value={requestedTime}
-                            onChange={(e) => setRequestedTime(e.target.value)}
-                            data-testid="input-time"
-                          />
-                        </div>
-                      </div>
+                      <DateTimePicker
+                        value={requestedTime}
+                        onChange={setRequestedTime}
+                        label="When"
+                        testId="input-time"
+                      />
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-muted-foreground">Your Offer (£)</label>
                         <div className="relative">
