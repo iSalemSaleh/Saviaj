@@ -107,7 +107,7 @@ export default function DriverPage() {
   const [selectedOffer, setSelectedOffer] = useState<RiderOffer | null>(null);
   const [bidPrice, setBidPrice] = useState("");
   const [bidMessage, setBidMessage] = useState("");
-  const [showFutureDates, setShowFutureDates] = useState(false);
+  const [showFutureDates, setShowFutureDates] = useState(true);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   useEffect(() => {

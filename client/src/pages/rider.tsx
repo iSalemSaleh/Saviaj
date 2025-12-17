@@ -93,7 +93,7 @@ export default function RiderPage() {
   
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationLoading, setLocationLoading] = useState(true);
-  const [showFutureDates, setShowFutureDates] = useState(false);
+  const [showFutureDates, setShowFutureDates] = useState(true);
   const [isCurrentLocationPickup, setIsCurrentLocationPickup] = useState(false);
   
   const [editDialogOpen, setEditDialogOpen] = useState(false);
