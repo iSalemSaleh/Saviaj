@@ -16,6 +16,7 @@ type AccountType = "rider" | "driver";
 
 interface FormData {
   email: string;
+  username: string;
   password: string;
   confirmPassword: string;
   firstName: string;
@@ -56,6 +57,7 @@ interface FormData {
 
 const initialFormData: FormData = {
   email: "",
+  username: "",
   password: "",
   confirmPassword: "",
   firstName: "",
@@ -119,6 +121,7 @@ export default function Signup() {
     mutationFn: async (data: FormData) => {
       const response = await apiRequest("POST", "/api/auth/register", {
         email: data.email,
+        username: data.username || undefined,
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
@@ -406,6 +409,21 @@ export default function Signup() {
                   onChange={(e) => handleChange("email", e.target.value)}
                   data-testid="input-email"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="username">Username (Optional)</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Choose a username (3-30 characters)"
+                  value={formData.username}
+                  onChange={(e) => handleChange("username", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  data-testid="input-username"
+                />
+                <p className="text-xs text-muted-foreground">
+                  You can use this to log in instead of your email. Letters, numbers, and underscores only.
+                </p>
               </div>
 
               <div className="space-y-2">

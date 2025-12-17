@@ -5,8 +5,11 @@ import { z } from "zod";
 
 const SALT_ROUNDS = 12;
 
+const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
+
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
+  username: z.string().regex(usernameRegex, "Username must be 3-30 characters, alphanumeric and underscores only").optional(),
   password: z.string().min(8, "Password must be at least 8 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -45,7 +48,7 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  identifier: z.string().min(1, "Email or username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -57,6 +60,14 @@ export function setupLocalAuth(app: Express) {
       const existingUser = await storage.getUserByEmail(validatedData.email);
       if (existingUser) {
         return res.status(400).json({ message: "An account with this email already exists" });
+      }
+
+      // Check username uniqueness if provided
+      if (validatedData.username) {
+        const existingUsername = await storage.getUserByUsername(validatedData.username);
+        if (existingUsername) {
+          return res.status(400).json({ message: "This username is already taken" });
+        }
       }
 
       if (validatedData.isDriver) {
@@ -78,6 +89,7 @@ export function setupLocalAuth(app: Express) {
       
       const user = await storage.createUser({
         email: validatedData.email,
+        username: validatedData.username ? validatedData.username.toLowerCase() : undefined,
         passwordHash,
         authProvider: "local",
         emailVerified: false,
@@ -144,14 +156,23 @@ export function setupLocalAuth(app: Express) {
     try {
       const validatedData = loginSchema.parse(req.body);
       
-      const user = await storage.getUserByEmail(validatedData.email);
+      // Check if identifier is an email or username
+      const isEmail = validatedData.identifier.includes('@');
+      let user;
+      
+      if (isEmail) {
+        user = await storage.getUserByEmail(validatedData.identifier);
+      } else {
+        user = await storage.getUserByUsername(validatedData.identifier);
+      }
+      
       if (!user || !user.passwordHash) {
-        return res.status(401).json({ message: "Invalid email or password" });
+        return res.status(401).json({ message: "Invalid credentials" });
       }
 
       const isValidPassword = await bcrypt.compare(validatedData.password, user.passwordHash);
       if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid email or password" });
+        return res.status(401).json({ message: "Invalid credentials" });
       }
 
       (req.session as any).userId = user.id;
@@ -184,5 +205,26 @@ export function setupLocalAuth(app: Express) {
       }
       res.json({ message: "Logged out successfully" });
     });
+  });
+
+  // Check username availability
+  app.get('/api/auth/username-available', async (req, res) => {
+    try {
+      const username = req.query.username as string;
+      
+      if (!username) {
+        return res.status(400).json({ available: false, message: "Username is required" });
+      }
+      
+      if (!usernameRegex.test(username)) {
+        return res.status(400).json({ available: false, message: "Username must be 3-30 characters, alphanumeric and underscores only" });
+      }
+      
+      const existingUser = await storage.getUserByUsername(username);
+      res.json({ available: !existingUser });
+    } catch (error) {
+      console.error("Username availability check error:", error);
+      res.status(500).json({ available: false, message: "Failed to check username" });
+    }
   });
 }

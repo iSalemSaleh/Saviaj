@@ -11,13 +11,13 @@ import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   const loginMutation = useMutation({
-    mutationFn: async (data: { email: string; password: string }) => {
+    mutationFn: async (data: { identifier: string; password: string }) => {
       const response = await apiRequest("POST", "/api/auth/login", data);
       return response;
     },
@@ -33,12 +33,12 @@ export default function Login() {
     e.preventDefault();
     setError("");
 
-    if (!email || !password) {
-      setError("Please enter both email and password");
+    if (!identifier || !password) {
+      setError("Please enter your email/username and password");
       return;
     }
 
-    loginMutation.mutate({ email, password });
+    loginMutation.mutate({ identifier, password });
   };
 
   return (
@@ -72,14 +72,14 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="identifier">Email or Username</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  data-testid="input-login-email"
+                  id="identifier"
+                  type="text"
+                  placeholder="you@example.com or username"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  data-testid="input-login-identifier"
                 />
               </div>
 
