@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
@@ -9,13 +9,30 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, CalendarDays, Calendar } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, CalendarDays, Calendar, Crosshair } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import PostcodeSearch from "@/components/PostcodeSearch";
 import { DateTimePicker } from "@/components/DateTimePicker";
+
+type DetourUnit = "miles" | "km" | "meters" | "yards";
+
+const UNIT_TO_MILES: Record<DetourUnit, number> = {
+  miles: 1,
+  km: 0.621371,
+  meters: 0.000621371,
+  yards: 0.000568182,
+};
+
+const UNIT_LABELS: Record<DetourUnit, string> = {
+  miles: "Miles",
+  km: "Kilometers",
+  meters: "Meters",
+  yards: "Yards",
+};
 
 interface RiderOffer {
   id: number;
@@ -83,8 +100,10 @@ export default function DriverPage() {
   const [endCoords, setEndCoords] = useState<{lat: number; lon: number} | null>(null);
   const [departureTime, setDepartureTime] = useState("");
   const [maxDetour, setMaxDetour] = useState("2");
+  const [detourUnit, setDetourUnit] = useState<DetourUnit>("miles");
   const [availableSeats, setAvailableSeats] = useState("3");
   const [pricePerSeat, setPricePerSeat] = useState("");
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   const handleStartChange = (value: string, lat?: number, lon?: number) => {
     setStartLocation(value);
@@ -145,6 +164,48 @@ export default function DriverPage() {
     );
   };
 
+  const useCurrentLocation = useCallback(async () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Geolocation not supported",
+        description: "Your browser doesn't support location services.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setStartCoords({ lat: latitude, lon: longitude });
+        setUserLocation({ lat: latitude, lng: longitude });
+        
+        try {
+          const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${latitude}&lon=${longitude}`);
+          if (response.ok) {
+            const data = await response.json();
+            setStartLocation(data.address || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          } else {
+            setStartLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          }
+        } catch {
+          setStartLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        }
+        setIsGettingLocation(false);
+      },
+      (error) => {
+        setIsGettingLocation(false);
+        toast({
+          title: "Location Error",
+          description: error.message || "Unable to get your current location.",
+          variant: "destructive",
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [toast]);
+
   const { data: riderOffers = [], isLoading: offersLoading } = useQuery<RiderOffer[]>({
     queryKey: ["/api/rider-offers", "pending"],
     queryFn: async () => {
@@ -165,7 +226,11 @@ export default function DriverPage() {
     });
   }, [riderOffers, showFutureDates, currentTime]);
 
-  const detourDistance = parseFloat(maxDetour) || 2;
+  const detourDistanceInMiles = useMemo(() => {
+    const value = parseFloat(maxDetour) || 2;
+    return value * UNIT_TO_MILES[detourUnit];
+  }, [maxDetour, detourUnit]);
+
   const nearbyOffers = (startCoords && endCoords) ? filteredOffers.filter(offer => {
     if (!offer.pickupLat || !offer.pickupLng || !offer.dropoffLat || !offer.dropoffLng) return false;
     const offerPickupLat = parseFloat(offer.pickupLat);
@@ -174,7 +239,7 @@ export default function DriverPage() {
     const offerDropoffLng = parseFloat(offer.dropoffLng);
     const distanceToPickup = calculateDistance(startCoords.lat, startCoords.lon, offerPickupLat, offerPickupLng);
     const distanceToDropoff = calculateDistance(endCoords.lat, endCoords.lon, offerDropoffLat, offerDropoffLng);
-    return distanceToPickup <= detourDistance && distanceToDropoff <= detourDistance;
+    return distanceToPickup <= detourDistanceInMiles && distanceToDropoff <= detourDistanceInMiles;
   }) : [];
 
   const { data: myRides = [], isLoading: ridesLoading } = useQuery<Ride[]>({
@@ -194,9 +259,12 @@ export default function DriverPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/driver-routes"] });
       setStartLocation("");
+      setStartCoords(null);
       setEndLocation("");
+      setEndCoords(null);
       setDepartureTime("");
       setMaxDetour("2");
+      setDetourUnit("miles");
       setAvailableSeats("3");
       setPricePerSeat("");
     },
@@ -283,10 +351,19 @@ export default function DriverPage() {
     }
 
     const detour = parseFloat(maxDetour);
-    if (isNaN(detour) || detour < 0.5 || detour > 20) {
+    if (isNaN(detour) || detour <= 0) {
       toast({
         title: "Invalid Detour",
-        description: "Please enter a max detour between 0.5 and 20 miles",
+        description: "Please enter a valid max detour distance",
+        variant: "destructive",
+      });
+      return;
+    }
+    const detourInMiles = detour * UNIT_TO_MILES[detourUnit];
+    if (detourInMiles < 0.1 || detourInMiles > 50) {
+      toast({
+        title: "Invalid Detour",
+        description: "Max detour must be between 0.1 and 50 miles (or equivalent)",
         variant: "destructive",
       });
       return;
@@ -319,7 +396,7 @@ export default function DriverPage() {
       startLocation,
       endLocation,
       departureTime: selectedTime.toISOString(),
-      maxDetourMiles: detour,
+      maxDetourMiles: detourInMiles,
       availableSeats: seats,
       pricePerSeat: price,
     });
@@ -395,17 +472,38 @@ export default function DriverPage() {
                 </CardHeader>
                 <form onSubmit={handlePublishRoute}>
                   <CardContent className="space-y-4">
-                    <PostcodeSearch
-                      value={startLocation}
-                      onChange={handleStartChange}
-                      placeholder="Home / Current Location"
-                      label="Starting Point"
-                      labelClassName="text-primary-foreground/80"
-                      iconColor="text-primary"
-                      inputClassName="bg-white text-primary border-none"
-                      textClassName="text-primary-foreground/70"
-                      testId="input-start-location"
-                    />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-primary-foreground/80">Starting Point</label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={useCurrentLocation}
+                          disabled={isGettingLocation}
+                          className="h-7 text-xs text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/20"
+                          data-testid="button-use-current-location"
+                        >
+                          {isGettingLocation ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Crosshair className="h-3 w-3 mr-1" />
+                          )}
+                          Use Current Location
+                        </Button>
+                      </div>
+                      <PostcodeSearch
+                        value={startLocation}
+                        onChange={handleStartChange}
+                        placeholder="Home / Current Location"
+                        labelClassName="text-primary-foreground/80"
+                        iconColor="text-primary"
+                        inputClassName="bg-white text-primary border-none"
+                        textClassName="text-primary-foreground/70"
+                        testId="input-start-location"
+                        isCurrentLocation={!!userLocation && startCoords?.lat === userLocation.lat && startCoords?.lon === userLocation.lng}
+                      />
+                    </div>
                     
                     <PostcodeSearch
                       value={endLocation}
@@ -429,18 +527,29 @@ export default function DriverPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-primary-foreground/80">Max Detour (mi)</label>
-                        <Input 
-                          type="number" 
-                          placeholder="2"
-                          min="0.5"
-                          max="20"
-                          step="0.5"
-                          className="h-11 bg-white text-primary border-none"
-                          value={maxDetour}
-                          onChange={(e) => setMaxDetour(e.target.value)}
-                          data-testid="input-max-detour"
-                        />
+                        <label className="text-sm font-medium text-primary-foreground/80">Max Detour</label>
+                        <div className="flex gap-2">
+                          <Input 
+                            type="number" 
+                            placeholder="2"
+                            min="0.1"
+                            step="0.5"
+                            className="h-11 bg-white text-primary border-none flex-1"
+                            value={maxDetour}
+                            onChange={(e) => setMaxDetour(e.target.value)}
+                            data-testid="input-max-detour"
+                          />
+                          <Select value={detourUnit} onValueChange={(v) => setDetourUnit(v as DetourUnit)}>
+                            <SelectTrigger className="h-11 w-24 bg-white text-primary border-none" data-testid="select-detour-unit">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(Object.keys(UNIT_LABELS) as DetourUnit[]).map((unit) => (
+                                <SelectItem key={unit} value={unit}>{UNIT_LABELS[unit]}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-primary-foreground/80">Seats</label>
