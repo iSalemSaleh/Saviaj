@@ -170,7 +170,7 @@ export const driverRoutesRelations = relations(driverRoutes, ({ one }) => ({
 }));
 
 export const insertDriverRouteSchema = createInsertSchema(driverRoutes, {
-  maxDetourMiles: z.coerce.number().min(0.5).max(20),
+  maxDetourMiles: z.coerce.number().min(0.01).max(100),
   availableSeats: z.coerce.number().min(1).max(7),
   totalSeats: z.coerce.number().min(1).max(7).optional(),
   pricePerSeat: z.coerce.number().min(1).max(100).optional().nullable(),

@@ -360,10 +360,10 @@ export default function DriverPage() {
       return;
     }
     const detourInMiles = detour * UNIT_TO_MILES[detourUnit];
-    if (detourInMiles < 0.1 || detourInMiles > 50) {
+    if (detourInMiles < 0.01 || detourInMiles > 100) {
       toast({
         title: "Invalid Detour",
-        description: "Max detour must be between 0.1 and 50 miles (or equivalent)",
+        description: "Max detour is too small or too large",
         variant: "destructive",
       });
       return;
@@ -532,8 +532,8 @@ export default function DriverPage() {
                           <Input 
                             type="number" 
                             placeholder="2"
-                            min="0.1"
-                            step="0.5"
+                            min="1"
+                            step="any"
                             className="h-11 bg-white text-primary border-none flex-1"
                             value={maxDetour}
                             onChange={(e) => setMaxDetour(e.target.value)}
