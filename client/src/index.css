@@ -61,12 +61,12 @@
 
 /* LIGHT MODE - Clean, Professional, Trustworthy */
 :root {
-  /* Navy Blue Core */
-  --primary: 220 80% 20%; /* Deep Navy */
+  /* Peacock Blue Core */
+  --primary: 193 100% 11%; /* Peacock Blue #002d3a */
   --primary-foreground: 0 0% 100%;
 
-  /* Vibrant Blue/Teal Accent */
-  --secondary: 195 85% 45%; /* Bright Ocean Blue */
+  /* Vibrant Teal Accent */
+  --secondary: 193 100% 16%; /* Lighter Peacock #003f52 */
   --secondary-foreground: 0 0% 100%;
 
   /* Warm Accent for Actions/Price */
@@ -74,27 +74,27 @@
   --accent-foreground: 0 0% 100%;
 
   /* Neutrals */
-  --background: 210 20% 98%; /* Very light blue-grey tint */
-  --foreground: 220 40% 15%; /* Dark Navy Grey text */
+  --background: 195 15% 97%; /* Very light teal-grey tint */
+  --foreground: 193 80% 10%; /* Dark Peacock text */
 
   --card: 0 0% 100%;
-  --card-foreground: 220 40% 15%;
+  --card-foreground: 193 80% 10%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 220 40% 15%;
+  --popover-foreground: 193 80% 10%;
 
-  --muted: 210 20% 90%;
-  --muted-foreground: 215 20% 40%;
+  --muted: 195 15% 92%;
+  --muted-foreground: 195 10% 55%; /* Lighter placeholder text */
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 215 20% 90%;
-  --input: 215 20% 90%;
-  --ring: 220 80% 20%;
+  --border: 195 15% 88%;
+  --input: 195 15% 88%;
+  --ring: 193 100% 11%;
 
-  --chart-1: 220 80% 20%;
-  --chart-2: 195 85% 45%;
+  --chart-1: 193 100% 11%;
+  --chart-2: 193 100% 16%;
   --chart-3: 35 90% 55%;
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
@@ -110,36 +110,36 @@
 }
 
 .dark {
-  /* Dark Mode - Tech/Night Drive Feel */
-  --background: 222 47% 11%;
-  --foreground: 210 40% 98%;
+  /* Dark Mode - Peacock Blue Theme */
+  --background: 193 100% 8%; /* Darkest peacock #001f28 */
+  --foreground: 195 20% 95%;
 
-  --card: 222 47% 13%;
-  --card-foreground: 210 40% 98%;
+  --card: 193 100% 10%;
+  --card-foreground: 195 20% 95%;
 
-  --popover: 222 47% 11%;
-  --popover-foreground: 210 40% 98%;
+  --popover: 193 100% 8%;
+  --popover-foreground: 195 20% 95%;
 
-  --primary: 217 91% 60%; /* Brighter Blue for dark mode */
-  --primary-foreground: 222 47% 11%;
+  --primary: 193 70% 45%; /* Brighter Peacock for dark mode */
+  --primary-foreground: 193 100% 8%;
 
-  --secondary: 195 85% 55%;
+  --secondary: 193 60% 55%;
   --secondary-foreground: 0 0% 100%;
 
   --accent: 35 90% 55%;
-  --accent-foreground: 222 47% 11%;
+  --accent-foreground: 193 100% 8%;
 
-  --muted: 217 32% 17%;
-  --muted-foreground: 215 20% 65%;
+  --muted: 193 50% 15%;
+  --muted-foreground: 195 15% 60%; /* Lighter placeholder text for dark mode */
 
   --destructive: 0 62% 30%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: 195 20% 95%;
 
-  --border: 217 32% 20%;
-  --input: 217 32% 20%;
-  --ring: 212.7 26.8% 83.9%;
+  --border: 193 40% 18%;
+  --input: 193 40% 18%;
+  --ring: 193 60% 50%;
   
-  --chart-1: 220 70% 50%;
+  --chart-1: 193 70% 45%;
   --chart-2: 160 60% 45%;
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
