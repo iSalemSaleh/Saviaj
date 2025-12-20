@@ -126,7 +126,7 @@ export default function Login() {
 
               <a href="/api/login">
                 <Button variant="outline" className="w-full" data-testid="button-social-login">
-                  Sign in with Replit
+                  Sign in with Google / Apple / X
                 </Button>
               </a>
             </div>
