@@ -9,12 +9,13 @@ const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
+  emailVerificationToken: z.string().min(1, "Email verification token is required"),
   username: z.string().regex(usernameRegex, "Username must be 3-30 characters, alphanumeric and underscores only").optional(),
   password: z.string().min(8, "Password must be at least 8 characters"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
-  phoneNumber: z.string().min(1, "Phone number is required"),
+  phoneNumber: z.string().optional(),
   homeAddress: z.string().optional(),
   city: z.string().optional(),
   postcode: z.string().optional(),
@@ -57,6 +58,41 @@ export function setupLocalAuth(app: Express) {
     try {
       const validatedData = registerSchema.parse(req.body);
       
+      // Validate email verification token
+      const { emailVerifications } = await import("@shared/schema");
+      const { db } = await import("./db");
+      const { eq } = await import("drizzle-orm");
+      
+      const normalizedEmail = validatedData.email.toLowerCase().trim();
+      
+      const [verification] = await db
+        .select()
+        .from(emailVerifications)
+        .where(eq(emailVerifications.verificationToken, validatedData.emailVerificationToken))
+        .limit(1);
+      
+      if (!verification) {
+        return res.status(400).json({ message: "Invalid email verification. Please verify your email again." });
+      }
+      
+      if (verification.email !== normalizedEmail) {
+        return res.status(400).json({ message: "Email verification mismatch. Please verify your email again." });
+      }
+      
+      if (verification.status !== "verified") {
+        return res.status(400).json({ message: "Email not verified. Please complete email verification." });
+      }
+      
+      // Token is valid for 30 minutes after verification
+      if (!verification.verifiedAt) {
+        return res.status(400).json({ message: "Email verification incomplete. Please verify again." });
+      }
+      
+      const tokenValidUntil = new Date(verification.verifiedAt.getTime() + 30 * 60 * 1000);
+      if (new Date() > tokenValidUntil) {
+        return res.status(400).json({ message: "Email verification expired. Please verify your email again." });
+      }
+      
       const existingUser = await storage.getUserByEmail(validatedData.email);
       if (existingUser) {
         return res.status(400).json({ message: "An account with this email already exists" });
@@ -92,7 +128,7 @@ export function setupLocalAuth(app: Express) {
         username: validatedData.username ? validatedData.username.toLowerCase() : undefined,
         passwordHash,
         authProvider: "local",
-        emailVerified: false,
+        emailVerified: true, // Email was verified via OTP
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         profileImageUrl: validatedData.profileImageUrl,
@@ -129,6 +165,11 @@ export function setupLocalAuth(app: Express) {
         phvLicenseExpiry: validatedData.phvLicenseExpiry,
         commercialStatusVerified: false,
       });
+
+      // Invalidate the verification token to prevent reuse
+      await db.update(emailVerifications)
+        .set({ status: "used", verificationToken: null })
+        .where(eq(emailVerifications.id, verification.id));
 
       (req.session as any).userId = user.id;
       (req.session as any).user = {

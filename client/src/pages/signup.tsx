@@ -8,9 +8,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCircle, Camera, Briefcase, Shield } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCircle, Camera, Briefcase, Shield, Mail } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
+import { EmailVerificationModal } from "@/components/EmailVerificationModal";
 
 type AccountType = "rider" | "driver";
 
@@ -104,13 +105,17 @@ export default function Signup() {
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isUploadingCommercial, setIsUploadingCommercial] = useState<string | null>(null);
-  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [emailVerificationToken, setEmailVerificationToken] = useState<string | null>(null);
+  const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
 
   useEffect(() => {
-    const verifiedPhone = localStorage.getItem('atlasride_verified_phone');
-    if (verifiedPhone) {
-      setFormData(prev => ({ ...prev, phoneNumber: verifiedPhone }));
-      setIsPhoneVerified(true);
+    const verifiedEmail = localStorage.getItem('atlasride_verified_email');
+    const token = localStorage.getItem('atlasride_email_token');
+    if (verifiedEmail && token) {
+      setFormData(prev => ({ ...prev, email: verifiedEmail }));
+      setIsEmailVerified(true);
+      setEmailVerificationToken(token);
     }
   }, []);
 
@@ -119,8 +124,12 @@ export default function Signup() {
 
   const registerMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      if (!emailVerificationToken) {
+        throw new Error("Email verification is required");
+      }
       const response = await apiRequest("POST", "/api/auth/register", {
         email: data.email,
+        emailVerificationToken: emailVerificationToken,
         username: data.username || undefined,
         password: data.password,
         firstName: data.firstName,
@@ -161,8 +170,8 @@ export default function Signup() {
     },
     onSuccess: () => {
       localStorage.removeItem('atlasride_signup');
-      localStorage.removeItem('atlasride_verified_phone');
-      localStorage.removeItem('atlasride_phone_token');
+      localStorage.removeItem('atlasride_verified_email');
+      localStorage.removeItem('atlasride_email_token');
       window.location.href = "/";
     },
     onError: (error: any) => {
@@ -276,6 +285,10 @@ export default function Signup() {
           setError("Please enter a valid email address");
           return false;
         }
+        if (!isEmailVerified) {
+          setError("Please verify your email address before continuing");
+          return false;
+        }
         if (formData.password.length < 8) {
           setError("Password must be at least 8 characters");
           return false;
@@ -286,7 +299,7 @@ export default function Signup() {
         }
         return true;
       case 3:
-        if (!formData.firstName || !formData.lastName || !formData.dateOfBirth || !formData.phoneNumber) {
+        if (!formData.firstName || !formData.lastName || !formData.dateOfBirth) {
           setError("Please fill in all required fields");
           return false;
         }
@@ -395,20 +408,56 @@ export default function Signup() {
           <div className="space-y-6">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold mb-2">Create Your Account</h2>
-              <p className="text-muted-foreground">Enter your email and create a password</p>
+              <p className="text-muted-foreground">Verify your email and create a password</p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={(e) => handleChange("email", e.target.value)}
-                  data-testid="input-email"
-                />
+                <Label htmlFor="email" className="flex items-center gap-2">
+                  Email Address *
+                  {isEmailVerified && (
+                    <span className="text-green-600 text-xs flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Verified
+                    </span>
+                  )}
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={formData.email}
+                    onChange={(e) => {
+                      handleChange("email", e.target.value);
+                      if (isEmailVerified) {
+                        setIsEmailVerified(false);
+                        setEmailVerificationToken(null);
+                        localStorage.removeItem('atlasride_verified_email');
+                        localStorage.removeItem('atlasride_email_token');
+                      }
+                    }}
+                    className={isEmailVerified ? "bg-green-50 border-green-300" : ""}
+                    data-testid="input-email"
+                  />
+                  {!isEmailVerified && formData.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowEmailVerificationModal(true)}
+                      className="shrink-0"
+                      data-testid="button-verify-email"
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Verify
+                    </Button>
+                  )}
+                </div>
+                {!isEmailVerified && (
+                  <p className="text-xs text-muted-foreground">
+                    You'll need to verify your email before continuing
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -506,23 +555,13 @@ export default function Signup() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phoneNumber" className="flex items-center gap-2">
-                  Phone Number *
-                  {isPhoneVerified && (
-                    <span className="text-green-600 text-xs flex items-center gap-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Verified
-                    </span>
-                  )}
-                </Label>
+                <Label htmlFor="phoneNumber">Phone Number (Optional)</Label>
                 <Input
                   id="phoneNumber"
                   type="tel"
                   placeholder="+44 7XXX XXXXXX"
                   value={formData.phoneNumber}
                   onChange={(e) => handleChange("phoneNumber", e.target.value)}
-                  disabled={isPhoneVerified}
-                  className={isPhoneVerified ? "bg-muted" : ""}
                   data-testid="input-phone"
                 />
               </div>
@@ -1100,6 +1139,21 @@ export default function Signup() {
           </CardContent>
         </Card>
       </main>
+
+      <EmailVerificationModal
+        open={showEmailVerificationModal}
+        onClose={() => setShowEmailVerificationModal(false)}
+        initialEmail={formData.email}
+        onVerified={(verifiedEmail, token) => {
+          setFormData(prev => ({ ...prev, email: verifiedEmail }));
+          setIsEmailVerified(true);
+          setEmailVerificationToken(token);
+          localStorage.setItem('atlasride_verified_email', verifiedEmail);
+          localStorage.setItem('atlasride_email_token', token);
+          setShowEmailVerificationModal(false);
+          setError("");
+        }}
+      />
     </div>
   );
 }

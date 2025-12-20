@@ -355,6 +355,258 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Email OTP verification endpoints (using Microsoft Entra External ID)
+  app.post('/api/auth/email-otp/request', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      // Validate email format
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        return res.status(400).json({ message: "Please enter a valid email address" });
+      }
+      
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      // Rate limiting: check for recent requests from this email
+      const { emailVerifications } = await import("@shared/schema");
+      const recentVerification = await db
+        .select()
+        .from(emailVerifications)
+        .where(eq(emailVerifications.email, normalizedEmail))
+        .orderBy(sql`${emailVerifications.createdAt} DESC`)
+        .limit(1);
+      
+      if (recentVerification.length > 0) {
+        const lastRequest = recentVerification[0];
+        const timeSinceLastRequest = Date.now() - new Date(lastRequest.createdAt!).getTime();
+        if (timeSinceLastRequest < 60000) { // 1 minute cooldown
+          return res.status(429).json({ 
+            message: "Please wait before requesting another code",
+            waitSeconds: Math.ceil((60000 - timeSinceLastRequest) / 1000)
+          });
+        }
+      }
+      
+      // Try to use Entra External ID for email OTP
+      try {
+        const { initiateEmailOtpSignUp } = await import("./entraEmailOtp");
+        const result = await initiateEmailOtpSignUp(normalizedEmail);
+        
+        if (result.success && result.continuationToken) {
+          // Store the continuation token in database for later verification
+          const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+          
+          // Invalidate any existing pending verifications
+          await db.update(emailVerifications)
+            .set({ status: "expired" })
+            .where(eq(emailVerifications.email, normalizedEmail));
+          
+          // Store with placeholder OTP (Entra handles the actual code)
+          const bcrypt = await import("bcrypt");
+          const placeholderHash = await bcrypt.default.hash("entra-managed", 10);
+          
+          await db.insert(emailVerifications).values({
+            email: normalizedEmail,
+            otpCode: placeholderHash,
+            verificationToken: result.continuationToken,
+            status: "pending",
+            attempts: 0,
+            expiresAt,
+          });
+          
+          return res.json({ 
+            success: true, 
+            message: `Verification code sent to ${result.challengeTargetLabel || email}`,
+            codeLength: result.codeLength || 8,
+            continuationToken: result.continuationToken,
+          });
+        } else {
+          throw new Error(result.error || "Failed to send verification code");
+        }
+      } catch (entraError: any) {
+        console.error("Entra Email OTP error:", entraError);
+        
+        // Fall back to demo mode
+        const otpCode = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digits
+        const bcrypt = await import("bcrypt");
+        const hashedOtp = await bcrypt.default.hash(otpCode, 10);
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+        
+        await db.update(emailVerifications)
+          .set({ status: "expired" })
+          .where(eq(emailVerifications.email, normalizedEmail));
+        
+        await db.insert(emailVerifications).values({
+          email: normalizedEmail,
+          otpCode: hashedOtp,
+          status: "pending",
+          attempts: 0,
+          expiresAt,
+        });
+        
+        console.log(`[DEMO MODE] Email OTP for ${normalizedEmail}: ${otpCode}`);
+        return res.json({ 
+          success: true, 
+          message: "Verification code sent",
+          demoMode: true,
+          demoCode: otpCode,
+          codeLength: 8,
+        });
+      }
+    } catch (error) {
+      console.error("Email OTP request error:", error);
+      res.status(500).json({ message: "Failed to send verification code" });
+    }
+  });
+
+  app.post('/api/auth/email-otp/verify', async (req, res) => {
+    try {
+      const { email, code, continuationToken } = req.body;
+      
+      if (!email || !code) {
+        return res.status(400).json({ message: "Email and code are required" });
+      }
+      
+      const normalizedEmail = email.toLowerCase().trim();
+      const { emailVerifications } = await import("@shared/schema");
+      const bcrypt = await import("bcrypt");
+      
+      // Find the most recent pending verification for this email
+      const [verification] = await db
+        .select()
+        .from(emailVerifications)
+        .where(eq(emailVerifications.email, normalizedEmail))
+        .orderBy(sql`${emailVerifications.createdAt} DESC`)
+        .limit(1);
+      
+      if (!verification) {
+        return res.status(400).json({ message: "No verification request found. Please request a new code." });
+      }
+      
+      if (verification.status !== "pending") {
+        return res.status(400).json({ message: "This code has already been used. Please request a new code." });
+      }
+      
+      if ((verification.attempts || 0) >= 5) {
+        await db.update(emailVerifications)
+          .set({ status: "expired" })
+          .where(eq(emailVerifications.id, verification.id));
+        return res.status(400).json({ message: "Too many attempts. Please request a new code." });
+      }
+      
+      if (new Date() > verification.expiresAt) {
+        await db.update(emailVerifications)
+          .set({ status: "expired" })
+          .where(eq(emailVerifications.id, verification.id));
+        return res.status(400).json({ message: "Code has expired. Please request a new code." });
+      }
+      
+      // If we have a continuation token, verify with Entra
+      if (verification.verificationToken && continuationToken) {
+        try {
+          const { verifyEmailOtp } = await import("./entraEmailOtp");
+          const result = await verifyEmailOtp(continuationToken, code);
+          
+          if (result.verified) {
+            const crypto = await import("crypto");
+            const newVerificationToken = crypto.randomBytes(32).toString("hex");
+            
+            await db.update(emailVerifications)
+              .set({ 
+                status: "verified",
+                verificationToken: newVerificationToken,
+                verifiedAt: new Date()
+              })
+              .where(eq(emailVerifications.id, verification.id));
+            
+            return res.json({ 
+              success: true, 
+              verificationToken: newVerificationToken,
+              email: normalizedEmail
+            });
+          } else {
+            await db.update(emailVerifications)
+              .set({ attempts: (verification.attempts || 0) + 1 })
+              .where(eq(emailVerifications.id, verification.id));
+            return res.status(400).json({ message: result.error || "Invalid code. Please try again." });
+          }
+        } catch (entraError: any) {
+          console.error("Entra verification error:", entraError);
+          // Fall through to demo mode verification
+        }
+      }
+      
+      // Demo mode verification (or fallback)
+      const isValidCode = await bcrypt.default.compare(code, verification.otpCode);
+      
+      if (!isValidCode) {
+        await db.update(emailVerifications)
+          .set({ attempts: (verification.attempts || 0) + 1 })
+          .where(eq(emailVerifications.id, verification.id));
+        return res.status(400).json({ message: "Invalid code. Please try again." });
+      }
+      
+      const crypto = await import("crypto");
+      const verificationTokenNew = crypto.randomBytes(32).toString("hex");
+      
+      await db.update(emailVerifications)
+        .set({ 
+          status: "verified",
+          verificationToken: verificationTokenNew,
+          verifiedAt: new Date()
+        })
+        .where(eq(emailVerifications.id, verification.id));
+      
+      res.json({ 
+        success: true, 
+        verificationToken: verificationTokenNew,
+        email: normalizedEmail
+      });
+    } catch (error) {
+      console.error("Email OTP verification error:", error);
+      res.status(500).json({ message: "Failed to verify code" });
+    }
+  });
+
+  app.post('/api/auth/email-otp/validate-token', async (req, res) => {
+    try {
+      const { verificationToken, email } = req.body;
+      
+      if (!verificationToken || !email) {
+        return res.status(400).json({ valid: false });
+      }
+      
+      const { emailVerifications } = await import("@shared/schema");
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      const [verification] = await db
+        .select()
+        .from(emailVerifications)
+        .where(eq(emailVerifications.verificationToken, verificationToken))
+        .limit(1);
+      
+      if (!verification || verification.email !== normalizedEmail || verification.status !== "verified") {
+        return res.status(400).json({ valid: false });
+      }
+      
+      // Token is valid for 30 minutes after verification
+      const tokenValidUntil = new Date(verification.verifiedAt!.getTime() + 30 * 60 * 1000);
+      if (new Date() > tokenValidUntil) {
+        return res.status(400).json({ valid: false, message: "Verification expired" });
+      }
+      
+      res.json({ valid: true, email: normalizedEmail });
+    } catch (error) {
+      console.error("Token validation error:", error);
+      res.status(500).json({ valid: false });
+    }
+  });
+
   // Validate phone verification token (used during registration)
   app.post('/api/auth/otp/validate-token', async (req, res) => {
     try {
