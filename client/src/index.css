@@ -59,43 +59,43 @@
   --radius: 0.75rem;
 }
 
-/* LIGHT MODE - Clean, Professional, Trustworthy */
+/* LIGHT MODE - Vibrant Peacock Blue Theme */
 :root {
-  /* Peacock Blue Core */
-  --primary: 193 100% 11%; /* Peacock Blue #002d3a */
+  /* Vibrant Peacock Blue Core */
+  --primary: 195 85% 22%; /* Rich Peacock Blue */
   --primary-foreground: 0 0% 100%;
 
-  /* Vibrant Teal Accent */
-  --secondary: 193 100% 16%; /* Lighter Peacock #003f52 */
+  /* Bright Teal Accent */
+  --secondary: 180 70% 40%; /* Vibrant Aqua Teal */
   --secondary-foreground: 0 0% 100%;
 
-  /* Warm Accent for Actions/Price */
-  --accent: 35 90% 55%; /* Golden Orange */
+  /* Coral Accent for Actions/Price */
+  --accent: 14 85% 58%; /* Vibrant Coral */
   --accent-foreground: 0 0% 100%;
 
-  /* Neutrals */
-  --background: 195 15% 97%; /* Very light teal-grey tint */
-  --foreground: 193 80% 10%; /* Dark Peacock text */
+  /* Fresh Neutrals */
+  --background: 195 30% 97%; /* Fresh light teal tint */
+  --foreground: 195 65% 18%; /* Rich Peacock text */
 
-  --card: 0 0% 100%;
-  --card-foreground: 193 80% 10%;
+  --card: 195 25% 99%;
+  --card-foreground: 195 65% 18%;
 
-  --popover: 0 0% 100%;
-  --popover-foreground: 193 80% 10%;
+  --popover: 195 25% 99%;
+  --popover-foreground: 195 65% 18%;
 
-  --muted: 195 15% 92%;
-  --muted-foreground: 195 10% 55%; /* Lighter placeholder text */
+  --muted: 195 25% 93%;
+  --muted-foreground: 195 15% 55%; /* Light placeholder text */
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 195 15% 88%;
-  --input: 195 15% 88%;
-  --ring: 193 100% 11%;
+  --border: 195 25% 88%;
+  --input: 195 25% 88%;
+  --ring: 195 85% 22%;
 
-  --chart-1: 193 100% 11%;
-  --chart-2: 193 100% 16%;
-  --chart-3: 35 90% 55%;
+  --chart-1: 195 85% 22%;
+  --chart-2: 180 70% 40%;
+  --chart-3: 14 85% 58%;
   --chart-4: 43 74% 66%;
   --chart-5: 27 87% 67%;
 
@@ -110,38 +110,38 @@
 }
 
 .dark {
-  /* Dark Mode - Peacock Blue Theme */
-  --background: 193 100% 8%; /* Darkest peacock #001f28 */
-  --foreground: 195 20% 95%;
+  /* Dark Mode - Vibrant Peacock Blue Theme */
+  --background: 195 70% 10%; /* Deep peacock */
+  --foreground: 195 25% 95%;
 
-  --card: 193 100% 10%;
-  --card-foreground: 195 20% 95%;
+  --card: 195 65% 12%;
+  --card-foreground: 195 25% 95%;
 
-  --popover: 193 100% 8%;
-  --popover-foreground: 195 20% 95%;
+  --popover: 195 70% 10%;
+  --popover-foreground: 195 25% 95%;
 
-  --primary: 193 70% 45%; /* Brighter Peacock for dark mode */
-  --primary-foreground: 193 100% 8%;
+  --primary: 180 65% 50%; /* Bright Cyan for dark mode */
+  --primary-foreground: 195 70% 10%;
 
-  --secondary: 193 60% 55%;
+  --secondary: 180 70% 45%;
   --secondary-foreground: 0 0% 100%;
 
-  --accent: 35 90% 55%;
-  --accent-foreground: 193 100% 8%;
+  --accent: 14 85% 58%; /* Vibrant Coral */
+  --accent-foreground: 195 70% 10%;
 
-  --muted: 193 50% 15%;
-  --muted-foreground: 195 15% 60%; /* Lighter placeholder text for dark mode */
+  --muted: 195 50% 16%;
+  --muted-foreground: 195 20% 60%; /* Light placeholder text for dark mode */
 
-  --destructive: 0 62% 30%;
-  --destructive-foreground: 195 20% 95%;
+  --destructive: 0 62% 40%;
+  --destructive-foreground: 195 25% 95%;
 
-  --border: 193 40% 18%;
-  --input: 193 40% 18%;
-  --ring: 193 60% 50%;
+  --border: 195 45% 20%;
+  --input: 195 45% 20%;
+  --ring: 180 65% 50%;
   
-  --chart-1: 193 70% 45%;
+  --chart-1: 180 65% 50%;
   --chart-2: 160 60% 45%;
-  --chart-3: 30 80% 55%;
+  --chart-3: 14 85% 58%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
 
