@@ -53,16 +53,24 @@ export async function sendVerificationSMS(toPhoneNumber: string, code: string): 
     const client = await getTwilioClient();
     const fromNumber = await getTwilioFromPhoneNumber();
     
-    await client.messages.create({
+    console.log(`[Twilio] Attempting to send SMS from ${fromNumber} to ${toPhoneNumber}`);
+    
+    const message = await client.messages.create({
       body: `Your AtlasRide verification code is: ${code}. This code expires in 5 minutes.`,
       from: fromNumber,
       to: toPhoneNumber
     });
     
-    console.log(`SMS sent successfully to ${toPhoneNumber}`);
+    console.log(`[Twilio] SMS sent successfully to ${toPhoneNumber}, SID: ${message.sid}`);
     return true;
-  } catch (error) {
-    console.error('Failed to send SMS:', error);
+  } catch (error: any) {
+    console.error('[Twilio] Failed to send SMS:', {
+      to: toPhoneNumber,
+      errorCode: error.code,
+      errorMessage: error.message,
+      moreInfo: error.moreInfo,
+      status: error.status
+    });
     return false;
   }
 }
