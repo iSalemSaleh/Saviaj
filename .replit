@@ -45,5 +45,5 @@ integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.
 [userenv]
 
 [userenv.shared]
-ENTRA_CLIENT_ID = "311dc452-3411-411e-acd5-0bdea1331569"
+ENTRA_CLIENT_ID = "232d29d0-8723-40a5-98b5-f14e5203d136"
 ENTRA_TENANT_ID = "f11c4c99-1374-4bae-9bfb-9e109a48494b"
