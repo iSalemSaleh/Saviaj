@@ -802,13 +802,13 @@ export default function RiderPage() {
               </div>
             )}
 
-            {/* Nearby Pro Drivers Section - shows when pickup is set */}
+            {/* Nearby Drivers Section - shows when pickup is set */}
             {pickupCoords && (
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold text-green-600 flex items-center gap-2">
                     <Crown className="h-6 w-6" />
-                    Nearby Pro Drivers
+                    Nearby Drivers
                     {nearbyDrivers.length > 0 && (
                       <Badge className="bg-green-600 text-white">{nearbyDrivers.length} online</Badge>
                     )}
@@ -823,14 +823,14 @@ export default function RiderPage() {
                   <Card className="border-dashed border-green-500/30 bg-green-50">
                     <CardContent className="p-8 text-center">
                       <Loader2 className="h-8 w-8 text-green-500 mx-auto mb-3 animate-spin" />
-                      <p className="text-muted-foreground">Finding nearby Pro drivers...</p>
+                      <p className="text-muted-foreground">Finding nearby drivers...</p>
                     </CardContent>
                   </Card>
                 ) : nearbyDrivers.length === 0 ? (
                   <Card className="border-dashed border-green-500/30 bg-green-50">
                     <CardContent className="p-8 text-center">
                       <Radio className="h-12 w-12 text-green-500/40 mx-auto mb-3" />
-                      <p className="text-muted-foreground">No Pro drivers online near you right now.</p>
+                      <p className="text-muted-foreground">No drivers near you right now.</p>
                       <p className="text-sm text-muted-foreground mt-1">Try posting your route or checking driver routes.</p>
                     </CardContent>
                   </Card>
