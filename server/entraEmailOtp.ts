@@ -1,7 +1,7 @@
 // Microsoft Entra External ID Native Authentication - Email OTP
 // Uses Microsoft's built-in email service to send OTP codes
 
-const TENANT_NAME = "atlasridecustomers";
+const TENANT_NAME = "ssibrahim247gmail";
 const TENANT_DOMAIN = `${TENANT_NAME}.onmicrosoft.com`;
 const CIAM_ENDPOINT = `https://${TENANT_NAME}.ciamlogin.com`;
 
