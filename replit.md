@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 - **Azure Maps**: Geocoding and route calculations (API key securely proxied via backend)
 - **OpenStreetMap**: Free map tile rendering via Leaflet
 - **Replit Auth**: OAuth/OIDC authentication
-- **Microsoft Entra External ID**: Email OTP verification for signup (tenant: atlasridecustomers.onmicrosoft.com)
+- **Microsoft Entra External ID**: Email OTP verification for signup (CIAM tenant: atlasridecustomers.onmicrosoft.com, Client ID: 232d29d0-8723-40a5-98b5-f14e5203d136)
 
 ### Key Design Patterns
 - **Shared Schema**: Database schema and TypeScript types are defined once in `shared/schema.ts` and used by both frontend and backend

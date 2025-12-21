@@ -445,7 +445,7 @@ export const emailVerifications = pgTable("email_verifications", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   email: varchar("email", { length: 255 }).notNull(),
   otpCode: varchar("otp_code", { length: 72 }).notNull(), // bcrypt hash is 60 chars
-  verificationToken: varchar("verification_token", { length: 64 }),
+  verificationToken: text("verification_token"), // Changed to text for long Entra continuation tokens
   status: varchar("status", { length: 20 }).default("pending"), // pending, verified, expired
   attempts: integer("attempts").default(0),
   expiresAt: timestamp("expires_at").notNull(),
