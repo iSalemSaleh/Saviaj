@@ -52,6 +52,16 @@ Preferred communication style: Simple, everyday language.
 - **WebSocket Rooms**: Location tracking and real-time chat use room-based WebSocket connections per ride
 - **Secure API Proxying**: Azure Maps API key is never exposed to frontend; all requests go through backend proxy
 - **Real-time Chat**: WebSocket-based chat between riders and drivers with messages persisted to database
+- **Nearby Pro Drivers**: Commercial drivers can go online with their rate per mile, and riders can see nearby online Pro drivers with ratings, distance from pickup, and estimated trip cost
+
+### Driver Types
+- **Private Drivers**: Limited to 5 rides/day and £99.99 daily earnings. Can post routes and accept ride requests.
+- **Commercial (Pro) Drivers**: Licensed drivers with unlimited rides. Can go "online for hire" with rate per mile visibility. Riders can find them directly based on proximity.
+
+### Rider Options for Finding Rides
+1. **Post Your Route**: Riders post their trip with a price offer and wait for drivers to accept or bid
+2. **View Driver Routes**: Browse routes drivers have posted and request to join
+3. **Nearby Pro Drivers**: See commercial drivers currently online with their rates and request rides directly
 
 ## External Dependencies
 
