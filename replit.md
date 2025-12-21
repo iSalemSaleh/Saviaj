@@ -63,6 +63,15 @@ Preferred communication style: Simple, everyday language.
 2. **View Driver Routes**: Browse routes drivers have posted and request to join
 3. **Nearby Pro Drivers**: See commercial drivers currently online with their rates and request rides directly
 
+### Become-Driver Flow
+- Modular multi-step form (steps 3-6) matching signup flow
+- Step 3: Profile photo (only shown if user doesn't have one)
+- Step 4: License + Vehicle info
+- Step 5: Insurance + Bank details
+- Step 6: Commercial driver (optional)
+- Users with profile pictures start at step 4, otherwise step 3
+- All required fields validated before final submission
+
 ## External Dependencies
 
 ### Third-Party Services

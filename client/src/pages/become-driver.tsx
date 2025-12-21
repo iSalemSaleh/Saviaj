@@ -7,24 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Car, Shield, PoundSterling, Upload, Loader2, CheckCircle2, AlertCircle, Briefcase, Check } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Car, Shield, PoundSterling, Upload, Loader2, CheckCircle2, AlertCircle, Briefcase, Check, ArrowLeft, ArrowRight, Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 // UK Driving License validation (DVLA format: 16 alphanumeric characters)
-// Format: SSSSS YYMMDD IICCC where:
-// - SSSSS: First 5 chars of surname (9 as filler for short names)
-// - YYMMDD: Date of birth encoding (6 digits)
-// - II: Initials (can include 9 as filler)
-// - CCC: Check characters (alphanumeric)
 function validateUkDrivingLicense(license: string): { valid: boolean; error?: string } {
   const normalized = license.toUpperCase().replace(/\s/g, '');
   if (normalized.length !== 16) {
     return { valid: false, error: "UK license must be 16 characters" };
   }
-  // UK DVLA format: 5 letters/9 + 6 digits + 5 alphanumeric
-  // Examples: MORGA753116SM9IJ, SMITH701019AB9CD
   const pattern = /^[A-Z9]{5}[0-9]{6}[A-Z0-9]{5}$/;
   if (!pattern.test(normalized)) {
     return { valid: false, error: "Invalid UK license format (e.g., MORGA753116SM9IJ)" };
@@ -74,12 +69,31 @@ export default function BecomeDriverPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Determine starting step based on profile picture
+  const hasProfilePicture = !!(user as any)?.profileImageUrl;
+  const startingStep = hasProfilePicture ? 4 : 3;
+  const [step, setStep] = useState(startingStep);
+  const totalSteps = 6;
+
   useEffect(() => {
     if ((user as any)?.isDriver) {
       navigate("/driver");
     }
   }, [user, navigate]);
 
+  // Update starting step when user data loads
+  useEffect(() => {
+    if (user) {
+      const hasPic = !!(user as any)?.profileImageUrl;
+      setStep(hasPic ? 4 : 3);
+    }
+  }, [user]);
+
+  // Profile photo state
+  const [profileImageUrl, setProfileImageUrl] = useState((user as any)?.profileImageUrl || "");
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  // License & vehicle info (Step 4)
   const [driverLicenseUrl, setDriverLicenseUrl] = useState("");
   const [driverLicenseNumber, setDriverLicenseNumber] = useState("");
   const [driverLicenseExpiry, setDriverLicenseExpiry] = useState("");
@@ -89,14 +103,18 @@ export default function BecomeDriverPage() {
   const [vehicleYear, setVehicleYear] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
   const [vehicleRegistration, setVehicleRegistration] = useState("");
+
+  // Insurance & bank details (Step 5)
   const [vehicleInsuranceExpiry, setVehicleInsuranceExpiry] = useState("");
   const [bankAccountName, setBankAccountName] = useState("");
   const [bankSortCode, setBankSortCode] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
+
+  // Upload states
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingCommercial, setIsUploadingCommercial] = useState<string | null>(null);
 
-  // Commercial driver fields
+  // Commercial driver fields (Step 6)
   const [isCommercialDriver, setIsCommercialDriver] = useState(false);
   const [privateHireLicenseUrl, setPrivateHireLicenseUrl] = useState("");
   const [privateHireLicenseNumber, setPrivateHireLicenseNumber] = useState("");
@@ -116,6 +134,45 @@ export default function BecomeDriverPage() {
     sortCode?: string;
     accountNumber?: string;
   }>({});
+  const [error, setError] = useState("");
+
+  const progress = ((step - 2) / (totalSteps - 2)) * 100; // Steps 3-6 = 4 steps total
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append("photo", file);
+
+      const response = await fetch("/api/user/upload-photo", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await response.json();
+      setProfileImageUrl(data.url);
+      toast({
+        title: "Photo Uploaded",
+        description: "Your profile photo has been uploaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload photo. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
 
   const handleLicenseUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -225,124 +282,698 @@ export default function BecomeDriverPage() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Clear previous errors
+  const validateStep = (): boolean => {
+    setError("");
     const newErrors: typeof errors = {};
 
+    switch (step) {
+      case 3: // Profile Photo
+        if (!profileImageUrl) {
+          setError("Profile photo is required for drivers");
+          return false;
+        }
+        return true;
+
+      case 4: // License + Vehicle Info
+        if (!driverLicenseUrl) {
+          setError("Please upload your driver's license");
+          return false;
+        }
+        if (!driverLicenseNumber || !driverLicenseExpiry) {
+          setError("Please enter your license number and expiry date");
+          return false;
+        }
+        const licenseValidation = validateUkDrivingLicense(driverLicenseNumber);
+        if (!licenseValidation.valid) {
+          newErrors.licenseNumber = licenseValidation.error;
+          setErrors(newErrors);
+          setError("Please fix the highlighted fields");
+          return false;
+        }
+        if (!backgroundCheckConsent) {
+          setError("You must consent to a background check");
+          return false;
+        }
+        if (!vehicleMake || !vehicleModel || !vehicleRegistration) {
+          setError("Please complete all vehicle information");
+          return false;
+        }
+        return true;
+
+      case 5: // Insurance + Bank Details
+        if (!vehicleInsuranceExpiry) {
+          newErrors.insuranceExpiry = "Insurance expiry date is required";
+        } else {
+          const insuranceValidation = validateInsuranceExpiry(vehicleInsuranceExpiry);
+          if (!insuranceValidation.valid) {
+            newErrors.insuranceExpiry = insuranceValidation.error;
+          }
+        }
+        if (!bankAccountName) {
+          setError("Please enter the account holder name");
+          return false;
+        }
+        const sortCodeValidation = validateUkSortCode(bankSortCode);
+        if (!sortCodeValidation.valid) {
+          newErrors.sortCode = sortCodeValidation.error;
+        }
+        const accountValidation = validateUkAccountNumber(bankAccountNumber);
+        if (!accountValidation.valid) {
+          newErrors.accountNumber = accountValidation.error;
+        }
+        if (Object.keys(newErrors).length > 0) {
+          setErrors(newErrors);
+          setError("Please fix the highlighted fields");
+          return false;
+        }
+        return true;
+
+      case 6: // Commercial Driver (optional)
+        return true;
+
+      default:
+        return true;
+    }
+  };
+
+  const validateAllRequiredData = (): boolean => {
+    setError("");
+    const newErrors: typeof errors = {};
+
+    // Validate profile photo
+    if (!profileImageUrl) {
+      setError("Profile photo is required. Please go back and add one.");
+      setStep(3);
+      return false;
+    }
+
+    // Validate license + vehicle (Step 4 data)
     if (!driverLicenseUrl) {
-      toast({
-        title: "Missing Information",
-        description: "Please upload your driver's license",
-        variant: "destructive",
-      });
-      return;
+      setError("Please upload your driver's license");
+      setStep(4);
+      return false;
     }
-
     if (!driverLicenseNumber || !driverLicenseExpiry) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter your license number and expiry date",
-        variant: "destructive",
-      });
-      return;
+      setError("Please enter your license number and expiry date");
+      setStep(4);
+      return false;
     }
-
-    // Validate UK driving license format
     const licenseValidation = validateUkDrivingLicense(driverLicenseNumber);
     if (!licenseValidation.valid) {
       newErrors.licenseNumber = licenseValidation.error;
+      setErrors(newErrors);
+      setError("Please fix the license number");
+      setStep(4);
+      return false;
+    }
+    if (!backgroundCheckConsent) {
+      setError("You must consent to a background check");
+      setStep(4);
+      return false;
+    }
+    if (!vehicleMake || !vehicleModel || !vehicleRegistration) {
+      setError("Please complete all vehicle information");
+      setStep(4);
+      return false;
     }
 
-    // Validate insurance expiry (at least 30 days)
-    if (vehicleInsuranceExpiry) {
+    // Validate insurance + bank details (Step 5 data)
+    if (!vehicleInsuranceExpiry) {
+      newErrors.insuranceExpiry = "Insurance expiry date is required";
+    } else {
       const insuranceValidation = validateInsuranceExpiry(vehicleInsuranceExpiry);
       if (!insuranceValidation.valid) {
         newErrors.insuranceExpiry = insuranceValidation.error;
       }
-    } else {
-      newErrors.insuranceExpiry = "Insurance expiry date is required";
     }
-
-    // Validate UK sort code format
+    if (!bankAccountName) {
+      setError("Please enter the account holder name");
+      setStep(5);
+      return false;
+    }
     const sortCodeValidation = validateUkSortCode(bankSortCode);
     if (!sortCodeValidation.valid) {
       newErrors.sortCode = sortCodeValidation.error;
     }
-
-    // Validate UK account number format
     const accountValidation = validateUkAccountNumber(bankAccountNumber);
     if (!accountValidation.valid) {
       newErrors.accountNumber = accountValidation.error;
     }
-
-    // Set errors and stop if any exist
-    setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
-      toast({
-        title: "Validation Error",
-        description: "Please fix the highlighted fields before submitting",
-        variant: "destructive",
-      });
-      return;
+      setErrors(newErrors);
+      setError("Please fix the highlighted fields");
+      setStep(5);
+      return false;
     }
 
-    if (!backgroundCheckConsent) {
-      toast({
-        title: "Consent Required",
-        description: "You must consent to a background check to become a driver",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!vehicleMake || !vehicleModel || !vehicleRegistration) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter your vehicle details",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!bankAccountName || !bankSortCode || !bankAccountNumber) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter your bank details to receive payments",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Send digits only - backend will normalize
-    upgradeMutation.mutate({
-      driverLicenseUrl,
-      driverLicenseNumber: driverLicenseNumber.toUpperCase().replace(/\s/g, ''),
-      driverLicenseExpiry,
-      backgroundCheckConsent,
-      vehicleMake,
-      vehicleModel,
-      vehicleYear,
-      vehicleColor,
-      vehicleRegistration,
-      vehicleInsuranceExpiry,
-      bankAccountName,
-      bankSortCode: bankSortCode.replace(/\D/g, ''),
-      bankAccountNumber: bankAccountNumber.replace(/\D/g, ''),
-      isCommercialDriver,
-      privateHireLicenseUrl: isCommercialDriver ? privateHireLicenseUrl : undefined,
-      privateHireLicenseNumber: isCommercialDriver ? privateHireLicenseNumber : undefined,
-      dvlaCheckCode: isCommercialDriver ? dvlaCheckCode : undefined,
-      commercialInsuranceUrl: isCommercialDriver ? commercialInsuranceUrl : undefined,
-      commercialInsuranceExpiry: isCommercialDriver ? commercialInsuranceExpiry : undefined,
-      vehicleInspectionUrl: isCommercialDriver ? vehicleInspectionUrl : undefined,
-      vehicleInspectionExpiry: isCommercialDriver ? vehicleInspectionExpiry : undefined,
-      phvLicenseUrl: isCommercialDriver ? phvLicenseUrl : undefined,
-      phvLicenseNumber: isCommercialDriver ? phvLicenseNumber : undefined,
-      phvLicenseExpiry: isCommercialDriver ? phvLicenseExpiry : undefined,
-    });
+    return true;
   };
+
+  const handleNext = () => {
+    if (validateStep()) {
+      if (step === 6) {
+        // Validate ALL required data before final submission
+        if (!validateAllRequiredData()) {
+          return;
+        }
+        // Submit the form
+        upgradeMutation.mutate({
+          profileImageUrl,
+          driverLicenseUrl,
+          driverLicenseNumber: driverLicenseNumber.toUpperCase().replace(/\s/g, ''),
+          driverLicenseExpiry,
+          backgroundCheckConsent,
+          vehicleMake,
+          vehicleModel,
+          vehicleYear,
+          vehicleColor,
+          vehicleRegistration,
+          vehicleInsuranceExpiry,
+          bankAccountName,
+          bankSortCode: bankSortCode.replace(/\D/g, ''),
+          bankAccountNumber: bankAccountNumber.replace(/\D/g, ''),
+          isCommercialDriver,
+          privateHireLicenseUrl: isCommercialDriver ? privateHireLicenseUrl : undefined,
+          privateHireLicenseNumber: isCommercialDriver ? privateHireLicenseNumber : undefined,
+          dvlaCheckCode: isCommercialDriver ? dvlaCheckCode : undefined,
+          commercialInsuranceUrl: isCommercialDriver ? commercialInsuranceUrl : undefined,
+          commercialInsuranceExpiry: isCommercialDriver ? commercialInsuranceExpiry : undefined,
+          vehicleInspectionUrl: isCommercialDriver ? vehicleInspectionUrl : undefined,
+          vehicleInspectionExpiry: isCommercialDriver ? vehicleInspectionExpiry : undefined,
+          phvLicenseUrl: isCommercialDriver ? phvLicenseUrl : undefined,
+          phvLicenseNumber: isCommercialDriver ? phvLicenseNumber : undefined,
+          phvLicenseExpiry: isCommercialDriver ? phvLicenseExpiry : undefined,
+        });
+      } else {
+        setStep(step + 1);
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (step > startingStep) {
+      setStep(step - 1);
+      setError("");
+    }
+  };
+
+  const getStepTitle = () => {
+    switch (step) {
+      case 3:
+        return { title: "Profile Photo", description: "Add a photo so riders can recognize you" };
+      case 4:
+        return { title: "Driver Verification", description: "License and vehicle information" };
+      case 5:
+        return { title: "Insurance & Payment", description: "Insurance and bank details for payouts" };
+      case 6:
+        return { title: "Pro Account (Optional)", description: "Remove ride limits with commercial verification" };
+      default:
+        return { title: "Driver Registration", description: "" };
+    }
+  };
+
+  const renderStep = () => {
+    switch (step) {
+      case 3: // Profile Photo
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold mb-2">Add Your Profile Photo</h2>
+              <p className="text-muted-foreground">Riders want to see who they're riding with</p>
+            </div>
+
+            <div className="flex flex-col items-center gap-6">
+              <div className="relative">
+                <Avatar className="h-32 w-32 border-4 border-primary/20">
+                  <AvatarImage src={profileImageUrl} />
+                  <AvatarFallback className="text-3xl bg-primary/10">
+                    {(user as any)?.firstName?.charAt(0) || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                {profileImageUrl && (
+                  <div className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-1">
+                    <Check className="h-4 w-4 text-white" />
+                  </div>
+                )}
+              </div>
+
+              <div className="w-full max-w-xs">
+                <Label htmlFor="photo-upload" className="cursor-pointer">
+                  <div className="flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-lg hover:border-primary/50 transition-colors">
+                    {isUploadingPhoto ? (
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Camera className="h-8 w-8 text-muted-foreground" />
+                    )}
+                    <span className="text-sm text-muted-foreground">
+                      {profileImageUrl ? "Change Photo" : "Upload Photo"}
+                    </span>
+                  </div>
+                </Label>
+                <Input
+                  id="photo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  disabled={isUploadingPhoto}
+                  className="hidden"
+                  data-testid="input-profile-photo"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 4: // License + Vehicle Info
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                Driver's License
+              </h3>
+              
+              <div className="space-y-2">
+                <Label>Upload License Photo</Label>
+                <div className="flex items-center gap-4">
+                  <Input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={handleLicenseUpload}
+                    disabled={isUploading}
+                    className="flex-1"
+                    data-testid="input-license-upload"
+                  />
+                  {isUploading && <Loader2 className="h-5 w-5 animate-spin" />}
+                  {driverLicenseUrl && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="licenseNumber">License Number</Label>
+                  <Input
+                    id="licenseNumber"
+                    value={driverLicenseNumber}
+                    onChange={(e) => {
+                      setDriverLicenseNumber(e.target.value);
+                      if (errors.licenseNumber) setErrors(prev => ({ ...prev, licenseNumber: undefined }));
+                    }}
+                    placeholder="e.g. SMITH701019AB9CD"
+                    className={errors.licenseNumber ? "border-red-500" : ""}
+                    data-testid="input-license-number"
+                  />
+                  {errors.licenseNumber && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.licenseNumber}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="licenseExpiry">Expiry Date</Label>
+                  <Input
+                    id="licenseExpiry"
+                    type="date"
+                    value={driverLicenseExpiry}
+                    onChange={(e) => setDriverLicenseExpiry(e.target.value)}
+                    data-testid="input-license-expiry"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="backgroundCheck"
+                  checked={backgroundCheckConsent}
+                  onCheckedChange={(checked) => setBackgroundCheckConsent(checked as boolean)}
+                  data-testid="checkbox-background"
+                />
+                <Label htmlFor="backgroundCheck" className="text-sm">
+                  I consent to a background check being performed
+                </Label>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Car className="h-5 w-5 text-secondary" />
+                Vehicle Information
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="vehicleMake">Make *</Label>
+                  <Input
+                    id="vehicleMake"
+                    value={vehicleMake}
+                    onChange={(e) => setVehicleMake(e.target.value)}
+                    placeholder="e.g. Toyota"
+                    data-testid="input-vehicle-make"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vehicleModel">Model *</Label>
+                  <Input
+                    id="vehicleModel"
+                    value={vehicleModel}
+                    onChange={(e) => setVehicleModel(e.target.value)}
+                    placeholder="e.g. Prius"
+                    data-testid="input-vehicle-model"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="vehicleYear">Year</Label>
+                  <Input
+                    id="vehicleYear"
+                    value={vehicleYear}
+                    onChange={(e) => setVehicleYear(e.target.value)}
+                    placeholder="e.g. 2020"
+                    data-testid="input-vehicle-year"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vehicleColor">Color</Label>
+                  <Input
+                    id="vehicleColor"
+                    value={vehicleColor}
+                    onChange={(e) => setVehicleColor(e.target.value)}
+                    placeholder="e.g. Silver"
+                    data-testid="input-vehicle-color"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="vehicleReg">Registration Number *</Label>
+                <Input
+                  id="vehicleReg"
+                  value={vehicleRegistration}
+                  onChange={(e) => setVehicleRegistration(e.target.value)}
+                  placeholder="e.g. AB12 CDE"
+                  data-testid="input-vehicle-reg"
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 5: // Insurance + Bank Details
+        return (
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                Vehicle Insurance
+              </h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="insuranceExpiry">Insurance Expiry Date *</Label>
+                <Input
+                  id="insuranceExpiry"
+                  type="date"
+                  value={vehicleInsuranceExpiry}
+                  onChange={(e) => {
+                    setVehicleInsuranceExpiry(e.target.value);
+                    if (errors.insuranceExpiry) setErrors(prev => ({ ...prev, insuranceExpiry: undefined }));
+                  }}
+                  className={errors.insuranceExpiry ? "border-red-500" : ""}
+                  data-testid="input-insurance-expiry"
+                />
+                {errors.insuranceExpiry && (
+                  <p className="text-sm text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.insuranceExpiry}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Must be valid for at least 30 days
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <PoundSterling className="h-5 w-5 text-accent" />
+                Bank Details
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Your earnings will be paid directly to this account
+              </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="bankName">Account Holder Name *</Label>
+                <Input
+                  id="bankName"
+                  value={bankAccountName}
+                  onChange={(e) => setBankAccountName(e.target.value)}
+                  placeholder="Name on bank account"
+                  data-testid="input-bank-name"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="sortCode">Sort Code *</Label>
+                  <Input
+                    id="sortCode"
+                    value={bankSortCode}
+                    onChange={(e) => {
+                      setBankSortCode(e.target.value);
+                      if (errors.sortCode) setErrors(prev => ({ ...prev, sortCode: undefined }));
+                    }}
+                    placeholder="12-34-56"
+                    className={errors.sortCode ? "border-red-500" : ""}
+                    data-testid="input-sort-code"
+                  />
+                  {errors.sortCode && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.sortCode}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="accountNumber">Account Number *</Label>
+                  <Input
+                    id="accountNumber"
+                    value={bankAccountNumber}
+                    onChange={(e) => {
+                      setBankAccountNumber(e.target.value);
+                      if (errors.accountNumber) setErrors(prev => ({ ...prev, accountNumber: undefined }));
+                    }}
+                    placeholder="12345678"
+                    className={errors.accountNumber ? "border-red-500" : ""}
+                    data-testid="input-account-number"
+                  />
+                  {errors.accountNumber && (
+                    <p className="text-sm text-red-500 flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.accountNumber}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 6: // Commercial Driver (Optional)
+        return (
+          <div className="space-y-6">
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800 mb-4">
+              <div className="flex items-start gap-3">
+                <Shield className="h-5 w-5 text-amber-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-800 dark:text-amber-200">Private Driver Limits</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    Without commercial verification, you're limited to 5 rides per day and £99.99 in daily earnings.
+                    Complete this section to remove these limits.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 mb-4">
+              <Checkbox
+                id="isCommercialDriver"
+                checked={isCommercialDriver}
+                onCheckedChange={(checked) => setIsCommercialDriver(checked as boolean)}
+                data-testid="checkbox-commercial"
+              />
+              <Label htmlFor="isCommercialDriver" className="font-medium">
+                I want to register as a Commercial (Pro) Driver
+              </Label>
+            </div>
+
+            {isCommercialDriver && (
+              <div className="space-y-6 animate-in fade-in duration-300">
+                {/* Private Hire License */}
+                <div className="space-y-4">
+                  <h4 className="font-medium">Private Hire License</h4>
+                  <div className="space-y-2">
+                    <Label>Upload License Document</Label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleCommercialDocUpload(e, "privateHireLicenseUrl")}
+                        disabled={isUploadingCommercial === "privateHireLicenseUrl"}
+                        className="flex-1"
+                        data-testid="input-private-hire-license"
+                      />
+                      {isUploadingCommercial === "privateHireLicenseUrl" && <Loader2 className="h-5 w-5 animate-spin" />}
+                      {privateHireLicenseUrl && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="privateHireLicenseNumber">License Number</Label>
+                    <Input
+                      id="privateHireLicenseNumber"
+                      value={privateHireLicenseNumber}
+                      onChange={(e) => setPrivateHireLicenseNumber(e.target.value)}
+                      placeholder="Enter license number"
+                      data-testid="input-private-hire-number"
+                    />
+                  </div>
+                </div>
+
+                {/* DVLA Check Code */}
+                <div className="space-y-2">
+                  <Label htmlFor="dvlaCheckCode">DVLA Check Code</Label>
+                  <Input
+                    id="dvlaCheckCode"
+                    value={dvlaCheckCode}
+                    onChange={(e) => setDvlaCheckCode(e.target.value)}
+                    placeholder="Enter your DVLA check code"
+                    data-testid="input-dvla-code"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Get this from the DVLA View Driving Licence service
+                  </p>
+                </div>
+
+                {/* Commercial Insurance */}
+                <div className="space-y-4">
+                  <h4 className="font-medium">Commercial Insurance</h4>
+                  <div className="space-y-2">
+                    <Label>Upload Insurance Document</Label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleCommercialDocUpload(e, "commercialInsuranceUrl")}
+                        disabled={isUploadingCommercial === "commercialInsuranceUrl"}
+                        className="flex-1"
+                        data-testid="input-commercial-insurance"
+                      />
+                      {isUploadingCommercial === "commercialInsuranceUrl" && <Loader2 className="h-5 w-5 animate-spin" />}
+                      {commercialInsuranceUrl && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="commercialInsuranceExpiry">Expiry Date</Label>
+                    <Input
+                      id="commercialInsuranceExpiry"
+                      type="date"
+                      value={commercialInsuranceExpiry}
+                      onChange={(e) => setCommercialInsuranceExpiry(e.target.value)}
+                      data-testid="input-commercial-insurance-expiry"
+                    />
+                  </div>
+                </div>
+
+                {/* Vehicle Inspection */}
+                <div className="space-y-4">
+                  <h4 className="font-medium">Vehicle Inspection Certificate</h4>
+                  <div className="space-y-2">
+                    <Label>Upload Inspection Document</Label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleCommercialDocUpload(e, "vehicleInspectionUrl")}
+                        disabled={isUploadingCommercial === "vehicleInspectionUrl"}
+                        className="flex-1"
+                        data-testid="input-vehicle-inspection"
+                      />
+                      {isUploadingCommercial === "vehicleInspectionUrl" && <Loader2 className="h-5 w-5 animate-spin" />}
+                      {vehicleInspectionUrl && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="vehicleInspectionExpiry">Expiry Date</Label>
+                    <Input
+                      id="vehicleInspectionExpiry"
+                      type="date"
+                      value={vehicleInspectionExpiry}
+                      onChange={(e) => setVehicleInspectionExpiry(e.target.value)}
+                      data-testid="input-vehicle-inspection-expiry"
+                    />
+                  </div>
+                </div>
+
+                {/* PHV License */}
+                <div className="space-y-4">
+                  <h4 className="font-medium">PHV (Private Hire Vehicle) License</h4>
+                  <div className="space-y-2">
+                    <Label>Upload PHV License</Label>
+                    <div className="flex items-center gap-4">
+                      <Input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleCommercialDocUpload(e, "phvLicenseUrl")}
+                        disabled={isUploadingCommercial === "phvLicenseUrl"}
+                        className="flex-1"
+                        data-testid="input-phv-license"
+                      />
+                      {isUploadingCommercial === "phvLicenseUrl" && <Loader2 className="h-5 w-5 animate-spin" />}
+                      {phvLicenseUrl && <CheckCircle2 className="h-5 w-5 text-green-500" />}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phvLicenseNumber">License Number</Label>
+                      <Input
+                        id="phvLicenseNumber"
+                        value={phvLicenseNumber}
+                        onChange={(e) => setPhvLicenseNumber(e.target.value)}
+                        placeholder="Enter PHV license number"
+                        data-testid="input-phv-number"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phvLicenseExpiry">Expiry Date</Label>
+                      <Input
+                        id="phvLicenseExpiry"
+                        type="date"
+                        value={phvLicenseExpiry}
+                        onChange={(e) => setPhvLicenseExpiry(e.target.value)}
+                        data-testid="input-phv-expiry"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!isCommercialDriver && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                You can skip this step and register as a private driver. You can upgrade later.
+              </p>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const stepInfo = getStepTitle();
 
   return (
     <div className="min-h-screen bg-muted/20">
@@ -352,464 +983,100 @@ export default function BecomeDriverPage() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary mb-2">Become a Driver</h1>
           <p className="text-muted-foreground">
-            Start earning by offering rides in your area. Complete the form below to get started.
+            Complete your driver registration to start earning
           </p>
         </div>
 
-        <div className="grid gap-4 mb-8">
-          <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-lg">
-            <Car className="h-8 w-8 text-primary" />
-            <div>
-              <h3 className="font-semibold">Set Your Own Schedule</h3>
-              <p className="text-sm text-muted-foreground">Drive when you want, choose your routes</p>
-            </div>
+        {/* Progress Bar */}
+        <div className="mb-8">
+          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+            <span>Step {step - 2} of {totalSteps - 2}</span>
+            <span>{Math.round(progress)}% complete</span>
           </div>
-          <div className="flex items-center gap-4 p-4 bg-secondary/5 rounded-lg">
-            <PoundSterling className="h-8 w-8 text-secondary" />
-            <div>
-              <h3 className="font-semibold">Fair Earnings</h3>
-              <p className="text-sm text-muted-foreground">Keep more of what you earn with our low fees</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 p-4 bg-accent/5 rounded-lg">
-            <Shield className="h-8 w-8 text-accent" />
-            <div>
-              <h3 className="font-semibold">Verified Community</h3>
-              <p className="text-sm text-muted-foreground">All drivers are background checked</p>
-            </div>
-          </div>
+          <Progress value={progress} className="h-2" />
         </div>
+
+        {/* Benefits Cards - only show on first step */}
+        {step === startingStep && (
+          <div className="grid gap-4 mb-8">
+            <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-lg">
+              <Car className="h-8 w-8 text-primary" />
+              <div>
+                <h3 className="font-semibold">Set Your Own Schedule</h3>
+                <p className="text-sm text-muted-foreground">Drive when you want, choose your routes</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-4 bg-secondary/5 rounded-lg">
+              <PoundSterling className="h-8 w-8 text-secondary" />
+              <div>
+                <h3 className="font-semibold">Fair Earnings</h3>
+                <p className="text-sm text-muted-foreground">Keep more of what you earn with our low fees</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-4 bg-accent/5 rounded-lg">
+              <Shield className="h-8 w-8 text-accent" />
+              <div>
+                <h3 className="font-semibold">Verified Community</h3>
+                <p className="text-sm text-muted-foreground">All drivers are background checked</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Card>
           <CardHeader>
-            <CardTitle>Driver Registration</CardTitle>
-            <CardDescription>
-              Please provide the following information to complete your driver registration
-            </CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              {step === 6 && <Briefcase className="h-5 w-5" />}
+              {stepInfo.title}
+            </CardTitle>
+            <CardDescription>{stepInfo.description}</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Driver's License</h3>
-                
-                <div className="space-y-2">
-                  <Label>Upload License Photo</Label>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={handleLicenseUpload}
-                      disabled={isUploading}
-                      className="flex-1"
-                      data-testid="input-license-upload"
-                    />
-                    {isUploading && <Loader2 className="h-5 w-5 animate-spin" />}
-                    {driverLicenseUrl && <CheckCircle2 className="h-5 w-5 text-green-500" />}
-                  </div>
-                </div>
+            {renderStep()}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="licenseNumber">License Number</Label>
-                    <Input
-                      id="licenseNumber"
-                      value={driverLicenseNumber}
-                      onChange={(e) => {
-                        setDriverLicenseNumber(e.target.value);
-                        if (errors.licenseNumber) setErrors(prev => ({ ...prev, licenseNumber: undefined }));
-                      }}
-                      placeholder="e.g. SMITH701019AB9CD"
-                      className={errors.licenseNumber ? "border-red-500" : ""}
-                      data-testid="input-license-number"
-                    />
-                    {errors.licenseNumber && (
-                      <p className="text-sm text-red-500 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.licenseNumber}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="licenseExpiry">Expiry Date</Label>
-                    <Input
-                      id="licenseExpiry"
-                      type="date"
-                      value={driverLicenseExpiry}
-                      onChange={(e) => setDriverLicenseExpiry(e.target.value)}
-                      data-testid="input-license-expiry"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="backgroundCheck"
-                    checked={backgroundCheckConsent}
-                    onCheckedChange={(checked) => setBackgroundCheckConsent(checked as boolean)}
-                    data-testid="checkbox-background"
-                  />
-                  <Label htmlFor="backgroundCheck" className="text-sm">
-                    I consent to a background check being performed
-                  </Label>
-                </div>
+            {error && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                {error}
               </div>
+            )}
 
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Vehicle Information</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="vehicleMake">Make</Label>
-                    <Input
-                      id="vehicleMake"
-                      value={vehicleMake}
-                      onChange={(e) => setVehicleMake(e.target.value)}
-                      placeholder="e.g. Toyota"
-                      data-testid="input-vehicle-make"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vehicleModel">Model</Label>
-                    <Input
-                      id="vehicleModel"
-                      value={vehicleModel}
-                      onChange={(e) => setVehicleModel(e.target.value)}
-                      placeholder="e.g. Prius"
-                      data-testid="input-vehicle-model"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="vehicleYear">Year</Label>
-                    <Input
-                      id="vehicleYear"
-                      value={vehicleYear}
-                      onChange={(e) => setVehicleYear(e.target.value)}
-                      placeholder="e.g. 2020"
-                      data-testid="input-vehicle-year"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="vehicleColor">Color</Label>
-                    <Input
-                      id="vehicleColor"
-                      value={vehicleColor}
-                      onChange={(e) => setVehicleColor(e.target.value)}
-                      placeholder="e.g. Silver"
-                      data-testid="input-vehicle-color"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="vehicleReg">Registration Number</Label>
-                    <Input
-                      id="vehicleReg"
-                      value={vehicleRegistration}
-                      onChange={(e) => setVehicleRegistration(e.target.value)}
-                      placeholder="e.g. AB12 CDE"
-                      data-testid="input-vehicle-reg"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="insuranceExpiry">Insurance Expiry</Label>
-                    <Input
-                      id="insuranceExpiry"
-                      type="date"
-                      value={vehicleInsuranceExpiry}
-                      onChange={(e) => {
-                        setVehicleInsuranceExpiry(e.target.value);
-                        if (errors.insuranceExpiry) setErrors(prev => ({ ...prev, insuranceExpiry: undefined }));
-                      }}
-                      className={errors.insuranceExpiry ? "border-red-500" : ""}
-                      data-testid="input-insurance-expiry"
-                    />
-                    {errors.insuranceExpiry && (
-                      <p className="text-sm text-red-500 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.insuranceExpiry}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="font-semibold text-lg">Bank Details</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your earnings will be paid directly to this account
-                </p>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bankName">Account Holder Name</Label>
-                  <Input
-                    id="bankName"
-                    value={bankAccountName}
-                    onChange={(e) => setBankAccountName(e.target.value)}
-                    placeholder="Name on bank account"
-                    data-testid="input-bank-name"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="sortCode">Sort Code</Label>
-                    <Input
-                      id="sortCode"
-                      value={bankSortCode}
-                      onChange={(e) => {
-                        setBankSortCode(e.target.value);
-                        if (errors.sortCode) setErrors(prev => ({ ...prev, sortCode: undefined }));
-                      }}
-                      placeholder="12-34-56"
-                      className={errors.sortCode ? "border-red-500" : ""}
-                      data-testid="input-sort-code"
-                    />
-                    {errors.sortCode && (
-                      <p className="text-sm text-red-500 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.sortCode}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="accountNumber">Account Number</Label>
-                    <Input
-                      id="accountNumber"
-                      value={bankAccountNumber}
-                      onChange={(e) => {
-                        setBankAccountNumber(e.target.value);
-                        if (errors.accountNumber) setErrors(prev => ({ ...prev, accountNumber: undefined }));
-                      }}
-                      placeholder="12345678"
-                      className={errors.accountNumber ? "border-red-500" : ""}
-                      data-testid="input-account-number"
-                    />
-                    {errors.accountNumber && (
-                      <p className="text-sm text-red-500 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        {errors.accountNumber}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4 border-t pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Briefcase className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-lg">Pro Account (Optional)</h3>
-                </div>
-
-                <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800 mb-4">
-                  <div className="flex items-start gap-3">
-                    <Shield className="h-5 w-5 text-amber-600 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-amber-800 dark:text-amber-200">Private Driver Limits</p>
-                      <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                        Without commercial verification, you're limited to 5 rides per day and £99.99 in daily earnings.
-                        Complete this section to remove these limits.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-2 mb-4">
-                  <Checkbox
-                    id="isCommercialDriver"
-                    checked={isCommercialDriver}
-                    onCheckedChange={(checked) => setIsCommercialDriver(checked as boolean)}
-                    data-testid="checkbox-commercial-driver"
-                  />
-                  <label
-                    htmlFor="isCommercialDriver"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    I want to register as a Commercial Driver
-                  </label>
-                </div>
-
-                {isCommercialDriver && (
-                  <div className="space-y-4 animate-in fade-in border rounded-lg p-4 bg-muted/30">
-                    <div className="space-y-2">
-                      <Label>Private Hire Driving Licence</Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
-                          {privateHireLicenseUrl ? (
-                            <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
-                              <Check className="h-4 w-4" />
-                              <span>Uploaded</span>
-                            </div>
-                          ) : (
-                            <label className="cursor-pointer">
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                onChange={(e) => handleCommercialDocUpload(e, "privateHireLicenseUrl")}
-                                className="hidden"
-                              />
-                              <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                              <p className="text-xs text-muted-foreground">
-                                {isUploadingCommercial === "privateHireLicenseUrl" ? "Uploading..." : "Upload licence"}
-                              </p>
-                            </label>
-                          )}
-                        </div>
-                        <Input
-                          placeholder="Licence number"
-                          value={privateHireLicenseNumber}
-                          onChange={(e) => setPrivateHireLicenseNumber(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>DVLA Electronic Counterpart Check Code</Label>
-                      <Input
-                        placeholder="Enter DVLA check code"
-                        value={dvlaCheckCode}
-                        onChange={(e) => setDvlaCheckCode(e.target.value)}
-                        data-testid="input-dvla-code"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Insurance Certificate (+ supporting documents)</Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
-                          {commercialInsuranceUrl ? (
-                            <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
-                              <Check className="h-4 w-4" />
-                              <span>Uploaded</span>
-                            </div>
-                          ) : (
-                            <label className="cursor-pointer">
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                onChange={(e) => handleCommercialDocUpload(e, "commercialInsuranceUrl")}
-                                className="hidden"
-                              />
-                              <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                              <p className="text-xs text-muted-foreground">
-                                {isUploadingCommercial === "commercialInsuranceUrl" ? "Uploading..." : "Upload certificate"}
-                              </p>
-                            </label>
-                          )}
-                        </div>
-                        <Input
-                          type="date"
-                          placeholder="Expiry date"
-                          value={commercialInsuranceExpiry}
-                          onChange={(e) => setCommercialInsuranceExpiry(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>UK Vehicle Inspection</Label>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
-                          {vehicleInspectionUrl ? (
-                            <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
-                              <Check className="h-4 w-4" />
-                              <span>Uploaded</span>
-                            </div>
-                          ) : (
-                            <label className="cursor-pointer">
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                onChange={(e) => handleCommercialDocUpload(e, "vehicleInspectionUrl")}
-                                className="hidden"
-                              />
-                              <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                              <p className="text-xs text-muted-foreground">
-                                {isUploadingCommercial === "vehicleInspectionUrl" ? "Uploading..." : "Upload inspection"}
-                              </p>
-                            </label>
-                          )}
-                        </div>
-                        <Input
-                          type="date"
-                          placeholder="Expiry date"
-                          value={vehicleInspectionExpiry}
-                          onChange={(e) => setVehicleInspectionExpiry(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Private Hire Vehicle Licence (PHV)</Label>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
-                          {phvLicenseUrl ? (
-                            <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
-                              <Check className="h-4 w-4" />
-                              <span>Uploaded</span>
-                            </div>
-                          ) : (
-                            <label className="cursor-pointer">
-                              <input
-                                type="file"
-                                accept="image/*,.pdf"
-                                onChange={(e) => handleCommercialDocUpload(e, "phvLicenseUrl")}
-                                className="hidden"
-                              />
-                              <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
-                              <p className="text-xs text-muted-foreground">
-                                {isUploadingCommercial === "phvLicenseUrl" ? "Uploading..." : "Upload PHV"}
-                              </p>
-                            </label>
-                          )}
-                        </div>
-                        <Input
-                          placeholder="PHV licence number"
-                          value={phvLicenseNumber}
-                          onChange={(e) => setPhvLicenseNumber(e.target.value)}
-                        />
-                        <Input
-                          type="date"
-                          placeholder="Expiry date"
-                          value={phvLicenseExpiry}
-                          onChange={(e) => setPhvLicenseExpiry(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {!isCommercialDriver && (
-                  <div className="p-4 bg-muted/50 rounded-lg text-center">
-                    <p className="text-sm text-muted-foreground">
-                      You can skip this step and upgrade to Commercial status later from your profile.
-                    </p>
-                  </div>
-                )}
-              </div>
+            <div className="flex justify-between mt-8">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleBack}
+                disabled={step === startingStep}
+                data-testid="button-back"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
 
               <Button
-                type="submit"
-                className="w-full h-12 text-lg"
+                type="button"
+                onClick={handleNext}
                 disabled={upgradeMutation.isPending}
-                data-testid="button-submit-driver"
+                data-testid="button-next"
               >
                 {upgradeMutation.isPending ? (
                   <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Processing...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : step === 6 ? (
+                  <>
+                    <Check className="mr-2 h-4 w-4" />
+                    Complete Registration
                   </>
                 ) : (
                   <>
-                    <Car className="mr-2 h-5 w-5" />
-                    Complete Driver Registration
+                    Next
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </>
                 )}
               </Button>
-            </form>
+            </div>
           </CardContent>
         </Card>
       </div>
