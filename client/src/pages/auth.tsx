@@ -239,7 +239,7 @@ export default function AuthPage() {
               <div className="grid grid-cols-3 gap-2">
                 <Button 
                   onClick={handleSocialSignIn}
-                  variant="secondary"
+                  variant="outline"
                   className="h-12"
                   disabled={isLoading !== null}
                   data-testid="button-google-signup"
@@ -252,7 +252,7 @@ export default function AuthPage() {
                 </Button>
                 <Button 
                   onClick={handleSocialSignIn}
-                  variant="secondary"
+                  variant="outline"
                   className="h-12"
                   disabled={isLoading !== null}
                   data-testid="button-apple-signup"
@@ -265,7 +265,7 @@ export default function AuthPage() {
                 </Button>
                 <Button 
                   onClick={handleSocialSignIn}
-                  variant="secondary"
+                  variant="outline"
                   className="h-12"
                   disabled={isLoading !== null}
                   data-testid="button-x-signup"
