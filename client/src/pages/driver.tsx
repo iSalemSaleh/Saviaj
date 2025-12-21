@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, CalendarDays, Calendar, Crosshair } from "lucide-react";
+import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, CalendarDays, Calendar, Crosshair, Power, Radio } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -129,6 +129,11 @@ export default function DriverPage() {
   const [bidMessage, setBidMessage] = useState("");
   const [showFutureDates, setShowFutureDates] = useState(true);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  
+  // Commercial driver online status
+  const [isOnlineForHire, setIsOnlineForHire] = useState(false);
+  const [ratePerMile, setRatePerMile] = useState("");
+  const [isUpdatingOnlineStatus, setIsUpdatingOnlineStatus] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -153,6 +158,78 @@ export default function DriverPage() {
       );
     }
   }, []);
+
+  // Initialize commercial driver online status from user data
+  useEffect(() => {
+    if (user?.isCommercialDriver) {
+      setIsOnlineForHire(user.isOnlineForHire || false);
+      if (user.ratePerMile) {
+        setRatePerMile(user.ratePerMile);
+      }
+    }
+  }, [user]);
+
+  // Handle toggling online status for commercial drivers
+  const handleToggleOnlineStatus = async () => {
+    if (!user?.isCommercialDriver) return;
+    
+    const newOnlineStatus = !isOnlineForHire;
+    
+    // Require rate per mile when going online
+    if (newOnlineStatus && (!ratePerMile || parseFloat(ratePerMile) <= 0)) {
+      toast({
+        title: "Rate Required",
+        description: "Please set your rate per mile before going online.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsUpdatingOnlineStatus(true);
+    
+    try {
+      // Get current location when going online
+      let lat: number | undefined;
+      let lng: number | undefined;
+      
+      if (newOnlineStatus && navigator.geolocation) {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
+        });
+        lat = position.coords.latitude;
+        lng = position.coords.longitude;
+      }
+      
+      const response = await apiRequest("POST", "/api/driver/online-status", {
+        isOnlineForHire: newOnlineStatus,
+        ratePerMile: parseFloat(ratePerMile),
+        lat,
+        lng,
+      });
+      
+      if (response.ok) {
+        setIsOnlineForHire(newOnlineStatus);
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+        toast({
+          title: newOnlineStatus ? "You're Now Online" : "You're Now Offline",
+          description: newOnlineStatus 
+            ? "Riders can now see you and request rides." 
+            : "You're no longer visible to riders.",
+        });
+      } else {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update online status.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingOnlineStatus(false);
+    }
+  };
 
   const getOfferDistanceAndETA = (offer: RiderOffer): { distance: string; eta: string } | null => {
     if (!userLocation || !offer.pickupLat || !offer.pickupLng) return null;
@@ -464,7 +541,81 @@ export default function DriverPage() {
           
           {/* Left Panel: Post Route */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="sticky top-24">
+            <div className="sticky top-24 space-y-4">
+              {/* Commercial Driver Online Status Card */}
+              {user?.isCommercialDriver && (
+                <Card className={`border-none shadow-lg ${isOnlineForHire ? 'bg-green-600' : 'bg-gray-600'} text-white`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Radio className={`h-5 w-5 ${isOnlineForHire ? 'animate-pulse' : ''}`} />
+                        <CardTitle className="text-lg">Pro Driver Status</CardTitle>
+                      </div>
+                      <Badge variant="secondary" className={isOnlineForHire ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-800'}>
+                        {isOnlineForHire ? 'ONLINE' : 'OFFLINE'}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-white/80">
+                      {isOnlineForHire 
+                        ? "You're visible to nearby riders looking for a Pro driver." 
+                        : "Go online to let riders find you directly."}
+                    </p>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-white/80">Your Rate Per Mile</label>
+                      <div className="relative">
+                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0.50"
+                          max="10"
+                          value={ratePerMile}
+                          onChange={(e) => setRatePerMile(e.target.value)}
+                          placeholder="e.g. 1.50"
+                          className="pl-9 bg-white text-gray-900 border-none"
+                          disabled={isOnlineForHire}
+                          data-testid="input-rate-per-mile"
+                        />
+                      </div>
+                      {!isOnlineForHire && (
+                        <p className="text-xs text-white/60">Set your rate before going online</p>
+                      )}
+                    </div>
+                    
+                    <Button
+                      type="button"
+                      onClick={handleToggleOnlineStatus}
+                      disabled={isUpdatingOnlineStatus || (!user?.driverVerified)}
+                      className={`w-full ${isOnlineForHire 
+                        ? 'bg-red-500 hover:bg-red-600' 
+                        : 'bg-green-500 hover:bg-green-600'} text-white`}
+                      data-testid="button-toggle-online"
+                    >
+                      {isUpdatingOnlineStatus ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <Power className="h-4 w-4 mr-2" />
+                          {isOnlineForHire ? 'Go Offline' : 'Go Online'}
+                        </>
+                      )}
+                    </Button>
+                    
+                    {!user?.driverVerified && (
+                      <p className="text-xs text-yellow-300 text-center">
+                        Your driver account must be verified to go online.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+              
               <Card className="border-none shadow-lg bg-primary text-primary-foreground">
                 <CardHeader>
                   <CardTitle className="text-2xl text-white">Post Your Route</CardTitle>
