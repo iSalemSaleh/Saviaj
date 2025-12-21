@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car } from "lucide-react";
+import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car, Radio, Crown } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +67,23 @@ interface RiderOffer {
 interface UserLocation {
   lat: number;
   lng: number;
+}
+
+interface NearbyDriver {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  profileImageUrl: string | null;
+  driverRating: string | null;
+  totalRatingsAsDriver: number | null;
+  vehicleMake: string | null;
+  vehicleModel: string | null;
+  vehicleYear: string | null;
+  vehicleColor: string | null;
+  ratePerMile: string | null;
+  distanceFromPickup: number;
+  currentLat: string | null;
+  currentLng: string | null;
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -177,6 +195,36 @@ export default function RiderPage() {
     },
     enabled: !!user,
   });
+
+  // Query for nearby commercial drivers (Pro drivers)
+  const { data: nearbyDrivers = [], isLoading: nearbyDriversLoading } = useQuery<NearbyDriver[]>({
+    queryKey: ["/api/drivers/nearby", pickupCoords?.lat, pickupCoords?.lon],
+    queryFn: async () => {
+      if (!pickupCoords) return [];
+      const params = new URLSearchParams({
+        lat: pickupCoords.lat.toString(),
+        lng: pickupCoords.lon.toString(),
+        maxDistance: '10', // 10 miles radius
+      });
+      const response = await fetch(`/api/drivers/nearby?${params.toString()}`);
+      return response.json();
+    },
+    enabled: !!pickupCoords,
+  });
+
+  // Calculate estimated cost based on driver's rate and trip distance
+  const getEstimatedCost = (driver: NearbyDriver): string | null => {
+    if (!driver.ratePerMile || !pickupCoords || !dropoffCoords) return null;
+    const tripDistance = calculateDistance(
+      pickupCoords.lat, 
+      pickupCoords.lon, 
+      dropoffCoords.lat, 
+      dropoffCoords.lon
+    );
+    const rate = parseFloat(driver.ratePerMile);
+    const estimatedCost = tripDistance * rate;
+    return estimatedCost.toFixed(2);
+  };
 
   const myPendingOffers = useMemo(() => {
     const now = new Date();
@@ -749,6 +797,121 @@ export default function RiderPage() {
                         </CardFooter>
                       </Card>
                     ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Nearby Pro Drivers Section - shows when pickup is set */}
+            {pickupCoords && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-green-600 flex items-center gap-2">
+                    <Crown className="h-6 w-6" />
+                    Nearby Pro Drivers
+                    {nearbyDrivers.length > 0 && (
+                      <Badge className="bg-green-600 text-white">{nearbyDrivers.length} online</Badge>
+                    )}
+                  </h2>
+                </div>
+                
+                <p className="text-sm text-muted-foreground mb-4">
+                  Professional licensed drivers available for immediate hire. Contact them directly for a ride!
+                </p>
+                
+                {nearbyDriversLoading ? (
+                  <Card className="border-dashed border-green-500/30 bg-green-50">
+                    <CardContent className="p-8 text-center">
+                      <Loader2 className="h-8 w-8 text-green-500 mx-auto mb-3 animate-spin" />
+                      <p className="text-muted-foreground">Finding nearby Pro drivers...</p>
+                    </CardContent>
+                  </Card>
+                ) : nearbyDrivers.length === 0 ? (
+                  <Card className="border-dashed border-green-500/30 bg-green-50">
+                    <CardContent className="p-8 text-center">
+                      <Radio className="h-12 w-12 text-green-500/40 mx-auto mb-3" />
+                      <p className="text-muted-foreground">No Pro drivers online near you right now.</p>
+                      <p className="text-sm text-muted-foreground mt-1">Try posting your route or checking driver routes.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {nearbyDrivers.map((driver) => {
+                      const estimatedCost = getEstimatedCost(driver);
+                      return (
+                        <Card key={driver.id} className="group hover:border-green-500 transition-all hover:shadow-lg border-green-500/30 bg-green-50" data-testid={`card-pro-driver-${driver.id}`}>
+                          <CardContent className="p-6">
+                            <div className="flex justify-between items-start mb-4">
+                              <Link href={`/driver/${driver.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity" data-testid={`link-pro-driver-${driver.id}`}>
+                                <div className="relative">
+                                  <Avatar>
+                                    <AvatarImage src={driver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${driver.id}`} />
+                                    <AvatarFallback>{driver.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-0.5">
+                                    <Radio className="h-3 w-3 text-white animate-pulse" />
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-semibold text-primary" data-testid={`text-pro-driver-name-${driver.id}`}>
+                                      {driver.firstName || 'Driver'}{driver.lastName ? ` ${driver.lastName.charAt(0)}.` : ''}
+                                    </p>
+                                    <Crown className="h-3.5 w-3.5 text-green-500" />
+                                  </div>
+                                  <div className="flex items-center text-xs text-muted-foreground gap-1">
+                                    <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                                    <span>{driver.driverRating ? parseFloat(driver.driverRating).toFixed(1) : 'New'}</span>
+                                    {driver.totalRatingsAsDriver && driver.totalRatingsAsDriver > 0 && (
+                                      <>
+                                        <span>•</span>
+                                        <span>{driver.totalRatingsAsDriver} reviews</span>
+                                      </>
+                                    )}
+                                  </div>
+                                  {driver.vehicleMake && (
+                                    <div className="flex items-center text-xs text-muted-foreground mt-0.5">
+                                      <Car className="h-3 w-3 mr-1" />
+                                      {driver.vehicleColor && <span className="capitalize">{driver.vehicleColor} </span>}
+                                      {driver.vehicleMake} {driver.vehicleModel}
+                                    </div>
+                                  )}
+                                </div>
+                              </Link>
+                              <div className="text-right">
+                                <Badge variant="secondary" className="text-lg px-3 py-1 bg-green-600 text-white mb-1">
+                                  £{driver.ratePerMile}/mi
+                                </Badge>
+                                <p className="text-xs text-muted-foreground">{driver.distanceFromPickup.toFixed(1)} mi away</p>
+                              </div>
+                            </div>
+                            
+                            {estimatedCost && dropoffCoords && (
+                              <div className="bg-white rounded-lg p-3 border border-green-200">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm text-muted-foreground">Estimated Trip Cost</span>
+                                  <span className="text-xl font-bold text-green-600">£{estimatedCost}</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Based on {(calculateDistance(pickupCoords.lat, pickupCoords.lon, dropoffCoords.lat, dropoffCoords.lon)).toFixed(1)} mi at £{driver.ratePerMile}/mi
+                                </p>
+                              </div>
+                            )}
+                            
+                            {!dropoffCoords && (
+                              <p className="text-xs text-muted-foreground text-center py-2">
+                                Enter your destination to see the estimated cost
+                              </p>
+                            )}
+                          </CardContent>
+                          <CardFooter className="bg-green-100 p-3 flex justify-end">
+                            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
+                              Request Ride <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </div>
