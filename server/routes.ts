@@ -851,6 +851,18 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         bankAccountName,
         bankSortCode,
         bankAccountNumber,
+        // Commercial driver fields
+        isCommercialDriver,
+        privateHireLicenseUrl,
+        privateHireLicenseNumber,
+        dvlaCheckCode,
+        commercialInsuranceUrl,
+        commercialInsuranceExpiry,
+        vehicleInspectionUrl,
+        vehicleInspectionExpiry,
+        phvLicenseUrl,
+        phvLicenseNumber,
+        phvLicenseExpiry,
       } = req.body;
       
       // Driver-specific validation
@@ -914,6 +926,19 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           bankAccountName,
           bankSortCode: normalizedSortCode,
           bankAccountNumber: normalizedAccountNumber,
+          // Commercial driver fields
+          isCommercialDriver: isCommercialDriver || false,
+          privateHireLicenseUrl: isCommercialDriver ? privateHireLicenseUrl : null,
+          privateHireLicenseNumber: isCommercialDriver ? privateHireLicenseNumber : null,
+          dvlaCheckCode: isCommercialDriver ? dvlaCheckCode : null,
+          commercialInsuranceUrl: isCommercialDriver ? commercialInsuranceUrl : null,
+          commercialInsuranceExpiry: isCommercialDriver ? commercialInsuranceExpiry : null,
+          vehicleInspectionUrl: isCommercialDriver ? vehicleInspectionUrl : null,
+          vehicleInspectionExpiry: isCommercialDriver ? vehicleInspectionExpiry : null,
+          phvLicenseUrl: isCommercialDriver ? phvLicenseUrl : null,
+          phvLicenseNumber: isCommercialDriver ? phvLicenseNumber : null,
+          phvLicenseExpiry: isCommercialDriver ? phvLicenseExpiry : null,
+          commercialStatusVerified: false,
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId))

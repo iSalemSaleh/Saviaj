@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Car, Shield, PoundSterling, Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Car, Shield, PoundSterling, Upload, Loader2, CheckCircle2, AlertCircle, Briefcase, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -94,6 +94,20 @@ export default function BecomeDriverPage() {
   const [bankSortCode, setBankSortCode] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingCommercial, setIsUploadingCommercial] = useState<string | null>(null);
+
+  // Commercial driver fields
+  const [isCommercialDriver, setIsCommercialDriver] = useState(false);
+  const [privateHireLicenseUrl, setPrivateHireLicenseUrl] = useState("");
+  const [privateHireLicenseNumber, setPrivateHireLicenseNumber] = useState("");
+  const [dvlaCheckCode, setDvlaCheckCode] = useState("");
+  const [commercialInsuranceUrl, setCommercialInsuranceUrl] = useState("");
+  const [commercialInsuranceExpiry, setCommercialInsuranceExpiry] = useState("");
+  const [vehicleInspectionUrl, setVehicleInspectionUrl] = useState("");
+  const [vehicleInspectionExpiry, setVehicleInspectionExpiry] = useState("");
+  const [phvLicenseUrl, setPhvLicenseUrl] = useState("");
+  const [phvLicenseNumber, setPhvLicenseNumber] = useState("");
+  const [phvLicenseExpiry, setPhvLicenseExpiry] = useState("");
 
   // Validation error states
   const [errors, setErrors] = useState<{
@@ -136,6 +150,55 @@ export default function BecomeDriverPage() {
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleCommercialDocUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingCommercial(field);
+    const formData = new FormData();
+    formData.append("license", file);
+
+    try {
+      const response = await fetch("/api/user/upload-license", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const data = await response.json();
+      
+      switch (field) {
+        case "privateHireLicenseUrl":
+          setPrivateHireLicenseUrl(data.url);
+          break;
+        case "commercialInsuranceUrl":
+          setCommercialInsuranceUrl(data.url);
+          break;
+        case "vehicleInspectionUrl":
+          setVehicleInspectionUrl(data.url);
+          break;
+        case "phvLicenseUrl":
+          setPhvLicenseUrl(data.url);
+          break;
+      }
+      
+      toast({
+        title: "Document Uploaded",
+        description: "Your document has been uploaded successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingCommercial(null);
     }
   };
 
@@ -267,6 +330,17 @@ export default function BecomeDriverPage() {
       bankAccountName,
       bankSortCode: bankSortCode.replace(/\D/g, ''),
       bankAccountNumber: bankAccountNumber.replace(/\D/g, ''),
+      isCommercialDriver,
+      privateHireLicenseUrl: isCommercialDriver ? privateHireLicenseUrl : undefined,
+      privateHireLicenseNumber: isCommercialDriver ? privateHireLicenseNumber : undefined,
+      dvlaCheckCode: isCommercialDriver ? dvlaCheckCode : undefined,
+      commercialInsuranceUrl: isCommercialDriver ? commercialInsuranceUrl : undefined,
+      commercialInsuranceExpiry: isCommercialDriver ? commercialInsuranceExpiry : undefined,
+      vehicleInspectionUrl: isCommercialDriver ? vehicleInspectionUrl : undefined,
+      vehicleInspectionExpiry: isCommercialDriver ? vehicleInspectionExpiry : undefined,
+      phvLicenseUrl: isCommercialDriver ? phvLicenseUrl : undefined,
+      phvLicenseNumber: isCommercialDriver ? phvLicenseNumber : undefined,
+      phvLicenseExpiry: isCommercialDriver ? phvLicenseExpiry : undefined,
     });
   };
 
@@ -522,6 +596,199 @@ export default function BecomeDriverPage() {
                     )}
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-4 border-t pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Briefcase className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-lg">Pro Account (Optional)</h3>
+                </div>
+
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800 mb-4">
+                  <div className="flex items-start gap-3">
+                    <Shield className="h-5 w-5 text-amber-600 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-amber-800 dark:text-amber-200">Private Driver Limits</p>
+                      <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                        Without commercial verification, you're limited to 5 rides per day and £99.99 in daily earnings.
+                        Complete this section to remove these limits.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 mb-4">
+                  <Checkbox
+                    id="isCommercialDriver"
+                    checked={isCommercialDriver}
+                    onCheckedChange={(checked) => setIsCommercialDriver(checked as boolean)}
+                    data-testid="checkbox-commercial-driver"
+                  />
+                  <label
+                    htmlFor="isCommercialDriver"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I want to register as a Commercial Driver
+                  </label>
+                </div>
+
+                {isCommercialDriver && (
+                  <div className="space-y-4 animate-in fade-in border rounded-lg p-4 bg-muted/30">
+                    <div className="space-y-2">
+                      <Label>Private Hire Driving Licence</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                          {privateHireLicenseUrl ? (
+                            <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
+                              <Check className="h-4 w-4" />
+                              <span>Uploaded</span>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                onChange={(e) => handleCommercialDocUpload(e, "privateHireLicenseUrl")}
+                                className="hidden"
+                              />
+                              <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground">
+                                {isUploadingCommercial === "privateHireLicenseUrl" ? "Uploading..." : "Upload licence"}
+                              </p>
+                            </label>
+                          )}
+                        </div>
+                        <Input
+                          placeholder="Licence number"
+                          value={privateHireLicenseNumber}
+                          onChange={(e) => setPrivateHireLicenseNumber(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>DVLA Electronic Counterpart Check Code</Label>
+                      <Input
+                        placeholder="Enter DVLA check code"
+                        value={dvlaCheckCode}
+                        onChange={(e) => setDvlaCheckCode(e.target.value)}
+                        data-testid="input-dvla-code"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Insurance Certificate (+ supporting documents)</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                          {commercialInsuranceUrl ? (
+                            <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
+                              <Check className="h-4 w-4" />
+                              <span>Uploaded</span>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                onChange={(e) => handleCommercialDocUpload(e, "commercialInsuranceUrl")}
+                                className="hidden"
+                              />
+                              <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground">
+                                {isUploadingCommercial === "commercialInsuranceUrl" ? "Uploading..." : "Upload certificate"}
+                              </p>
+                            </label>
+                          )}
+                        </div>
+                        <Input
+                          type="date"
+                          placeholder="Expiry date"
+                          value={commercialInsuranceExpiry}
+                          onChange={(e) => setCommercialInsuranceExpiry(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>UK Vehicle Inspection</Label>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                          {vehicleInspectionUrl ? (
+                            <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
+                              <Check className="h-4 w-4" />
+                              <span>Uploaded</span>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                onChange={(e) => handleCommercialDocUpload(e, "vehicleInspectionUrl")}
+                                className="hidden"
+                              />
+                              <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground">
+                                {isUploadingCommercial === "vehicleInspectionUrl" ? "Uploading..." : "Upload inspection"}
+                              </p>
+                            </label>
+                          )}
+                        </div>
+                        <Input
+                          type="date"
+                          placeholder="Expiry date"
+                          value={vehicleInspectionExpiry}
+                          onChange={(e) => setVehicleInspectionExpiry(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Private Hire Vehicle Licence (PHV)</Label>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                          {phvLicenseUrl ? (
+                            <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
+                              <Check className="h-4 w-4" />
+                              <span>Uploaded</span>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*,.pdf"
+                                onChange={(e) => handleCommercialDocUpload(e, "phvLicenseUrl")}
+                                className="hidden"
+                              />
+                              <Upload className="h-6 w-6 mx-auto mb-1 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground">
+                                {isUploadingCommercial === "phvLicenseUrl" ? "Uploading..." : "Upload PHV"}
+                              </p>
+                            </label>
+                          )}
+                        </div>
+                        <Input
+                          placeholder="PHV licence number"
+                          value={phvLicenseNumber}
+                          onChange={(e) => setPhvLicenseNumber(e.target.value)}
+                        />
+                        <Input
+                          type="date"
+                          placeholder="Expiry date"
+                          value={phvLicenseExpiry}
+                          onChange={(e) => setPhvLicenseExpiry(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!isCommercialDriver && (
+                  <div className="p-4 bg-muted/50 rounded-lg text-center">
+                    <p className="text-sm text-muted-foreground">
+                      You can skip this step and upgrade to Commercial status later from your profile.
+                    </p>
+                  </div>
+                )}
               </div>
 
               <Button
