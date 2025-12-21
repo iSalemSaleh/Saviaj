@@ -1719,6 +1719,59 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Commercial Driver Availability Routes
+  app.post('/api/driver/online-status', isAuthenticated, isProfileComplete, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { isOnlineForHire, ratePerMile, lat, lng } = req.body;
+      
+      // Verify user is a commercial driver
+      const user = await storage.getUser(userId);
+      if (!user?.isCommercialDriver) {
+        return res.status(403).json({ message: "Only commercial drivers can go online for hire" });
+      }
+      
+      if (!user.driverVerified) {
+        return res.status(403).json({ message: "Your driver account must be verified before going online" });
+      }
+      
+      // Rate per mile is required when going online
+      if (isOnlineForHire && (!ratePerMile || ratePerMile <= 0)) {
+        return res.status(400).json({ message: "Rate per mile is required when going online" });
+      }
+      
+      const updatedUser = await storage.updateDriverOnlineStatus(userId, isOnlineForHire, ratePerMile, lat, lng);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating online status:", error);
+      res.status(500).json({ message: "Failed to update online status" });
+    }
+  });
+
+  app.get('/api/drivers/nearby', async (req, res) => {
+    try {
+      const { lat, lng, maxDistance } = req.query;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "Pickup location (lat, lng) is required" });
+      }
+      
+      const latitude = parseFloat(lat as string);
+      const longitude = parseFloat(lng as string);
+      const maxDistanceMiles = parseFloat(maxDistance as string) || 10; // Default 10 miles
+      
+      if (isNaN(latitude) || isNaN(longitude)) {
+        return res.status(400).json({ message: "Invalid coordinates" });
+      }
+      
+      const nearbyDrivers = await storage.getOnlineCommercialDrivers(latitude, longitude, maxDistanceMiles);
+      res.json(nearbyDrivers);
+    } catch (error) {
+      console.error("Error fetching nearby drivers:", error);
+      res.status(500).json({ message: "Failed to fetch nearby drivers" });
+    }
+  });
+
   // Rating Routes
   app.post('/api/ratings', isAuthenticated, async (req: any, res) => {
     try {

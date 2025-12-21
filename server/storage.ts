@@ -188,6 +188,25 @@ export interface IStorage {
   // Driver daily activity (for private driver limits)
   getDriverDailyActivity(driverId: string, date: string): Promise<{ ridesCount: number; totalEarnings: number } | null>;
   incrementDriverDailyActivity(driverId: string, date: string, earnings: number): Promise<void>;
+  
+  // Commercial driver availability operations
+  getOnlineCommercialDrivers(lat: number, lng: number, maxDistanceMiles: number): Promise<Array<{
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+    driverRating: string | null;
+    totalRatingsAsDriver: number | null;
+    vehicleMake: string | null;
+    vehicleModel: string | null;
+    vehicleYear: string | null;
+    vehicleColor: string | null;
+    ratePerMile: string | null;
+    distanceFromPickup: number;
+    currentLat: string | null;
+    currentLng: string | null;
+  }>>;
+  updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, lat?: number, lng?: number): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -870,6 +889,109 @@ export class DatabaseStorage implements IStorage {
           totalEarnings: earnings.toFixed(2),
         });
     }
+  }
+
+  // Commercial driver availability operations
+  async getOnlineCommercialDrivers(lat: number, lng: number, maxDistanceMiles: number): Promise<Array<{
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+    driverRating: string | null;
+    totalRatingsAsDriver: number | null;
+    vehicleMake: string | null;
+    vehicleModel: string | null;
+    vehicleYear: string | null;
+    vehicleColor: string | null;
+    ratePerMile: string | null;
+    distanceFromPickup: number;
+    currentLat: string | null;
+    currentLng: string | null;
+  }>> {
+    // Get all online commercial drivers with their current locations
+    const onlineDrivers = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+        driverRating: users.driverRating,
+        totalRatingsAsDriver: users.totalRatingsAsDriver,
+        vehicleMake: users.vehicleMake,
+        vehicleModel: users.vehicleModel,
+        vehicleYear: users.vehicleYear,
+        vehicleColor: users.vehicleColor,
+        ratePerMile: users.ratePerMile,
+        currentLat: users.currentLat,
+        currentLng: users.currentLng,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.isCommercialDriver, true),
+          eq(users.isOnlineForHire, true),
+          eq(users.driverVerified, true),
+          sql`${users.currentLat} IS NOT NULL`,
+          sql`${users.currentLng} IS NOT NULL`
+        )
+      );
+
+    // Calculate distance for each driver and filter by maxDistanceMiles
+    const driversWithDistance = onlineDrivers
+      .map(driver => {
+        const driverLat = parseFloat(driver.currentLat || "0");
+        const driverLng = parseFloat(driver.currentLng || "0");
+        const distanceFromPickup = this.calculateDistanceMiles(lat, lng, driverLat, driverLng);
+        return {
+          ...driver,
+          distanceFromPickup,
+        };
+      })
+      .filter(driver => driver.distanceFromPickup <= maxDistanceMiles)
+      .sort((a, b) => a.distanceFromPickup - b.distanceFromPickup);
+
+    return driversWithDistance;
+  }
+
+  // Helper function to calculate distance between two coordinates in miles
+  private calculateDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 3959; // Earth's radius in miles
+    const dLat = this.toRadians(lat2 - lat1);
+    const dLng = this.toRadians(lng2 - lng1);
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  async updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, lat?: number, lng?: number): Promise<User> {
+    const updateData: any = {
+      isOnlineForHire,
+      updatedAt: new Date(),
+    };
+    
+    if (ratePerMile !== undefined) {
+      updateData.ratePerMile = ratePerMile.toFixed(2);
+    }
+    
+    if (lat !== undefined && lng !== undefined) {
+      updateData.currentLat = lat.toFixed(7);
+      updateData.currentLng = lng.toFixed(7);
+      updateData.lastLocationUpdate = new Date();
+    }
+    
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
   }
 }
 
