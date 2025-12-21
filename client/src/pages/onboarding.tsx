@@ -325,7 +325,7 @@ export default function OnboardingPage() {
                 Personal Information
               </h3>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name *</Label>
                   <Input
@@ -348,7 +348,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="dateOfBirth">Date of Birth *</Label>
                   <div className="relative">
@@ -404,7 +404,7 @@ export default function OnboardingPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
                   <Input
@@ -465,7 +465,7 @@ export default function OnboardingPage() {
                     <h3 className="font-semibold">Driver Verification & Background Check</h3>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="driverLicenseNumber">License Number *</Label>
                       <div className="relative">
@@ -560,7 +560,7 @@ export default function OnboardingPage() {
                     <h3 className="font-semibold">Vehicle Information</h3>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="vehicleMake">Make *</Label>
                       <Input
@@ -583,7 +583,7 @@ export default function OnboardingPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="vehicleYear">Year</Label>
                       <Input
@@ -658,7 +658,7 @@ export default function OnboardingPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="bankSortCode">Sort Code *</Label>
                       <Input

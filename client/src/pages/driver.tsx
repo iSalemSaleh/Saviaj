@@ -544,29 +544,21 @@ export default function DriverPage() {
             <div className="sticky top-24 space-y-4">
               {/* Commercial Driver Online Status Card */}
               {user?.isCommercialDriver && (
-                <Card className={`border-none shadow-lg ${isOnlineForHire ? 'bg-green-600' : 'bg-gray-600'} text-white`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
+                <Card className={`border-2 shadow-md ${isOnlineForHire ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-muted bg-card'}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <Radio className={`h-5 w-5 ${isOnlineForHire ? 'animate-pulse' : ''}`} />
-                        <CardTitle className="text-lg">Pro Driver Status</CardTitle>
+                        <div className={`w-2 h-2 rounded-full ${isOnlineForHire ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`} />
+                        <span className="font-semibold text-sm">Pro Driver</span>
                       </div>
-                      <Badge variant="secondary" className={isOnlineForHire ? 'bg-green-200 text-green-800' : 'bg-gray-200 text-gray-800'}>
+                      <Badge variant={isOnlineForHire ? "default" : "secondary"} className={isOnlineForHire ? 'bg-green-500' : ''}>
                         {isOnlineForHire ? 'ONLINE' : 'OFFLINE'}
                       </Badge>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-white/80">
-                      {isOnlineForHire 
-                        ? "You're visible to nearby riders looking for a Pro driver." 
-                        : "Go online to let riders find you directly."}
-                    </p>
                     
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-white/80">Your Rate Per Mile</label>
-                      <div className="relative">
-                        <PoundSterling className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <PoundSterling className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
                           type="number"
                           step="0.01"
@@ -574,42 +566,36 @@ export default function DriverPage() {
                           max="10"
                           value={ratePerMile}
                           onChange={(e) => setRatePerMile(e.target.value)}
-                          placeholder="e.g. 1.50"
-                          className="pl-9 bg-white text-gray-900 border-none"
+                          placeholder="Rate/mile"
+                          className="pl-8 h-9 text-sm"
                           disabled={isOnlineForHire}
                           data-testid="input-rate-per-mile"
                         />
                       </div>
-                      {!isOnlineForHire && (
-                        <p className="text-xs text-white/60">Set your rate before going online</p>
-                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleToggleOnlineStatus}
+                        disabled={isUpdatingOnlineStatus || (!user?.driverVerified)}
+                        className={`h-9 px-4 ${isOnlineForHire 
+                          ? 'bg-red-500 hover:bg-red-600' 
+                          : 'bg-green-600 hover:bg-green-700'} text-white`}
+                        data-testid="button-toggle-online"
+                      >
+                        {isUpdatingOnlineStatus ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Power className="h-4 w-4 mr-1" />
+                            {isOnlineForHire ? 'Offline' : 'Online'}
+                          </>
+                        )}
+                      </Button>
                     </div>
                     
-                    <Button
-                      type="button"
-                      onClick={handleToggleOnlineStatus}
-                      disabled={isUpdatingOnlineStatus || (!user?.driverVerified)}
-                      className={`w-full ${isOnlineForHire 
-                        ? 'bg-red-500 hover:bg-red-600' 
-                        : 'bg-green-500 hover:bg-green-600'} text-white`}
-                      data-testid="button-toggle-online"
-                    >
-                      {isUpdatingOnlineStatus ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Updating...
-                        </>
-                      ) : (
-                        <>
-                          <Power className="h-4 w-4 mr-2" />
-                          {isOnlineForHire ? 'Go Offline' : 'Go Online'}
-                        </>
-                      )}
-                    </Button>
-                    
                     {!user?.driverVerified && (
-                      <p className="text-xs text-yellow-300 text-center">
-                        Your driver account must be verified to go online.
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                        Account verification required to go online.
                       </p>
                     )}
                   </CardContent>
@@ -676,7 +662,7 @@ export default function DriverPage() {
                       testId="input-departure-time"
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-primary-foreground/80">Max Detour</label>
                         <div className="flex gap-2">

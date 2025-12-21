@@ -520,7 +520,7 @@ export default function Signup() {
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name *</Label>
                   <Input
@@ -577,7 +577,7 @@ export default function Signup() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="city">City</Label>
                   <Input
@@ -687,7 +687,7 @@ export default function Signup() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="driverLicenseNumber">License Number *</Label>
                   <Input
@@ -712,7 +712,7 @@ export default function Signup() {
 
               <div className="border-t pt-4 mt-4">
                 <h3 className="font-semibold mb-4">Vehicle Information</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="vehicleMake">Make *</Label>
                     <Input
@@ -735,7 +735,7 @@ export default function Signup() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="vehicleYear">Year</Label>
                     <Input
@@ -899,7 +899,7 @@ export default function Signup() {
               <div className="space-y-4 animate-in fade-in">
                 <div className="space-y-2">
                   <Label htmlFor="privateHireLicense">Private Hire Driving Licence</Label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="border-2 border-dashed rounded-lg p-4 text-center">
                       {formData.privateHireLicenseUrl ? (
                         <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
@@ -941,7 +941,7 @@ export default function Signup() {
 
                 <div className="space-y-2">
                   <Label>Insurance Certificate (+ supporting documents)</Label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="border-2 border-dashed rounded-lg p-4 text-center">
                       {formData.commercialInsuranceUrl ? (
                         <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
@@ -974,7 +974,7 @@ export default function Signup() {
 
                 <div className="space-y-2">
                   <Label>UK Vehicle Inspection</Label>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="border-2 border-dashed rounded-lg p-4 text-center">
                       {formData.vehicleInspectionUrl ? (
                         <div className="text-green-600 flex items-center justify-center gap-2 text-sm">
@@ -1007,7 +1007,7 @@ export default function Signup() {
 
                 <div className="space-y-2">
                   <Label>Private Hire Vehicle Licence (PHV)</Label>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="border-2 border-dashed rounded-lg p-4 text-center">
                       {formData.phvLicenseUrl ? (
                         <div className="text-green-600 flex items-center justify-center gap-2 text-sm">

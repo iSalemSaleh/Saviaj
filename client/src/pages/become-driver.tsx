@@ -569,7 +569,7 @@ export default function BecomeDriverPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="licenseNumber">License Number</Label>
                   <Input
@@ -621,7 +621,7 @@ export default function BecomeDriverPage() {
                 Vehicle Information
               </h3>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="vehicleMake">Make *</Label>
                   <Input
@@ -644,7 +644,7 @@ export default function BecomeDriverPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="vehicleYear">Year</Label>
                   <Input
@@ -735,7 +735,7 @@ export default function BecomeDriverPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="sortCode">Sort Code *</Label>
                   <Input
@@ -934,7 +934,7 @@ export default function BecomeDriverPage() {
                       {phvLicenseUrl && <CheckCircle2 className="h-5 w-5 text-green-500" />}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="phvLicenseNumber">License Number</Label>
                       <Input
