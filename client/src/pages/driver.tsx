@@ -544,21 +544,21 @@ export default function DriverPage() {
             <div className="sticky top-24 space-y-4">
               {/* Commercial Driver Online Status Card */}
               {user?.isCommercialDriver && (
-                <Card className={`border-2 shadow-md ${isOnlineForHire ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-muted bg-card'}`}>
+                <Card className={`border-none shadow-lg ${isOnlineForHire ? 'bg-gradient-to-r from-green-600 to-green-500' : 'bg-gradient-to-r from-slate-700 to-slate-600'} text-white`}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${isOnlineForHire ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground'}`} />
-                        <span className="font-semibold text-sm">Pro Driver</span>
+                        <Radio className={`h-4 w-4 ${isOnlineForHire ? 'animate-pulse' : 'opacity-60'}`} />
+                        <span className="font-semibold text-sm">Pro Driver Status</span>
                       </div>
-                      <Badge variant={isOnlineForHire ? "default" : "secondary"} className={isOnlineForHire ? 'bg-green-500' : ''}>
+                      <Badge variant="secondary" className={isOnlineForHire ? 'bg-white/20 text-white border-white/30' : 'bg-white/10 text-white/80 border-white/20'}>
                         {isOnlineForHire ? 'ONLINE' : 'OFFLINE'}
                       </Badge>
                     </div>
                     
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
-                        <PoundSterling className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <PoundSterling className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                         <Input
                           type="number"
                           step="0.01"
@@ -567,7 +567,7 @@ export default function DriverPage() {
                           value={ratePerMile}
                           onChange={(e) => setRatePerMile(e.target.value)}
                           placeholder="Rate/mile"
-                          className="pl-8 h-9 text-sm"
+                          className="pl-8 h-9 text-sm bg-white text-gray-900 border-none"
                           disabled={isOnlineForHire}
                           data-testid="input-rate-per-mile"
                         />
@@ -579,7 +579,7 @@ export default function DriverPage() {
                         disabled={isUpdatingOnlineStatus || (!user?.driverVerified)}
                         className={`h-9 px-4 ${isOnlineForHire 
                           ? 'bg-red-500 hover:bg-red-600' 
-                          : 'bg-green-600 hover:bg-green-700'} text-white`}
+                          : 'bg-white text-green-700 hover:bg-green-50'}`}
                         data-testid="button-toggle-online"
                       >
                         {isUpdatingOnlineStatus ? (
@@ -594,7 +594,7 @@ export default function DriverPage() {
                     </div>
                     
                     {!user?.driverVerified && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                      <p className="text-xs text-yellow-200 mt-2">
                         Account verification required to go online.
                       </p>
                     )}
