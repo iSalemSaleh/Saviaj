@@ -75,9 +75,12 @@ export const users = pgTable("users", {
   phvLicenseNumber: varchar("phv_license_number"),
   phvLicenseExpiry: varchar("phv_license_expiry"),
   commercialStatusVerified: boolean("commercial_status_verified").default(false),
+  // Commercial driver rates
+  ratePerMile: decimal("rate_per_mile", { precision: 5, scale: 2 }), // Rate in GBP per mile for commercial drivers
   // Availability states
   activeMode: varchar("active_mode", { length: 20 }), // 'rider', 'driver', or null (inactive)
   isAvailable: boolean("is_available").default(false), // true when actively searching/available
+  isOnlineForHire: boolean("is_online_for_hire").default(false), // Commercial driver is available for direct hire
   currentLat: decimal("current_lat", { precision: 10, scale: 7 }),
   currentLng: decimal("current_lng", { precision: 10, scale: 7 }),
   lastLocationUpdate: timestamp("last_location_update"),
