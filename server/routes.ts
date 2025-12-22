@@ -187,6 +187,25 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       const { phoneVerifications } = await import("@shared/schema");
       
+      // Rate limiting: check for recent requests from this phone number
+      const recentVerification = await db
+        .select()
+        .from(phoneVerifications)
+        .where(eq(phoneVerifications.phoneNumber, normalizedPhone))
+        .orderBy(sql`${phoneVerifications.createdAt} DESC`)
+        .limit(1);
+      
+      if (recentVerification.length > 0) {
+        const lastRequest = recentVerification[0];
+        const timeSinceLastRequest = Date.now() - new Date(lastRequest.createdAt!).getTime();
+        if (timeSinceLastRequest < 60000) { // 60 second cooldown
+          return res.status(429).json({ 
+            message: "Please wait before requesting another code",
+            waitSeconds: Math.ceil((60000 - timeSinceLastRequest) / 1000)
+          });
+        }
+      }
+      
       // Generate 6-digit OTP
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
       
@@ -237,20 +256,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           });
         }
       } catch (twilioError: any) {
-        // Only fall back to demo mode if Twilio is NOT configured
-        if (twilioError.message === 'Twilio not connected' || twilioError.message?.includes('X_REPLIT_TOKEN')) {
-          console.log("Twilio not configured, using demo mode");
-          console.log(`[DEMO MODE] OTP for ${normalizedPhone}: ${otpCode}`);
-          return res.json({ 
-            success: true, 
-            message: "Verification code sent",
-            demoMode: true,
-            demoCode: otpCode
-          });
-        }
-        
-        // Twilio is configured but had an error - return error, not demo mode
-        console.error("Twilio error:", twilioError);
+        // In production, always return error - no demo mode fallback
+        console.error("Twilio error:", twilioError.message);
         return res.status(500).json({ 
           message: "Failed to send verification code. Please try again."
         });
@@ -411,33 +418,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           throw new Error(result.error || "Failed to send verification code");
         }
       } catch (entraError: any) {
-        console.error("Entra Email OTP error:", entraError);
-        
-        // Fall back to demo mode
-        const otpCode = Math.floor(10000000 + Math.random() * 90000000).toString(); // 8 digits
-        const bcrypt = await import("bcrypt");
-        const hashedOtp = await bcrypt.default.hash(otpCode, 10);
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
-        
-        await db.update(emailVerifications)
-          .set({ status: "expired" })
-          .where(eq(emailVerifications.email, normalizedEmail));
-        
-        await db.insert(emailVerifications).values({
-          email: normalizedEmail,
-          otpCode: hashedOtp,
-          status: "pending",
-          attempts: 0,
-          expiresAt,
-        });
-        
-        console.log(`[DEMO MODE] Email OTP for ${normalizedEmail}: ${otpCode}`);
-        return res.json({ 
-          success: true, 
-          message: "Verification code sent",
-          demoMode: true,
-          demoCode: otpCode,
-          codeLength: 8,
+        // In production, always return error - no demo mode fallback
+        console.error("Entra Email OTP error:", entraError.message);
+        return res.status(500).json({ 
+          message: "Failed to send verification code. Please check your email and try again."
         });
       }
     } catch (error) {

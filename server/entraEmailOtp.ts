@@ -60,7 +60,10 @@ export async function initiateEmailOtpSignUp(email: string): Promise<{
     });
 
     const startData: SignUpStartResponse = await startResponse.json();
-    console.log('[Entra] Sign-up start response:', JSON.stringify(startData, null, 2));
+    // Log only non-sensitive status info (token stripped for security)
+    if (startData.error) {
+      console.log('[Entra] Sign-up start error:', startData.error);
+    }
 
     if (startData.error) {
       // If user already exists, try sign-in flow instead
@@ -88,7 +91,10 @@ export async function initiateEmailOtpSignUp(email: string): Promise<{
     });
 
     const challengeData: ChallengeResponse = await challengeResponse.json();
-    console.log('[Entra] Challenge response:', JSON.stringify(challengeData, null, 2));
+    // Log only non-sensitive status (tokens stripped for security)
+    if (challengeData.error) {
+      console.log('[Entra] Challenge error:', challengeData.error);
+    }
 
     if (challengeData.error) {
       return { success: false, error: challengeData.error_description || challengeData.error };
@@ -134,7 +140,10 @@ export async function initiateEmailOtpSignIn(email: string): Promise<{
     });
 
     const startData: SignUpStartResponse = await startResponse.json();
-    console.log('[Entra] Sign-in start response:', JSON.stringify(startData, null, 2));
+    // Log only non-sensitive status (tokens stripped for security)
+    if (startData.error) {
+      console.log('[Entra] Sign-in start error:', startData.error);
+    }
 
     if (startData.error) {
       return { success: false, error: startData.error_description || startData.error };
@@ -158,7 +167,10 @@ export async function initiateEmailOtpSignIn(email: string): Promise<{
     });
 
     const challengeData: ChallengeResponse = await challengeResponse.json();
-    console.log('[Entra] Sign-in challenge response:', JSON.stringify(challengeData, null, 2));
+    // Log only non-sensitive status (tokens stripped for security)
+    if (challengeData.error) {
+      console.log('[Entra] Sign-in challenge error:', challengeData.error);
+    }
 
     if (challengeData.error) {
       return { success: false, error: challengeData.error_description || challengeData.error };
@@ -205,7 +217,10 @@ export async function verifyEmailOtp(continuationToken: string, otpCode: string,
     });
 
     const continueData: ContinueResponse = await continueResponse.json();
-    console.log('[Entra] Continue response:', JSON.stringify(continueData, null, 2));
+    // Log only non-sensitive status (tokens stripped for security)
+    if (continueData.error) {
+      console.log('[Entra] Continue error:', continueData.error, continueData.suberror);
+    }
 
     if (continueData.error) {
       // Check for invalid OTP
