@@ -185,25 +185,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Please enter a valid UK mobile number" });
       }
       
-      // Rate limiting: check for recent requests from this phone number
       const { phoneVerifications } = await import("@shared/schema");
-      const recentVerification = await db
-        .select()
-        .from(phoneVerifications)
-        .where(eq(phoneVerifications.phoneNumber, normalizedPhone))
-        .orderBy(sql`${phoneVerifications.createdAt} DESC`)
-        .limit(1);
-      
-      if (recentVerification.length > 0) {
-        const lastRequest = recentVerification[0];
-        const timeSinceLastRequest = Date.now() - new Date(lastRequest.createdAt!).getTime();
-        if (timeSinceLastRequest < 60000) { // 1 minute cooldown
-          return res.status(429).json({ 
-            message: "Please wait before requesting another code",
-            waitSeconds: Math.ceil((60000 - timeSinceLastRequest) / 1000)
-          });
-        }
-      }
       
       // Generate 6-digit OTP
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();

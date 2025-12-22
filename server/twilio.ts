@@ -1,63 +1,42 @@
 // Twilio integration for SMS verification
 import twilio from 'twilio';
 
-let connectionSettings: any;
+function getCredentials() {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 
-async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
-  }
-
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=twilio',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-
-  if (!connectionSettings || (!connectionSettings.settings.account_sid || !connectionSettings.settings.api_key || !connectionSettings.settings.api_key_secret)) {
+  if (!accountSid || !authToken || !messagingServiceSid) {
     throw new Error('Twilio not connected');
   }
+  
   return {
-    accountSid: connectionSettings.settings.account_sid,
-    apiKey: connectionSettings.settings.api_key,
-    apiKeySecret: connectionSettings.settings.api_key_secret,
-    phoneNumber: connectionSettings.settings.phone_number
+    accountSid,
+    authToken,
+    messagingServiceSid
   };
 }
 
 export async function getTwilioClient() {
-  const { accountSid, apiKey, apiKeySecret } = await getCredentials();
-  return twilio(apiKey, apiKeySecret, {
-    accountSid: accountSid
-  });
+  const { accountSid, authToken } = getCredentials();
+  return twilio(accountSid, authToken);
 }
 
-export async function getTwilioFromPhoneNumber() {
-  const { phoneNumber } = await getCredentials();
-  return phoneNumber;
+export function getMessagingServiceSid() {
+  const { messagingServiceSid } = getCredentials();
+  return messagingServiceSid;
 }
 
 export async function sendVerificationSMS(toPhoneNumber: string, code: string): Promise<boolean> {
   try {
     const client = await getTwilioClient();
-    const fromNumber = await getTwilioFromPhoneNumber();
+    const messagingServiceSid = getMessagingServiceSid();
     
-    console.log(`[Twilio] Attempting to send SMS from ${fromNumber} to ${toPhoneNumber}`);
+    console.log(`[Twilio] Attempting to send SMS to ${toPhoneNumber} using Messaging Service`);
     
     const message = await client.messages.create({
       body: `Your AtlasRide verification code is: ${code}. This code expires in 5 minutes.`,
-      from: fromNumber,
+      messagingServiceSid: messagingServiceSid,
       to: toPhoneNumber
     });
     
