@@ -8,6 +8,13 @@ AtlasRide is a two-way transportation marketplace similar to Uber, but completel
 
 Preferred communication style: Simple, everyday language.
 
+### Database Design Principles
+- **Scalability First**: Design all new fields and tables assuming millions of records
+- **Indexing Strategy**: Add indexes on foreign keys, frequently queried columns, and columns used in WHERE/ORDER BY clauses
+- **Data Types**: Use appropriate types for scale (e.g., `bigint` for high-volume counters, proper precision for decimals)
+- **Normalization**: Prefer normalized tables over monolithic designs to reduce row size and improve query performance
+- **Partitioning Ready**: Consider future partitioning needs (e.g., by date for time-series data, by user_id for sharding)
+
 ## System Architecture
 
 ### Frontend Architecture
