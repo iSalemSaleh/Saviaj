@@ -30,13 +30,23 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL with Drizzle ORM
 - **Schema Location**: `shared/schema.ts` (shared between frontend and backend)
 - **Key Tables**:
-  - `users` - User profiles with driver verification status
+  - `users` - Core user accounts (legacy monolithic table, being normalized)
   - `sessions` - Authentication sessions
   - `riderOffers` - Ride requests posted by riders with price offers
   - `driverRoutes` - Routes posted by drivers with available seats
   - `rides` - Matched rides between riders and drivers
   - `bids` - Driver bids on rider offers
   - `chatMessages` - Real-time chat messages between riders and drivers
+  - `ratings` - Mutual ratings between riders and drivers
+- **Normalized Tables** (Phase 1 complete - dual-write active):
+  - `user_profiles` - Personal info (name, DOB, phone, address)
+  - `user_stats` - Ratings and ride counts
+  - `driver_profiles` - Driver status and verification
+  - `driver_documents` - License uploads and verification
+  - `vehicles` - Vehicle details
+  - `driver_commercial` - Pro driver settings (rate per mile, tagline)
+  - `driver_availability` - Online status and location
+  - `user_bank_accounts` - Payout bank details
 
 ### External Integrations
 - **Stripe**: Payment processing via stripe-replit-sync for managed webhooks
