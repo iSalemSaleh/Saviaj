@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import PostcodeSearch from "@/components/PostcodeSearch";
 import { DateTimePicker } from "@/components/DateTimePicker";
+import { RiderLocationMap } from "@/components/map/RiderLocationMap";
 
 interface DriverInfo {
   id: string;
@@ -118,6 +119,7 @@ export default function RiderPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<RiderOffer | null>(null);
   const [editPrice, setEditPrice] = useState("");
+  const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -697,8 +699,43 @@ export default function RiderPage() {
             </div>
           </div>
 
-          {/* Right Panel: Nearby & Available Routes */}
+          {/* Right Panel: Map & Available Routes */}
           <div className="lg:col-span-8 space-y-8">
+            
+            {/* Interactive Map showing user location, nearby drivers, and route */}
+            <Card className="border-none shadow-lg overflow-hidden">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <Navigation className="h-5 w-5 text-primary" />
+                    Your Location
+                  </span>
+                  {routeInfo && dropoffCoords && (
+                    <div className="flex items-center gap-4 text-sm">
+                      <Badge variant="outline" className="font-normal">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {routeInfo.distance} miles
+                      </Badge>
+                      <Badge variant="outline" className="font-normal">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {routeInfo.duration} mins
+                      </Badge>
+                    </div>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[350px]">
+                  <RiderLocationMap
+                    userLocation={userLocation}
+                    destination={dropoffCoords ? { lat: dropoffCoords.lat, lng: dropoffCoords.lon } : undefined}
+                    nearbyDrivers={nearbyDrivers}
+                    showRoute={!!dropoffCoords}
+                    onRouteInfo={(distance, duration) => setRouteInfo({ distance, duration })}
+                  />
+                </div>
+              </CardContent>
+            </Card>
             
             {/* Nearby Routes Section - shows when pickup is set */}
             {pickupCoords && dropoffCoords && (
