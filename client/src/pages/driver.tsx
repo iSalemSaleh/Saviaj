@@ -577,7 +577,7 @@ export default function DriverPage() {
                         type="button"
                         size="sm"
                         onClick={handleToggleOnlineStatus}
-                        disabled={isUpdatingOnlineStatus || (!user?.driverVerified)}
+                        disabled={isUpdatingOnlineStatus || (!user?.driverVerified && !user?.commercialStatusVerified)}
                         className={`h-9 px-4 ${isOnlineForHire 
                           ? 'bg-red-500 hover:bg-red-600' 
                           : 'bg-white text-green-700 hover:bg-green-50'}`}
@@ -652,13 +652,14 @@ export default function DriverPage() {
                         onChange={setDepartureTime}
                         testId="input-departure-time"
                         className="col-span-2"
+                        buttonClassName="bg-white text-primary border-none"
                         compact
                       />
                       <div className="relative">
                         <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
                         <Input 
                           type="number" 
-                          placeholder="£/seat"
+                          placeholder="price/seat"
                           min="1"
                           max="100"
                           step="1"
@@ -695,18 +696,16 @@ export default function DriverPage() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <Input 
-                        type="number" 
-                        placeholder="Seats"
-                        min="1"
-                        max="4"
-                        step="1"
-                        className="h-8 text-sm bg-white text-primary border-none"
-                        value={availableSeats}
-                        onChange={(e) => setAvailableSeats(e.target.value)}
-                        aria-label="Available seats"
-                        data-testid="input-seats"
-                      />
+                      <Select value={availableSeats} onValueChange={setAvailableSeats}>
+                        <SelectTrigger className="h-8 text-sm bg-white text-primary border-none" data-testid="select-seats">
+                          <SelectValue placeholder="Seats" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4].map((num) => (
+                            <SelectItem key={num} value={String(num)}>{num} seat{num > 1 ? 's' : ''}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <Button 

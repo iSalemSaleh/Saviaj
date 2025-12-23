@@ -22,6 +22,7 @@ interface DateTimePickerProps {
   label?: string;
   labelClassName?: string;
   className?: string;
+  buttonClassName?: string;
   testId?: string;
   compact?: boolean;
 }
@@ -32,6 +33,7 @@ export function DateTimePicker({
   label,
   labelClassName,
   className,
+  buttonClassName,
   testId,
   compact = false,
 }: DateTimePickerProps) {
@@ -163,7 +165,8 @@ export function DateTimePicker({
               className={cn(
                 "w-full justify-start text-left font-normal",
                 compact ? "h-8 text-xs px-2" : "h-11",
-                !value && "text-muted-foreground"
+                !value && "text-muted-foreground",
+                buttonClassName
               )}
               data-testid={testId}
             >
@@ -171,7 +174,7 @@ export function DateTimePicker({
               <span className="truncate">{getDisplayValue()}</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80 p-0 z-[100]" align="start">
+          <PopoverContent className="w-80 p-0 z-[1000]" align="start">
             <div className="p-4 space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
