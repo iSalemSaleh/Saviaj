@@ -685,6 +685,26 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Get normalized user data from new tables (Phase 2)
+  app.get('/api/auth/user/normalized', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const normalizedUser = await storage.getNormalizedUser(userId);
+      if (normalizedUser) {
+        res.json(normalizedUser);
+      } else {
+        res.status(404).json({ message: "User not found" });
+      }
+    } catch (error) {
+      console.error("Error fetching normalized user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   // Update user driver status (with KYC license upload)
   app.post('/api/user/driver-status', isAuthenticated, async (req: any, res) => {
     try {

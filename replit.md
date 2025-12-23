@@ -38,7 +38,7 @@ Preferred communication style: Simple, everyday language.
   - `bids` - Driver bids on rider offers
   - `chatMessages` - Real-time chat messages between riders and drivers
   - `ratings` - Mutual ratings between riders and drivers
-- **Normalized Tables** (Phase 1 complete - dual-write active):
+- **Normalized Tables** (Phase 2 in progress - normalized reads available):
   - `user_profiles` - Personal info (name, DOB, phone, address)
   - `user_stats` - Ratings and ride counts
   - `driver_profiles` - Driver status and verification
@@ -47,6 +47,8 @@ Preferred communication style: Simple, everyday language.
   - `driver_commercial` - Pro driver settings (rate per mile, tagline)
   - `driver_availability` - Online status and location
   - `user_bank_accounts` - Payout bank details
+- **NormalizedUser Type**: Combined aggregate type for reading from normalized tables
+- **Feature Flags**: `ENABLE_DUAL_WRITE` and `ENABLE_NORMALIZED_READS` control migration phases
 
 ### External Integrations
 - **Stripe**: Payment processing via stripe-replit-sync for managed webhooks
