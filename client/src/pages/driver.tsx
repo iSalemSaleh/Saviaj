@@ -596,42 +596,19 @@ export default function DriverPage() {
                       </Badge>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Input
-                        type="text"
-                        value={driverTagline}
-                        onChange={(e) => setDriverTagline(e.target.value.slice(0, 100))}
-                        placeholder="Advertise your service (e.g., 'Airport specialist, 5+ years experience')"
-                        className="h-9 text-sm bg-white text-gray-900 border-none"
-                        disabled={isOnlineForHire}
-                        maxLength={100}
-                        data-testid="input-driver-tagline"
-                        aria-label="Service tagline"
-                      />
-                      <div className="flex items-center gap-2">
-                        <div className="relative flex-1">
-                          <PoundSterling className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                          <Input
-                            type="number"
-                            step="0.01"
-                            min="0.50"
-                            max="10"
-                            value={ratePerMile}
-                            onChange={(e) => setRatePerMile(e.target.value)}
-                            placeholder="Rate/mile"
-                            className="pl-8 h-9 text-sm bg-white text-gray-900 border-none"
-                            disabled={isOnlineForHire}
-                            data-testid="input-rate-per-mile"
-                          />
+                    {isOnlineForHire ? (
+                      <div className="space-y-3">
+                        <div className="bg-white/20 rounded-lg p-3 text-center">
+                          <p className="text-sm font-medium">You're visible to nearby riders</p>
+                          {driverTagline && <p className="text-xs text-white/80 mt-1">"{driverTagline}"</p>}
+                          <p className="text-xs text-white/80 mt-1">Rate: £{ratePerMile}/mile</p>
                         </div>
                         <Button
                           type="button"
                           size="sm"
                           onClick={handleToggleOnlineStatus}
-                          disabled={isUpdatingOnlineStatus || (!user?.driverVerified && !user?.commercialStatusVerified)}
-                          className={`h-9 px-4 ${isOnlineForHire 
-                            ? 'bg-red-500 hover:bg-red-600' 
-                            : 'bg-white text-green-700 hover:bg-green-50'}`}
+                          disabled={isUpdatingOnlineStatus}
+                          className="w-full h-9 bg-red-500 hover:bg-red-600"
                           data-testid="button-toggle-online"
                         >
                           {isUpdatingOnlineStatus ? (
@@ -639,12 +616,58 @@ export default function DriverPage() {
                           ) : (
                             <>
                               <Power className="h-4 w-4 mr-1" />
-                              {isOnlineForHire ? 'Offline' : 'Online'}
+                              Go Offline
                             </>
                           )}
                         </Button>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Input
+                          type="text"
+                          value={driverTagline}
+                          onChange={(e) => setDriverTagline(e.target.value.slice(0, 100))}
+                          placeholder="Advertise your service (e.g., 'Airport specialist, 5+ years experience')"
+                          className="h-9 text-sm bg-white text-gray-900 border-none"
+                          maxLength={100}
+                          data-testid="input-driver-tagline"
+                          aria-label="Service tagline"
+                        />
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <PoundSterling className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0.50"
+                              max="10"
+                              value={ratePerMile}
+                              onChange={(e) => setRatePerMile(e.target.value)}
+                              placeholder="Rate/mile"
+                              className="pl-8 h-9 text-sm bg-white text-gray-900 border-none"
+                              data-testid="input-rate-per-mile"
+                            />
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleToggleOnlineStatus}
+                            disabled={isUpdatingOnlineStatus || (!user?.driverVerified && !user?.commercialStatusVerified)}
+                            className="h-9 px-4 bg-white text-green-700 hover:bg-green-50"
+                            data-testid="button-toggle-online"
+                          >
+                            {isUpdatingOnlineStatus ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Power className="h-4 w-4 mr-1" />
+                                Go Online
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     
                   </CardContent>
                 </Card>
