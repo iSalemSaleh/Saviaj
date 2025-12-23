@@ -100,9 +100,9 @@ export default function DriverPage() {
   const [endLocation, setEndLocation] = useState("");
   const [endCoords, setEndCoords] = useState<{lat: number; lon: number} | null>(null);
   const [departureTime, setDepartureTime] = useState("");
-  const [maxDetour, setMaxDetour] = useState("2");
+  const [maxDetour, setMaxDetour] = useState("");
   const [detourUnit, setDetourUnit] = useState<DetourUnit>("miles");
-  const [availableSeats, setAvailableSeats] = useState("3");
+  const [availableSeats, setAvailableSeats] = useState("");
   const [pricePerSeat, setPricePerSeat] = useState("");
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
@@ -341,9 +341,9 @@ export default function DriverPage() {
       setEndLocation("");
       setEndCoords(null);
       setDepartureTime("");
-      setMaxDetour("2");
+      setMaxDetour("");
       setDetourUnit("miles");
-      setAvailableSeats("3");
+      setAvailableSeats("");
       setPricePerSeat("");
     },
     onError: (error: Error) => {
@@ -600,40 +600,41 @@ export default function DriverPage() {
               
               <Card className="border-none shadow-md bg-primary text-primary-foreground">
                 <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-lg sm:text-xl text-white">Post Your Route</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg sm:text-xl text-white">Post Your Route</CardTitle>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={useCurrentLocation}
+                      disabled={isGettingLocation}
+                      className="h-6 text-[10px] text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/20 px-2"
+                      data-testid="button-use-current-location"
+                    >
+                      {isGettingLocation ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <>
+                          <Crosshair className="h-3 w-3 mr-1" />
+                          <span>Current</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </CardHeader>
                 <form onSubmit={handlePublishRoute}>
                   <CardContent className="space-y-4 px-4 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <PostcodeSearch
-                          value={startLocation}
-                          onChange={handleStartChange}
-                          placeholder="Starting point"
-                          iconColor="text-primary"
-                          inputClassName="bg-white text-primary border-none"
-                          textClassName="text-primary-foreground/70"
-                          testId="input-start-location"
-                          isCurrentLocation={!!userLocation && startCoords?.lat === userLocation.lat && startCoords?.lon === userLocation.lng}
-                          compact
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={useCurrentLocation}
-                        disabled={isGettingLocation}
-                        className="h-8 text-[10px] text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/20 px-2 shrink-0"
-                        data-testid="button-use-current-location"
-                      >
-                        {isGettingLocation ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Crosshair className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </div>
+                    <PostcodeSearch
+                      value={startLocation}
+                      onChange={handleStartChange}
+                      placeholder="Starting point"
+                      iconColor="text-primary"
+                      inputClassName="bg-white text-primary border-none"
+                      textClassName="text-primary-foreground/70"
+                      testId="input-start-location"
+                      isCurrentLocation={!!userLocation && startCoords?.lat === userLocation.lat && startCoords?.lon === userLocation.lng}
+                      compact
+                    />
                     
                     <PostcodeSearch
                       value={endLocation}
@@ -646,29 +647,51 @@ export default function DriverPage() {
                       compact
                     />
 
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-5 gap-2">
                       <DateTimePicker
                         value={departureTime}
                         onChange={setDepartureTime}
                         testId="input-departure-time"
-                        className="col-span-2"
-                        buttonClassName="bg-white text-primary border-none"
+                        className="col-span-3"
+                        buttonClassName="bg-white text-primary border-none h-8"
                         compact
                       />
-                      <div className="relative">
-                        <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input 
-                          type="number" 
-                          placeholder="price/seat"
-                          min="1"
-                          max="100"
-                          step="1"
-                          className="pl-7 h-8 text-sm bg-white text-primary border-none"
-                          value={pricePerSeat}
-                          onChange={(e) => setPricePerSeat(e.target.value)}
-                          aria-label="Price per seat in pounds"
-                          data-testid="input-price-per-seat"
-                        />
+                      <div className="col-span-2 flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0 bg-white text-primary border-none"
+                          onClick={() => setPricePerSeat(String(Math.max(1, (parseInt(pricePerSeat) || 0) - 1)))}
+                          data-testid="button-decrease-price"
+                        >
+                          -
+                        </Button>
+                        <div className="relative flex-1">
+                          <PoundSterling className="absolute left-1.5 top-2 h-3 w-3 text-muted-foreground" />
+                          <Input 
+                            type="number" 
+                            placeholder="price/seat"
+                            min="1"
+                            max="100"
+                            step="1"
+                            className="pl-5 h-8 text-xs bg-white text-primary border-none text-center"
+                            value={pricePerSeat}
+                            onChange={(e) => setPricePerSeat(e.target.value)}
+                            aria-label="Price per seat in pounds"
+                            data-testid="input-price-per-seat"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 w-8 p-0 bg-white text-primary border-none"
+                          onClick={() => setPricePerSeat(String(Math.min(100, (parseInt(pricePerSeat) || 0) + 1)))}
+                          data-testid="button-increase-price"
+                        >
+                          +
+                        </Button>
                       </div>
                     </div>
 
