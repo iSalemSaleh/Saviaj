@@ -8,6 +8,14 @@ import {
   ratings,
   chatMessages,
   driverDailyActivity,
+  userProfiles,
+  userStats,
+  driverProfiles,
+  driverAvailability,
+  driverCommercial,
+  vehicles,
+  userBankAccounts,
+  driverDocuments,
   type User,
   type UpsertUser,
   type RiderOffer,
@@ -26,7 +34,124 @@ import {
   type InsertChatMessage,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, lt, gt } from "drizzle-orm";
+import { eq, and, desc, sql, lt, gt, or } from "drizzle-orm";
+
+// Feature flag for dual-write to new normalized tables
+const ENABLE_DUAL_WRITE = true;
+
+// Helper to filter out undefined values from an object
+function filterDefined<T extends Record<string, any>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, v]) => v !== undefined)
+  ) as Partial<T>;
+}
+
+// Dual-write helper for user profile data - only updates provided fields
+async function syncUserProfile(userId: string, data: {
+  firstName?: string;
+  lastName?: string;
+  profileImageUrl?: string;
+  dateOfBirth?: string;
+  phoneNumber?: string;
+  homeAddress?: string;
+  city?: string;
+  postcode?: string;
+}) {
+  const filtered = filterDefined(data);
+  if (Object.keys(filtered).length === 0) return;
+  
+  const existing = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId));
+  if (existing.length > 0) {
+    await db.update(userProfiles)
+      .set({ ...filtered, updatedAt: new Date() })
+      .where(eq(userProfiles.userId, userId));
+  } else {
+    await db.insert(userProfiles).values({ userId, ...filtered } as any);
+  }
+}
+
+// Dual-write helper for driver profile data
+async function syncDriverProfile(userId: string, data: {
+  isDriver?: boolean;
+  driverVerified?: boolean;
+  backgroundCheckConsent?: boolean;
+  backgroundCheckStatus?: string;
+}) {
+  const filtered = filterDefined(data);
+  if (Object.keys(filtered).length === 0) return;
+  
+  const existing = await db.select().from(driverProfiles).where(eq(driverProfiles.userId, userId));
+  if (existing.length > 0) {
+    await db.update(driverProfiles)
+      .set({ ...filtered, updatedAt: new Date() })
+      .where(eq(driverProfiles.userId, userId));
+  } else {
+    await db.insert(driverProfiles).values({ userId, isDriver: data.isDriver ?? false, ...filtered } as any);
+  }
+}
+
+// Dual-write helper for driver availability data
+async function syncDriverAvailability(userId: string, data: {
+  activeMode?: string | null;
+  isAvailable?: boolean;
+  isOnlineForHire?: boolean;
+  currentLat?: string;
+  currentLng?: string;
+  lastLocationUpdate?: Date;
+}) {
+  const filtered = filterDefined(data);
+  if (Object.keys(filtered).length === 0) return;
+  
+  const existing = await db.select().from(driverAvailability).where(eq(driverAvailability.userId, userId));
+  if (existing.length > 0) {
+    await db.update(driverAvailability)
+      .set({ ...filtered, updatedAt: new Date() })
+      .where(eq(driverAvailability.userId, userId));
+  } else {
+    await db.insert(driverAvailability).values({ userId, ...filtered } as any);
+  }
+}
+
+// Dual-write helper for user stats
+async function syncUserStats(userId: string, data: {
+  riderRating?: string;
+  driverRating?: string;
+  totalRatingsAsRider?: number;
+  totalRatingsAsDriver?: number;
+}) {
+  const filtered = filterDefined(data);
+  if (Object.keys(filtered).length === 0) return;
+  
+  const existing = await db.select().from(userStats).where(eq(userStats.userId, userId));
+  if (existing.length > 0) {
+    await db.update(userStats)
+      .set({ ...filtered, updatedAt: new Date() })
+      .where(eq(userStats.userId, userId));
+  } else {
+    await db.insert(userStats).values({ userId, ...filtered } as any);
+  }
+}
+
+// Dual-write helper for commercial driver data
+async function syncDriverCommercial(userId: string, data: {
+  isCommercialDriver?: boolean;
+  commercialStatusVerified?: boolean;
+  ratePerMile?: string;
+  driverTagline?: string;
+  dvlaCheckCode?: string;
+}) {
+  const filtered = filterDefined(data);
+  if (Object.keys(filtered).length === 0) return;
+  
+  const existing = await db.select().from(driverCommercial).where(eq(driverCommercial.userId, userId));
+  if (existing.length > 0) {
+    await db.update(driverCommercial)
+      .set({ ...filtered, updatedAt: new Date() })
+      .where(eq(driverCommercial.userId, userId));
+  } else {
+    await db.insert(driverCommercial).values({ userId, isCommercialDriver: data.isCommercialDriver ?? false, ...filtered } as any);
+  }
+}
 
 // Haversine formula to calculate distance between two points in miles
 function calculateDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -232,6 +357,21 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .returning();
+    
+    // Dual-write to normalized tables using safe helpers
+    if (ENABLE_DUAL_WRITE) {
+      await syncUserProfile(user.id, {
+        firstName: userData.firstName ?? undefined,
+        lastName: userData.lastName ?? undefined,
+        profileImageUrl: userData.profileImageUrl ?? undefined,
+        dateOfBirth: userData.dateOfBirth ?? undefined,
+        phoneNumber: userData.phoneNumber ?? undefined,
+        homeAddress: userData.homeAddress ?? undefined,
+        city: userData.city ?? undefined,
+        postcode: userData.postcode ?? undefined,
+      });
+    }
+    
     return user;
   }
 
@@ -247,6 +387,21 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .returning();
+    
+    // Dual-write to normalized tables using safe helpers
+    if (ENABLE_DUAL_WRITE) {
+      await syncUserProfile(user.id, {
+        firstName: userData.firstName ?? undefined,
+        lastName: userData.lastName ?? undefined,
+        profileImageUrl: userData.profileImageUrl ?? undefined,
+        dateOfBirth: userData.dateOfBirth ?? undefined,
+        phoneNumber: userData.phoneNumber ?? undefined,
+        homeAddress: userData.homeAddress ?? undefined,
+        city: userData.city ?? undefined,
+        postcode: userData.postcode ?? undefined,
+      });
+    }
+    
     return user;
   }
 
@@ -260,6 +415,17 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(users.id, id))
       .returning();
+    
+    // Dual-write to normalized tables using safe helpers
+    if (ENABLE_DUAL_WRITE) {
+      await syncDriverProfile(id, { isDriver });
+      
+      // Create driver availability entry if becoming a driver
+      if (isDriver) {
+        await syncDriverAvailability(id, { isAvailable: false, isOnlineForHire: false });
+      }
+    }
+    
     return user;
   }
 
@@ -327,6 +493,80 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(users.id, id))
       .returning();
+    
+    // Dual-write to normalized tables using safe helpers
+    if (ENABLE_DUAL_WRITE) {
+      await syncUserProfile(id, {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        dateOfBirth: data.dateOfBirth,
+        phoneNumber: data.phoneNumber,
+        homeAddress: data.homeAddress,
+        city: data.city,
+        postcode: data.postcode,
+      });
+      
+      if (data.isDriver) {
+        await syncDriverProfile(id, {
+          isDriver: data.isDriver,
+          backgroundCheckConsent: data.backgroundCheckConsent,
+          backgroundCheckStatus: data.backgroundCheckConsent ? 'pending' : undefined,
+        });
+        await syncDriverAvailability(id, { isAvailable: false, isOnlineForHire: false });
+      }
+      
+      // Sync vehicle data if provided
+      if (data.vehicleMake || data.vehicleRegistration) {
+        const existingVehicle = await db.select().from(vehicles).where(eq(vehicles.userId, id));
+        if (existingVehicle.length > 0) {
+          await db.update(vehicles)
+            .set({
+              make: data.vehicleMake,
+              model: data.vehicleModel,
+              year: data.vehicleYear,
+              color: data.vehicleColor,
+              registration: data.vehicleRegistration,
+              insuranceExpiry: data.vehicleInsuranceExpiry,
+              updatedAt: new Date(),
+            })
+            .where(eq(vehicles.userId, id));
+        } else {
+          await db.insert(vehicles).values({
+            userId: id,
+            make: data.vehicleMake,
+            model: data.vehicleModel,
+            year: data.vehicleYear,
+            color: data.vehicleColor,
+            registration: data.vehicleRegistration,
+            insuranceExpiry: data.vehicleInsuranceExpiry,
+            isPrimary: true,
+          });
+        }
+      }
+      
+      // Sync bank account data if provided
+      if (data.bankAccountName || data.bankAccountNumber) {
+        const existingBank = await db.select().from(userBankAccounts).where(eq(userBankAccounts.userId, id));
+        if (existingBank.length > 0) {
+          await db.update(userBankAccounts)
+            .set({
+              accountName: data.bankAccountName,
+              sortCode: data.bankSortCode,
+              accountNumber: data.bankAccountNumber,
+              updatedAt: new Date(),
+            })
+            .where(eq(userBankAccounts.userId, id));
+        } else {
+          await db.insert(userBankAccounts).values({
+            userId: id,
+            accountName: data.bankAccountName,
+            sortCode: data.bankSortCode,
+            accountNumber: data.bankAccountNumber,
+          });
+        }
+      }
+    }
+    
     return user;
   }
 
@@ -671,6 +911,18 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(users.id, id))
       .returning();
+    
+    // Dual-write to normalized tables
+    if (ENABLE_DUAL_WRITE) {
+      await syncDriverAvailability(id, {
+        activeMode,
+        isAvailable,
+        currentLat: lat?.toString(),
+        currentLng: lng?.toString(),
+        lastLocationUpdate: new Date(),
+      });
+    }
+    
     return user;
   }
 
@@ -742,6 +994,15 @@ export class DatabaseStorage implements IStorage {
       .set({ ...updateData, updatedAt: new Date() })
       .where(eq(users.id, userId))
       .returning();
+    
+    // Dual-write to normalized tables
+    if (ENABLE_DUAL_WRITE) {
+      await syncUserStats(userId, role === 'rider' 
+        ? { riderRating: avgRating.toFixed(2), totalRatingsAsRider: userRatings.length }
+        : { driverRating: avgRating.toFixed(2), totalRatingsAsDriver: userRatings.length }
+      );
+    }
+    
     return user;
   }
 
@@ -997,6 +1258,24 @@ export class DatabaseStorage implements IStorage {
       .set(updateData)
       .where(eq(users.id, id))
       .returning();
+    
+    // Dual-write to normalized tables
+    if (ENABLE_DUAL_WRITE) {
+      await syncDriverAvailability(id, {
+        isOnlineForHire,
+        currentLat: lat !== undefined ? lat.toFixed(7) : undefined,
+        currentLng: lng !== undefined ? lng.toFixed(7) : undefined,
+        lastLocationUpdate: lat !== undefined && lng !== undefined ? new Date() : undefined,
+      });
+      
+      if (ratePerMile !== undefined || driverTagline !== undefined) {
+        await syncDriverCommercial(id, {
+          ratePerMile: ratePerMile !== undefined ? ratePerMile.toFixed(2) : undefined,
+          driverTagline,
+        });
+      }
+    }
+    
     return user;
   }
 
