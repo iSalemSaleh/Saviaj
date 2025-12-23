@@ -647,51 +647,28 @@ export default function DriverPage() {
                       compact
                     />
 
-                    <div className="grid grid-cols-5 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       <DateTimePicker
                         value={departureTime}
                         onChange={setDepartureTime}
                         testId="input-departure-time"
-                        className="col-span-3"
                         buttonClassName="bg-white text-primary border-none h-8"
                         compact
                       />
-                      <div className="col-span-2 flex items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-8 p-0 bg-white text-primary border-none"
-                          onClick={() => setPricePerSeat(String(Math.max(1, (parseInt(pricePerSeat) || 0) - 1)))}
-                          data-testid="button-decrease-price"
-                        >
-                          -
-                        </Button>
-                        <div className="relative flex-1">
-                          <PoundSterling className="absolute left-1.5 top-2 h-3 w-3 text-muted-foreground" />
-                          <Input 
-                            type="number" 
-                            placeholder="price/seat"
-                            min="1"
-                            max="100"
-                            step="1"
-                            className="pl-5 h-8 text-xs bg-white text-primary border-none text-center"
-                            value={pricePerSeat}
-                            onChange={(e) => setPricePerSeat(e.target.value)}
-                            aria-label="Price per seat in pounds"
-                            data-testid="input-price-per-seat"
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-8 p-0 bg-white text-primary border-none"
-                          onClick={() => setPricePerSeat(String(Math.min(100, (parseInt(pricePerSeat) || 0) + 1)))}
-                          data-testid="button-increase-price"
-                        >
-                          +
-                        </Button>
+                      <div className="relative">
+                        <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input 
+                          type="number" 
+                          placeholder="price/seat"
+                          min="1"
+                          max="100"
+                          step="1"
+                          className="pl-7 h-8 text-sm bg-white text-primary border-none"
+                          value={pricePerSeat}
+                          onChange={(e) => setPricePerSeat(e.target.value)}
+                          aria-label="Price per seat in pounds"
+                          data-testid="input-price-per-seat"
+                        />
                       </div>
                     </div>
 
