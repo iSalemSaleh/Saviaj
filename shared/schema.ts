@@ -101,6 +101,202 @@ export const users = pgTable("users", {
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
+// ============================================
+// NORMALIZED TABLES (Phase 0 - New Structure)
+// ============================================
+
+// User Profiles - Personal information separated from auth
+export const userProfiles = pgTable("user_profiles", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  dateOfBirth: varchar("date_of_birth"),
+  phoneNumber: varchar("phone_number"),
+  homeAddress: text("home_address"),
+  city: varchar("city"),
+  postcode: varchar("postcode"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userProfilesRelations = relations(userProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [userProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertUserProfile = typeof userProfiles.$inferInsert;
+
+// User Stats - Aggregated metrics for riders and drivers
+export const userStats = pgTable("user_stats", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  riderRating: decimal("rider_rating", { precision: 3, scale: 2 }),
+  driverRating: decimal("driver_rating", { precision: 3, scale: 2 }),
+  totalRidesAsRider: integer("total_rides_as_rider").default(0),
+  totalRidesAsDriver: integer("total_rides_as_driver").default(0),
+  totalRatingsAsRider: integer("total_ratings_as_rider").default(0),
+  totalRatingsAsDriver: integer("total_ratings_as_driver").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userStatsRelations = relations(userStats, ({ one }) => ({
+  user: one(users, {
+    fields: [userStats.userId],
+    references: [users.id],
+  }),
+}));
+
+export type UserStats = typeof userStats.$inferSelect;
+export type InsertUserStats = typeof userStats.$inferInsert;
+
+// Driver Profiles - Basic driver verification info
+export const driverProfiles = pgTable("driver_profiles", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  isDriver: boolean("is_driver").default(false),
+  driverVerified: boolean("driver_verified").default(false),
+  backgroundCheckConsent: boolean("background_check_consent").default(false),
+  backgroundCheckStatus: varchar("background_check_status", { length: 20 }), // pending, approved, rejected
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const driverProfilesRelations = relations(driverProfiles, ({ one }) => ({
+  user: one(users, {
+    fields: [driverProfiles.userId],
+    references: [users.id],
+  }),
+}));
+
+export type DriverProfile = typeof driverProfiles.$inferSelect;
+export type InsertDriverProfile = typeof driverProfiles.$inferInsert;
+
+// Driver Documents - All driver documents with history tracking
+export const driverDocuments = pgTable("driver_documents", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  documentType: varchar("document_type", { length: 50 }).notNull(), // driver_license, private_hire_license, commercial_insurance, vehicle_inspection, phv_license
+  documentUrl: varchar("document_url"),
+  documentNumber: varchar("document_number"),
+  expiryDate: varchar("expiry_date"),
+  status: varchar("status", { length: 20 }).default("pending"), // pending, verified, expired, rejected
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  verifiedAt: timestamp("verified_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const driverDocumentsRelations = relations(driverDocuments, ({ one }) => ({
+  user: one(users, {
+    fields: [driverDocuments.userId],
+    references: [users.id],
+  }),
+}));
+
+export type DriverDocument = typeof driverDocuments.$inferSelect;
+export type InsertDriverDocument = typeof driverDocuments.$inferInsert;
+
+// Vehicles - Vehicle information (allows multiple vehicles per driver)
+export const vehicles = pgTable("vehicles", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  make: varchar("make"),
+  model: varchar("model"),
+  year: varchar("year"),
+  color: varchar("color"),
+  registration: varchar("registration"),
+  insuranceExpiry: varchar("insurance_expiry"),
+  isPrimary: boolean("is_primary").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const vehiclesRelations = relations(vehicles, ({ one }) => ({
+  user: one(users, {
+    fields: [vehicles.userId],
+    references: [users.id],
+  }),
+}));
+
+export type Vehicle = typeof vehicles.$inferSelect;
+export type InsertVehicle = typeof vehicles.$inferInsert;
+
+// Driver Commercial - Pro/commercial driver settings
+export const driverCommercial = pgTable("driver_commercial", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  isCommercialDriver: boolean("is_commercial_driver").default(false),
+  commercialStatusVerified: boolean("commercial_status_verified").default(false),
+  ratePerMile: decimal("rate_per_mile", { precision: 5, scale: 2 }),
+  driverTagline: varchar("driver_tagline", { length: 100 }),
+  dvlaCheckCode: varchar("dvla_check_code"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const driverCommercialRelations = relations(driverCommercial, ({ one }) => ({
+  user: one(users, {
+    fields: [driverCommercial.userId],
+    references: [users.id],
+  }),
+}));
+
+export type DriverCommercial = typeof driverCommercial.$inferSelect;
+export type InsertDriverCommercial = typeof driverCommercial.$inferInsert;
+
+// Driver Availability - Live location and status (high-frequency updates)
+export const driverAvailability = pgTable("driver_availability", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  activeMode: varchar("active_mode", { length: 20 }), // 'rider', 'driver', or null
+  isAvailable: boolean("is_available").default(false),
+  isOnlineForHire: boolean("is_online_for_hire").default(false),
+  currentLat: decimal("current_lat", { precision: 10, scale: 7 }),
+  currentLng: decimal("current_lng", { precision: 10, scale: 7 }),
+  lastLocationUpdate: timestamp("last_location_update"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const driverAvailabilityRelations = relations(driverAvailability, ({ one }) => ({
+  user: one(users, {
+    fields: [driverAvailability.userId],
+    references: [users.id],
+  }),
+}));
+
+export type DriverAvailability = typeof driverAvailability.$inferSelect;
+export type InsertDriverAvailability = typeof driverAvailability.$inferInsert;
+
+// User Bank Accounts - Payment/payout details (sensitive - should be encrypted)
+export const userBankAccounts = pgTable("user_bank_accounts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  accountName: varchar("account_name"),
+  sortCode: varchar("sort_code"),
+  accountNumber: varchar("account_number"), // TODO: Encrypt this field
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userBankAccountsRelations = relations(userBankAccounts, ({ one }) => ({
+  user: one(users, {
+    fields: [userBankAccounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export type UserBankAccount = typeof userBankAccounts.$inferSelect;
+export type InsertUserBankAccount = typeof userBankAccounts.$inferInsert;
+
+// ============================================
+// END NORMALIZED TABLES
+// ============================================
+
 // Rider Offers - Riders post trip requests with their price offer
 export const riderOffers = pgTable("rider_offers", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
