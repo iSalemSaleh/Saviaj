@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Star, Navigation, Car } from 'lucide-react';
@@ -35,35 +35,90 @@ interface RiderLocationMapProps {
   onDriverClick?: (driver: NearbyDriver) => void;
 }
 
-const createIcon = (type: 'user' | 'driver' | 'destination') => {
-  const colors: Record<string, string> = {
-    user: '#0891b2',
-    driver: '#22c55e',
-    destination: '#ef4444',
-  };
-  
-  const icons: Record<string, string> = {
-    user: '📍',
-    driver: '🚗',
-    destination: '🏁',
-  };
-
+const createDriverIcon = () => {
   return L.divIcon({
     className: 'custom-marker',
     html: `<div style="
-      width: 40px;
-      height: 40px;
-      background-color: ${colors[type]};
+      width: 32px;
+      height: 32px;
+      background-color: #22c55e;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
-      border: 3px solid white;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    ">${icons[type]}</div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
+      font-size: 16px;
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    ">🚗</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+};
+
+const createDestinationIcon = () => {
+  return L.divIcon({
+    className: 'destination-marker',
+    html: `<div style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    ">
+      <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 0C5.372 0 0 5.372 0 12c0 9 12 24 12 24s12-15 12-24c0-6.628-5.372-12-12-12z" fill="#ef4444"/>
+        <circle cx="12" cy="12" r="5" fill="white"/>
+      </svg>
+    </div>`,
+    iconSize: [24, 36],
+    iconAnchor: [12, 36],
+  });
+};
+
+const pulsingCircleStyles = `
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 0.4;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+  }
+  .pulsing-circle {
+    width: 16px;
+    height: 16px;
+    background-color: #3b82f6;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 0 0 rgba(59, 130, 246, 0.5);
+    position: relative;
+  }
+  .pulsing-circle::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: -6px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: rgba(59, 130, 246, 0.3);
+    animation: pulse 2s ease-in-out infinite;
+  }
+`;
+
+const createUserLocationIcon = () => {
+  return L.divIcon({
+    className: 'user-location-marker',
+    html: `
+      <style>${pulsingCircleStyles}</style>
+      <div class="pulsing-circle"></div>
+    `,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
   });
 };
 
@@ -110,9 +165,9 @@ export function RiderLocationMap({
 }: RiderLocationMapProps) {
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
 
-  const userIcon = useMemo(() => createIcon('user'), []);
-  const driverIcon = useMemo(() => createIcon('driver'), []);
-  const destinationIcon = useMemo(() => createIcon('destination'), []);
+  const userIcon = useMemo(() => createUserLocationIcon(), []);
+  const driverIcon = useMemo(() => createDriverIcon(), []);
+  const destinationIcon = useMemo(() => createDestinationIcon(), []);
 
   const fetchRoute = useCallback(async () => {
     if (!showRoute || !userLocation || !destination) {
@@ -168,24 +223,14 @@ export function RiderLocationMap({
       data-testid="rider-location-map"
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
       />
       
       <MapUpdater
         userLocation={userLocation}
         destination={destination}
         nearbyDrivers={nearbyDrivers}
-      />
-
-      <Circle
-        center={[userLocation.lat, userLocation.lng]}
-        radius={50}
-        pathOptions={{
-          color: '#0891b2',
-          fillColor: '#0891b2',
-          fillOpacity: 0.2,
-        }}
       />
 
       <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
