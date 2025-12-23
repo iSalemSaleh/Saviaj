@@ -904,6 +904,7 @@ export class DatabaseStorage implements IStorage {
     vehicleYear: string | null;
     vehicleColor: string | null;
     ratePerMile: string | null;
+    driverTagline: string | null;
     distanceFromPickup: number;
     currentLat: string | null;
     currentLng: string | null;
@@ -922,6 +923,7 @@ export class DatabaseStorage implements IStorage {
         vehicleYear: users.vehicleYear,
         vehicleColor: users.vehicleColor,
         ratePerMile: users.ratePerMile,
+        driverTagline: users.driverTagline,
         currentLat: users.currentLat,
         currentLng: users.currentLng,
       })
@@ -970,7 +972,7 @@ export class DatabaseStorage implements IStorage {
     return degrees * (Math.PI / 180);
   }
 
-  async updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, lat?: number, lng?: number): Promise<User> {
+  async updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number): Promise<User> {
     const updateData: any = {
       isOnlineForHire,
       updatedAt: new Date(),
@@ -978,6 +980,10 @@ export class DatabaseStorage implements IStorage {
     
     if (ratePerMile !== undefined) {
       updateData.ratePerMile = ratePerMile.toFixed(2);
+    }
+    
+    if (driverTagline !== undefined) {
+      updateData.driverTagline = driverTagline;
     }
     
     if (lat !== undefined && lng !== undefined) {

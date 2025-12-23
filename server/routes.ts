@@ -1690,7 +1690,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.post('/api/driver/online-status', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { isOnlineForHire, ratePerMile, lat, lng } = req.body;
+      const { isOnlineForHire, ratePerMile, driverTagline, lat, lng } = req.body;
       
       // Verify user is a commercial driver
       const user = await storage.getUser(userId);
@@ -1698,7 +1698,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(403).json({ message: "Only commercial drivers can go online for hire" });
       }
       
-      if (!user.driverVerified) {
+      if (!user.driverVerified && !user.commercialStatusVerified) {
         return res.status(403).json({ message: "Your driver account must be verified before going online" });
       }
       
@@ -1707,7 +1707,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Rate per mile is required when going online" });
       }
       
-      const updatedUser = await storage.updateDriverOnlineStatus(userId, isOnlineForHire, ratePerMile, lat, lng);
+      const updatedUser = await storage.updateDriverOnlineStatus(userId, isOnlineForHire, ratePerMile, driverTagline, lat, lng);
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating online status:", error);
