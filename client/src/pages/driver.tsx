@@ -193,17 +193,23 @@ export default function DriverPage() {
     setIsUpdatingOnlineStatus(true);
     
     try {
-      // Get current location when going online
+      // Get current location when going online (optional - continue if it fails)
       let lat: number | undefined;
       let lng: number | undefined;
       
       if (newOnlineStatus && navigator.geolocation) {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
-        });
-        lat = position.coords.latitude;
-        lng = position.coords.longitude;
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 5000 });
+          });
+          lat = position.coords.latitude;
+          lng = position.coords.longitude;
+        } catch (geoError) {
+          console.log("Geolocation unavailable, proceeding without location:", geoError);
+        }
       }
+      
+      console.log("Sending online status update:", { isOnlineForHire: newOnlineStatus, ratePerMile: parseFloat(ratePerMile), lat, lng });
       
       const response = await apiRequest("POST", "/api/driver/online-status", {
         isOnlineForHire: newOnlineStatus,
