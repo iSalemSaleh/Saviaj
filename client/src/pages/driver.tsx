@@ -176,12 +176,23 @@ export default function DriverPage() {
 
   // Handle toggling online status for commercial drivers
   const handleToggleOnlineStatus = async () => {
-    if (!user?.isCommercialDriver) return;
+    console.log("handleToggleOnlineStatus called", { isCommercialDriver: user?.isCommercialDriver, isOnlineForHire, ratePerMile });
+    
+    if (!user?.isCommercialDriver) {
+      console.log("Not a commercial driver, returning early");
+      toast({
+        title: "Error",
+        description: "Only commercial drivers can go online.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const newOnlineStatus = !isOnlineForHire;
     
     // Require rate per mile when going online
     if (newOnlineStatus && (!ratePerMile || parseFloat(ratePerMile) <= 0)) {
+      console.log("Rate validation failed:", { ratePerMile });
       toast({
         title: "Rate Required",
         description: "Please set your rate per mile before going online.",
