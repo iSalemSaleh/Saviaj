@@ -206,7 +206,7 @@ export interface IStorage {
     currentLat: string | null;
     currentLng: string | null;
   }>>;
-  updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, lat?: number, lng?: number): Promise<User>;
+  updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -628,7 +628,7 @@ export class DatabaseStorage implements IStorage {
   async createNotification(notification: InsertNotification): Promise<Notification> {
     const [newNotification] = await db
       .insert(notifications)
-      .values(notification)
+      .values(notification as any)
       .returning();
     return newNotification;
   }
