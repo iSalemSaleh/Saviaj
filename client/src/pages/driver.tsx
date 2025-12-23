@@ -750,25 +750,15 @@ export default function DriverPage() {
 
           {/* Right Panel: Map & Rider Offers */}
           <div className="lg:col-span-8 space-y-4">
-            {/* Map showing driver's route and nearby offers */}
-            <Card className="border-none shadow-md overflow-hidden">
-              <CardHeader className="py-2 px-4">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Navigation className="h-4 w-4 text-primary" />
-                  Your Route
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="h-[200px] sm:h-[250px]">
-                  <RiderLocationMap
-                    userLocation={startCoords ? { lat: startCoords.lat, lng: startCoords.lon } : userLocation}
-                    destination={endCoords ? { lat: endCoords.lat, lng: endCoords.lon } : undefined}
-                    nearbyDrivers={[]}
-                    showRoute={!!startCoords && !!endCoords}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            {/* Map showing driver's route */}
+            <div className="h-[200px] sm:h-[250px] rounded-lg overflow-hidden">
+              <RiderLocationMap
+                userLocation={startCoords ? { lat: startCoords.lat, lng: startCoords.lon } : userLocation}
+                destination={endCoords ? { lat: endCoords.lat, lng: endCoords.lon } : undefined}
+                nearbyDrivers={[]}
+                showRoute={!!startCoords && !!endCoords}
+              />
+            </div>
 
             <Tabs defaultValue="offers" className="w-full">
               <div className="flex items-center justify-between mb-3">

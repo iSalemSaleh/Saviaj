@@ -696,39 +696,15 @@ export default function RiderPage() {
           <div className="lg:col-span-8 space-y-8">
             
             {/* Interactive Map showing user location, nearby drivers, and route */}
-            <Card className="border-none shadow-md overflow-hidden">
-              <CardHeader className="py-2 px-4">
-                <CardTitle className="text-sm flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <Navigation className="h-4 w-4 text-primary" />
-                    Your Location
-                  </span>
-                  {routeInfo && dropoffCoords && (
-                    <div className="flex items-center gap-2 text-xs">
-                      <Badge variant="outline" className="font-normal h-6 px-2">
-                        <MapPin className="h-3 w-3 mr-1" />
-                        {routeInfo.distance} mi
-                      </Badge>
-                      <Badge variant="outline" className="font-normal h-6 px-2">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {routeInfo.duration} min
-                      </Badge>
-                    </div>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="h-[200px] sm:h-[280px]">
-                  <RiderLocationMap
-                    userLocation={userLocation}
-                    destination={dropoffCoords ? { lat: dropoffCoords.lat, lng: dropoffCoords.lon } : undefined}
-                    nearbyDrivers={nearbyDrivers}
-                    showRoute={!!dropoffCoords}
-                    onRouteInfo={(distance, duration) => setRouteInfo({ distance, duration })}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="h-[200px] sm:h-[280px] rounded-lg overflow-hidden">
+              <RiderLocationMap
+                userLocation={userLocation}
+                destination={dropoffCoords ? { lat: dropoffCoords.lat, lng: dropoffCoords.lon } : undefined}
+                nearbyDrivers={nearbyDrivers}
+                showRoute={!!dropoffCoords}
+                onRouteInfo={(distance, duration) => setRouteInfo({ distance, duration })}
+              />
+            </div>
             
             {/* Nearby Routes Section - shows when pickup is set */}
             {pickupCoords && dropoffCoords && (
@@ -845,10 +821,6 @@ export default function RiderPage() {
                   </h2>
                 </div>
                 
-                <p className="text-sm text-muted-foreground mb-4">
-                  Professional licensed drivers available for immediate hire. Contact them directly for a ride!
-                </p>
-                
                 {nearbyDriversLoading ? (
                   <Card className="border-dashed border-green-500/30 bg-green-50">
                     <CardContent className="p-8 text-center">
@@ -952,19 +924,8 @@ export default function RiderPage() {
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-primary">
-                    {pickupCoords && dropoffCoords ? "All Available Routes" : "Available Routes"}
+                    Available Routes
                   </h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {userLocation ? (
-                      <span className="flex items-center gap-1">
-                        <Navigation className="h-3 w-3" /> Sorted by distance from you
-                      </span>
-                    ) : locationLoading ? (
-                      "Getting your location..."
-                    ) : (
-                      "Enable location for distance sorting"
-                    )}
-                  </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
@@ -976,7 +937,7 @@ export default function RiderPage() {
                     />
                     <label htmlFor="future-dates" className="text-sm flex items-center gap-1 cursor-pointer">
                       <CalendarDays className="h-4 w-4" />
-                      Show future dates
+                      Future dates
                     </label>
                   </div>
                 </div>
@@ -1021,7 +982,7 @@ export default function RiderPage() {
                         onClick={() => setShowFutureDates(true)}
                         className="mt-2"
                       >
-                        Show future dates
+                        Future dates
                       </Button>
                     )}
                     <p className="text-sm text-muted-foreground mt-2">Post a request and wait for drivers to respond!</p>
