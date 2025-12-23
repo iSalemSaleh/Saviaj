@@ -668,8 +668,11 @@ export default function DriverPage() {
                           <Button
                             type="button"
                             size="sm"
-                            onClick={handleToggleOnlineStatus}
-                            disabled={isUpdatingOnlineStatus || (!user?.driverVerified && !user?.commercialStatusVerified)}
+                            onClick={() => {
+                              console.log("Go Online button clicked!");
+                              handleToggleOnlineStatus();
+                            }}
+                            disabled={isUpdatingOnlineStatus}
                             className="h-9 px-4 bg-white text-green-700 hover:bg-green-50"
                             data-testid="button-toggle-online"
                           >
