@@ -294,6 +294,82 @@ export type UserBankAccount = typeof userBankAccounts.$inferSelect;
 export type InsertUserBankAccount = typeof userBankAccounts.$inferInsert;
 
 // ============================================
+// NORMALIZED USER AGGREGATE TYPE (Phase 2)
+// ============================================
+
+// NormalizedUser combines core auth data with data from normalized tables
+// This replaces the monolithic User type for read operations
+export interface NormalizedUser {
+  // Core auth fields (from users table - never migrated)
+  id: string;
+  email: string | null;
+  username: string | null;
+  emailVerified: boolean | null;
+  authProvider: string | null;
+  stripeCustomerId: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+  
+  // Profile data (from user_profiles)
+  profile: {
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+    dateOfBirth: string | null;
+    phoneNumber: string | null;
+    homeAddress: string | null;
+    city: string | null;
+    postcode: string | null;
+  } | null;
+  
+  // Stats data (from user_stats)
+  stats: {
+    riderRating: string | null;
+    driverRating: string | null;
+    totalRidesAsRider: number | null;
+    totalRidesAsDriver: number | null;
+    totalRatingsAsRider: number | null;
+    totalRatingsAsDriver: number | null;
+  } | null;
+  
+  // Driver profile (from driver_profiles)
+  driverProfile: {
+    isDriver: boolean | null;
+    driverVerified: boolean | null;
+    backgroundCheckConsent: boolean | null;
+    backgroundCheckStatus: string | null;
+  } | null;
+  
+  // Driver availability (from driver_availability)
+  availability: {
+    activeMode: string | null;
+    isAvailable: boolean | null;
+    isOnlineForHire: boolean | null;
+    currentLat: string | null;
+    currentLng: string | null;
+    lastLocationUpdate: Date | null;
+  } | null;
+  
+  // Commercial driver info (from driver_commercial)
+  commercial: {
+    isCommercialDriver: boolean | null;
+    commercialStatusVerified: boolean | null;
+    ratePerMile: string | null;
+    driverTagline: string | null;
+  } | null;
+  
+  // Primary vehicle (from vehicles)
+  vehicle: {
+    make: string | null;
+    model: string | null;
+    year: string | null;
+    color: string | null;
+    registration: string | null;
+    insuranceExpiry: string | null;
+  } | null;
+}
+
+// ============================================
 // END NORMALIZED TABLES
 // ============================================
 

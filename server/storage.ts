@@ -18,6 +18,7 @@ import {
   driverDocuments,
   type User,
   type UpsertUser,
+  type NormalizedUser,
   type RiderOffer,
   type InsertRiderOffer,
   type DriverRoute,
@@ -153,6 +154,145 @@ async function syncDriverCommercial(userId: string, data: {
   }
 }
 
+// ============================================
+// NORMALIZED USER READ HELPERS (Phase 2)
+// ============================================
+
+// Feature flag for reading from normalized tables
+const ENABLE_NORMALIZED_READS = true;
+
+// Load NormalizedUser by ID - combines data from all normalized tables
+async function getNormalizedUserById(userId: string): Promise<NormalizedUser | null> {
+  // Get core user data
+  const [user] = await db.select({
+    id: users.id,
+    email: users.email,
+    username: users.username,
+    emailVerified: users.emailVerified,
+    authProvider: users.authProvider,
+    stripeCustomerId: users.stripeCustomerId,
+    createdAt: users.createdAt,
+    updatedAt: users.updatedAt,
+  }).from(users).where(eq(users.id, userId));
+  
+  if (!user) return null;
+  
+  // Load related data in parallel for efficiency
+  const [profileResult, statsResult, driverProfileResult, availabilityResult, commercialResult, vehicleResult] = await Promise.all([
+    db.select().from(userProfiles).where(eq(userProfiles.userId, userId)),
+    db.select().from(userStats).where(eq(userStats.userId, userId)),
+    db.select().from(driverProfiles).where(eq(driverProfiles.userId, userId)),
+    db.select().from(driverAvailability).where(eq(driverAvailability.userId, userId)),
+    db.select().from(driverCommercial).where(eq(driverCommercial.userId, userId)),
+    db.select().from(vehicles).where(and(eq(vehicles.userId, userId), eq(vehicles.isPrimary, true))),
+  ]);
+  
+  const profile = profileResult[0];
+  const stats = statsResult[0];
+  const driverProfile = driverProfileResult[0];
+  const availability = availabilityResult[0];
+  const commercial = commercialResult[0];
+  const vehicle = vehicleResult[0];
+  
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    emailVerified: user.emailVerified,
+    authProvider: user.authProvider,
+    stripeCustomerId: user.stripeCustomerId,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    
+    profile: profile ? {
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      profileImageUrl: profile.profileImageUrl,
+      dateOfBirth: profile.dateOfBirth,
+      phoneNumber: profile.phoneNumber,
+      homeAddress: profile.homeAddress,
+      city: profile.city,
+      postcode: profile.postcode,
+    } : null,
+    
+    stats: stats ? {
+      riderRating: stats.riderRating,
+      driverRating: stats.driverRating,
+      totalRidesAsRider: stats.totalRidesAsRider,
+      totalRidesAsDriver: stats.totalRidesAsDriver,
+      totalRatingsAsRider: stats.totalRatingsAsRider,
+      totalRatingsAsDriver: stats.totalRatingsAsDriver,
+    } : null,
+    
+    driverProfile: driverProfile ? {
+      isDriver: driverProfile.isDriver,
+      driverVerified: driverProfile.driverVerified,
+      backgroundCheckConsent: driverProfile.backgroundCheckConsent,
+      backgroundCheckStatus: driverProfile.backgroundCheckStatus,
+    } : null,
+    
+    availability: availability ? {
+      activeMode: availability.activeMode,
+      isAvailable: availability.isAvailable,
+      isOnlineForHire: availability.isOnlineForHire,
+      currentLat: availability.currentLat,
+      currentLng: availability.currentLng,
+      lastLocationUpdate: availability.lastLocationUpdate,
+    } : null,
+    
+    commercial: commercial ? {
+      isCommercialDriver: commercial.isCommercialDriver,
+      commercialStatusVerified: commercial.commercialStatusVerified,
+      ratePerMile: commercial.ratePerMile,
+      driverTagline: commercial.driverTagline,
+    } : null,
+    
+    vehicle: vehicle ? {
+      make: vehicle.make,
+      model: vehicle.model,
+      year: vehicle.year,
+      color: vehicle.color,
+      registration: vehicle.registration,
+      insuranceExpiry: vehicle.insuranceExpiry,
+    } : null,
+  };
+}
+
+// Individual loaders for specific data needs
+async function loadUserProfile(userId: string) {
+  const [profile] = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId));
+  return profile || null;
+}
+
+async function loadUserStats(userId: string) {
+  const [stats] = await db.select().from(userStats).where(eq(userStats.userId, userId));
+  return stats || null;
+}
+
+async function loadDriverProfile(userId: string) {
+  const [profile] = await db.select().from(driverProfiles).where(eq(driverProfiles.userId, userId));
+  return profile || null;
+}
+
+async function loadDriverAvailability(userId: string) {
+  const [availability] = await db.select().from(driverAvailability).where(eq(driverAvailability.userId, userId));
+  return availability || null;
+}
+
+async function loadDriverCommercial(userId: string) {
+  const [commercial] = await db.select().from(driverCommercial).where(eq(driverCommercial.userId, userId));
+  return commercial || null;
+}
+
+async function loadPrimaryVehicle(userId: string) {
+  const [vehicle] = await db.select().from(vehicles).where(and(eq(vehicles.userId, userId), eq(vehicles.isPrimary, true)));
+  return vehicle || null;
+}
+
+// ============================================
+// END NORMALIZED USER READ HELPERS
+// ============================================
+
 // Haversine formula to calculate distance between two points in miles
 function calculateDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3959; // Earth's radius in miles
@@ -207,6 +347,7 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getNormalizedUser(id: string): Promise<NormalizedUser | null>;
   createUser(user: UpsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserDriverStatus(id: string, isDriver: boolean, licenseUrl?: string): Promise<User>;
@@ -344,6 +485,10 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+  
+  async getNormalizedUser(id: string): Promise<NormalizedUser | null> {
+    return getNormalizedUserById(id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
