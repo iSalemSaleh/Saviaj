@@ -23,6 +23,7 @@ interface DateTimePickerProps {
   labelClassName?: string;
   className?: string;
   testId?: string;
+  compact?: boolean;
 }
 
 export function DateTimePicker({ 
@@ -31,7 +32,8 @@ export function DateTimePicker({
   label,
   labelClassName,
   className,
-  testId 
+  testId,
+  compact = false,
 }: DateTimePickerProps) {
   const [timeInput, setTimeInput] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
@@ -147,9 +149,9 @@ export function DateTimePicker({
 
   return (
     <>
-      <div className={cn("space-y-2", className)}>
+      <div className={cn(compact ? "space-y-1" : "space-y-2", className)}>
         {label && (
-          <label className={cn("text-sm font-medium text-muted-foreground", labelClassName)}>
+          <label className={cn(compact ? "text-xs" : "text-sm", "font-medium text-muted-foreground", labelClassName)}>
             {label}
           </label>
         )}
@@ -159,13 +161,14 @@ export function DateTimePicker({
             <Button
               variant="outline"
               className={cn(
-                "w-full justify-start text-left font-normal h-11",
+                "w-full justify-start text-left font-normal",
+                compact ? "h-8 text-xs px-2" : "h-11",
                 !value && "text-muted-foreground"
               )}
               data-testid={testId}
             >
-              <Clock className="mr-2 h-4 w-4" />
-              {getDisplayValue()}
+              <Clock className={cn(compact ? "mr-1 h-3 w-3" : "mr-2 h-4 w-4")} />
+              <span className="truncate">{getDisplayValue()}</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="start">

@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import PostcodeSearch from "@/components/PostcodeSearch";
 import { DateTimePicker } from "@/components/DateTimePicker";
+import { RiderLocationMap } from "@/components/map/RiderLocationMap";
 
 type DetourUnit = "miles" | "km" | "meters" | "yards";
 
@@ -536,12 +537,12 @@ export default function DriverPage() {
     <div className="min-h-screen bg-muted/20">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-12 gap-8">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+        <div className="grid lg:grid-cols-12 gap-4 lg:gap-6">
           
           {/* Left Panel: Post Route */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="sticky top-24 space-y-4">
+          <div className="lg:col-span-4 space-y-3">
+            <div className="lg:sticky lg:top-20 space-y-3">
               {/* Commercial Driver Online Status Card */}
               {user?.isCommercialDriver && (
                 <Card className={`border-none shadow-lg ${isOnlineForHire ? 'bg-gradient-to-r from-green-600 to-green-500' : 'bg-gradient-to-r from-slate-700 to-slate-600'} text-white`}>
@@ -602,23 +603,23 @@ export default function DriverPage() {
                 </Card>
               )}
               
-              <Card className="border-none shadow-lg bg-primary text-primary-foreground">
-                <CardHeader>
-                  <CardTitle className="text-2xl text-white">Post Your Route</CardTitle>
-                  <p className="text-primary-foreground/80">Fill your empty seats and earn.</p>
+              <Card className="border-none shadow-md bg-primary text-primary-foreground">
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-lg sm:text-xl text-white">Post Your Route</CardTitle>
+                  <p className="text-xs text-primary-foreground/80">Fill your empty seats and earn.</p>
                 </CardHeader>
                 <form onSubmit={handlePublishRoute}>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
+                  <CardContent className="space-y-3 px-4 py-2">
+                    <div className="space-y-1">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium text-primary-foreground/80">Starting Point</label>
+                        <label className="text-xs font-medium text-primary-foreground/80">From</label>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={useCurrentLocation}
                           disabled={isGettingLocation}
-                          className="h-7 text-xs text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/20"
+                          className="h-6 text-[10px] text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/20 px-2"
                           data-testid="button-use-current-location"
                         >
                           {isGettingLocation ? (
@@ -626,58 +627,61 @@ export default function DriverPage() {
                           ) : (
                             <Crosshair className="h-3 w-3 mr-1" />
                           )}
-                          Use Current Location
+                          Current
                         </Button>
                       </div>
                       <PostcodeSearch
                         value={startLocation}
                         onChange={handleStartChange}
-                        placeholder="Home / Current Location"
+                        placeholder="Starting point"
                         labelClassName="text-primary-foreground/80"
                         iconColor="text-primary"
                         inputClassName="bg-white text-primary border-none"
                         textClassName="text-primary-foreground/70"
                         testId="input-start-location"
                         isCurrentLocation={!!userLocation && startCoords?.lat === userLocation.lat && startCoords?.lon === userLocation.lng}
+                        compact
                       />
                     </div>
                     
                     <PostcodeSearch
                       value={endLocation}
                       onChange={handleEndChange}
-                      placeholder="Work / Office"
-                      label="Destination"
+                      placeholder="Destination"
+                      label="To"
                       labelClassName="text-primary-foreground/80"
                       iconColor="text-primary"
                       inputClassName="bg-white text-primary border-none"
                       textClassName="text-primary-foreground/70"
                       testId="input-end-location"
+                      compact
                     />
 
                     <DateTimePicker
                       value={departureTime}
                       onChange={setDepartureTime}
-                      label="Departure Time"
+                      label="Departure"
                       labelClassName="text-primary-foreground/80"
                       testId="input-departure-time"
+                      compact
                     />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-primary-foreground/80">Max Detour</label>
-                        <div className="flex gap-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1 col-span-2">
+                        <label className="text-xs font-medium text-primary-foreground/80">Max Detour</label>
+                        <div className="flex gap-1">
                           <Input 
                             type="number" 
                             placeholder="2"
                             min="1"
                             step="any"
-                            className="h-11 bg-white text-primary border-none flex-1"
+                            className="h-8 text-sm bg-white text-primary border-none flex-1"
                             value={maxDetour}
                             onChange={(e) => setMaxDetour(e.target.value)}
                             data-testid="input-max-detour"
                           />
                           <Select value={detourUnit} onValueChange={(v) => setDetourUnit(v as DetourUnit)}>
-                            <SelectTrigger className="h-11 w-24 bg-white text-primary border-none" data-testid="select-detour-unit">
+                            <SelectTrigger className="h-8 w-16 text-xs bg-white text-primary border-none" data-testid="select-detour-unit">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -688,15 +692,15 @@ export default function DriverPage() {
                           </Select>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-primary-foreground/80">Seats</label>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-primary-foreground/80">Seats</label>
                         <Input 
                           type="number" 
                           placeholder="3"
                           min="1"
                           max="7"
                           step="1"
-                          className="h-11 bg-white text-primary border-none"
+                          className="h-8 text-sm bg-white text-primary border-none"
                           value={availableSeats}
                           onChange={(e) => setAvailableSeats(e.target.value)}
                           data-testid="input-seats"
@@ -704,17 +708,17 @@ export default function DriverPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-primary-foreground/80">Price per Seat (£) - Optional</label>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-primary-foreground/80">Price/Seat (£)</label>
                       <div className="relative">
-                        <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-primary" />
+                        <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-primary" />
                         <Input 
                           type="number" 
-                          placeholder="Leave blank for negotiation"
+                          placeholder="Optional"
                           min="1"
                           max="100"
                           step="1"
-                          className="pl-9 h-11 bg-white text-primary border-none"
+                          className="pl-7 h-8 text-sm bg-white text-primary border-none"
                           value={pricePerSeat}
                           onChange={(e) => setPricePerSeat(e.target.value)}
                           data-testid="input-price-per-seat"
@@ -725,13 +729,13 @@ export default function DriverPage() {
                     <Button 
                       type="submit"
                       variant="secondary" 
-                      className="w-full h-12 text-lg font-bold shadow-md mt-4"
+                      className="w-full h-10 text-sm font-semibold shadow-sm"
                       disabled={createRouteMutation.isPending}
                       data-testid="button-publish-route"
                     >
                       {createRouteMutation.isPending ? (
                         <>
-                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Publishing...
                         </>
                       ) : (
@@ -744,15 +748,35 @@ export default function DriverPage() {
             </div>
           </div>
 
-          {/* Right Panel: Rider Offers */}
-          <div className="lg:col-span-8">
+          {/* Right Panel: Map & Rider Offers */}
+          <div className="lg:col-span-8 space-y-4">
+            {/* Map showing driver's route and nearby offers */}
+            <Card className="border-none shadow-md overflow-hidden">
+              <CardHeader className="py-2 px-4">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Navigation className="h-4 w-4 text-primary" />
+                  Your Route
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[200px] sm:h-[250px]">
+                  <RiderLocationMap
+                    userLocation={startCoords ? { lat: startCoords.lat, lng: startCoords.lon } : userLocation}
+                    destination={endCoords ? { lat: endCoords.lat, lng: endCoords.lon } : undefined}
+                    nearbyDrivers={[]}
+                    showRoute={!!startCoords && !!endCoords}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             <Tabs defaultValue="offers" className="w-full">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-primary">Dashboard</h2>
-                <TabsList>
-                  <TabsTrigger value="offers">Rider Offers</TabsTrigger>
-                  <TabsTrigger value="active">Active Rides ({activeRides.length})</TabsTrigger>
-                  <TabsTrigger value="history">History</TabsTrigger>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg sm:text-xl font-bold text-primary">Dashboard</h2>
+                <TabsList className="h-8">
+                  <TabsTrigger value="offers" className="text-xs px-2">Offers</TabsTrigger>
+                  <TabsTrigger value="active" className="text-xs px-2">Active ({activeRides.length})</TabsTrigger>
+                  <TabsTrigger value="history" className="text-xs px-2">History</TabsTrigger>
                 </TabsList>
               </div>
 

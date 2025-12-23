@@ -499,56 +499,59 @@ export default function RiderPage() {
     <div className="min-h-screen bg-muted/20">
       <Navbar />
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-12 gap-8">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+        <div className="grid lg:grid-cols-12 gap-4 lg:gap-6">
           
-          {/* Left Panel: Request Form */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="sticky top-24">
-              <Card className="border-none shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-2xl">Where to?</CardTitle>
+          {/* Left Panel: Compact Request Form */}
+          <div className="lg:col-span-4 space-y-3">
+            <div className="lg:sticky lg:top-20">
+              <Card className="border-none shadow-md">
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-lg sm:text-xl">Where to?</CardTitle>
                 </CardHeader>
                 <form onSubmit={handleSubmit}>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3 px-4 py-2">
                     <PostcodeSearch
                       value={pickupLocation}
                       onChange={handlePickupChange}
-                      placeholder="Enter pickup address"
-                      label="Pickup Location"
+                      placeholder="Pickup address"
+                      label="From"
                       iconColor="text-muted-foreground"
                       testId="input-pickup"
                       isCurrentLocation={isCurrentLocationPickup}
+                      compact
                     />
                     
                     <PostcodeSearch
                       value={dropoffLocation}
                       onChange={handleDropoffChange}
-                      placeholder="Enter destination"
-                      label="Destination"
+                      placeholder="Destination"
+                      label="To"
                       iconColor="text-secondary"
                       testId="input-dropoff"
+                      compact
                     />
 
-                    <div className="grid grid-cols-5 gap-4">
+                    <div className="grid grid-cols-3 gap-2">
                       <DateTimePicker
                         value={requestedTime}
                         onChange={setRequestedTime}
                         label="When"
                         testId="input-time"
-                        className="col-span-3"
+                        className="col-span-2"
+                        compact
                       />
-                      <div className="space-y-2 col-span-2">
-                        <label className="text-sm font-medium text-muted-foreground">Your Offer (£)</label>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-muted-foreground">Price (£)</label>
                         <div className="relative">
-                          <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-accent" />
+                          <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-accent" />
                           <Input 
                             type="number" 
                             placeholder="20"
                             min="1"
                             max="500"
                             step="1"
-                            className="pl-9 h-11 font-bold text-accent"
+                            className="pl-7 h-8 text-sm font-bold text-accent"
                             value={offerPrice}
                             onChange={(e) => setOfferPrice(e.target.value)}
                             data-testid="input-price"
@@ -559,13 +562,13 @@ export default function RiderPage() {
 
                     <Button 
                       type="submit" 
-                      className="w-full h-12 text-lg shadow-md mt-4"
+                      className="w-full h-10 text-sm shadow-sm"
                       disabled={createOfferMutation.isPending}
                       data-testid="button-post-request"
                     >
                       {createOfferMutation.isPending ? (
                         <>
-                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Posting...
                         </>
                       ) : (
@@ -575,16 +578,6 @@ export default function RiderPage() {
                   </CardContent>
                 </form>
               </Card>
-
-              <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900">
-                <h3 className="font-semibold text-primary mb-2 flex items-center gap-2">
-                  <Badge variant="outline" className="bg-white border-blue-200">Tip</Badge>
-                  Fair Pricing
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Offers within 10% of the recommended market rate are accepted 3x faster.
-                </p>
-              </div>
 
               {/* My Pending Offers Section */}
               {user && myPendingOffers.length > 0 && (
@@ -703,29 +696,29 @@ export default function RiderPage() {
           <div className="lg:col-span-8 space-y-8">
             
             {/* Interactive Map showing user location, nearby drivers, and route */}
-            <Card className="border-none shadow-lg overflow-hidden">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between">
+            <Card className="border-none shadow-md overflow-hidden">
+              <CardHeader className="py-2 px-4">
+                <CardTitle className="text-sm flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <Navigation className="h-5 w-5 text-primary" />
+                    <Navigation className="h-4 w-4 text-primary" />
                     Your Location
                   </span>
                   {routeInfo && dropoffCoords && (
-                    <div className="flex items-center gap-4 text-sm">
-                      <Badge variant="outline" className="font-normal">
+                    <div className="flex items-center gap-2 text-xs">
+                      <Badge variant="outline" className="font-normal h-6 px-2">
                         <MapPin className="h-3 w-3 mr-1" />
-                        {routeInfo.distance} miles
+                        {routeInfo.distance} mi
                       </Badge>
-                      <Badge variant="outline" className="font-normal">
+                      <Badge variant="outline" className="font-normal h-6 px-2">
                         <Clock className="h-3 w-3 mr-1" />
-                        {routeInfo.duration} mins
+                        {routeInfo.duration} min
                       </Badge>
                     </div>
                   )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="h-[350px]">
+                <div className="h-[200px] sm:h-[280px]">
                   <RiderLocationMap
                     userLocation={userLocation}
                     destination={dropoffCoords ? { lat: dropoffCoords.lat, lng: dropoffCoords.lon } : undefined}
