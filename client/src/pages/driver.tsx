@@ -594,11 +594,6 @@ export default function DriverPage() {
                       </Button>
                     </div>
                     
-                    {!user?.driverVerified && (
-                      <p className="text-xs text-yellow-200 mt-2">
-                        Account verification required to go online.
-                      </p>
-                    )}
                   </CardContent>
                 </Card>
               )}
@@ -606,7 +601,6 @@ export default function DriverPage() {
               <Card className="border-none shadow-md bg-primary text-primary-foreground">
                 <CardHeader className="py-3 px-4">
                   <CardTitle className="text-lg sm:text-xl text-white">Post Your Route</CardTitle>
-                  <p className="text-xs text-primary-foreground/80">Fill your empty seats and earn.</p>
                 </CardHeader>
                 <form onSubmit={handlePublishRoute}>
                   <CardContent className="space-y-4 px-4 py-4">
@@ -652,18 +646,36 @@ export default function DriverPage() {
                       compact
                     />
 
-                    <DateTimePicker
-                      value={departureTime}
-                      onChange={setDepartureTime}
-                      testId="input-departure-time"
-                      compact
-                    />
+                    <div className="grid grid-cols-3 gap-3">
+                      <DateTimePicker
+                        value={departureTime}
+                        onChange={setDepartureTime}
+                        testId="input-departure-time"
+                        className="col-span-2"
+                        compact
+                      />
+                      <div className="relative">
+                        <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input 
+                          type="number" 
+                          placeholder="£/seat"
+                          min="1"
+                          max="100"
+                          step="1"
+                          className="pl-7 h-8 text-sm bg-white text-primary border-none"
+                          value={pricePerSeat}
+                          onChange={(e) => setPricePerSeat(e.target.value)}
+                          aria-label="Price per seat in pounds"
+                          data-testid="input-price-per-seat"
+                        />
+                      </div>
+                    </div>
 
                     <div className="grid grid-cols-3 gap-3">
                       <div className="col-span-2 flex gap-1">
                         <Input 
                           type="number" 
-                          placeholder="Max detour"
+                          placeholder="Detour"
                           min="1"
                           step="any"
                           className="h-8 text-sm bg-white text-primary border-none flex-1"
@@ -687,29 +699,13 @@ export default function DriverPage() {
                         type="number" 
                         placeholder="Seats"
                         min="1"
-                        max="7"
+                        max="4"
                         step="1"
                         className="h-8 text-sm bg-white text-primary border-none"
                         value={availableSeats}
                         onChange={(e) => setAvailableSeats(e.target.value)}
                         aria-label="Available seats"
                         data-testid="input-seats"
-                      />
-                    </div>
-
-                    <div className="relative">
-                      <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input 
-                        type="number" 
-                        placeholder="Price/seat (optional)"
-                        min="1"
-                        max="100"
-                        step="1"
-                        className="pl-7 h-8 text-sm bg-white text-primary border-none"
-                        value={pricePerSeat}
-                        onChange={(e) => setPricePerSeat(e.target.value)}
-                        aria-label="Price per seat in pounds"
-                        data-testid="input-price-per-seat"
                       />
                     </div>
 
@@ -857,7 +853,7 @@ export default function DriverPage() {
                       />
                       <label htmlFor="future-dates-driver" className="text-sm flex items-center gap-1 cursor-pointer">
                         <CalendarDays className="h-4 w-4" />
-                        Show future dates
+                        Future dates
                       </label>
                     </div>
                   </div>
@@ -901,7 +897,7 @@ export default function DriverPage() {
                             onClick={() => setShowFutureDates(true)}
                             className="mt-2"
                           >
-                            Show future dates
+                            Future dates
                           </Button>
                         )}
                         <p className="text-sm text-muted-foreground mt-2">Check back soon for new ride requests!</p>
