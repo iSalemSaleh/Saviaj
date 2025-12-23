@@ -506,16 +506,12 @@ export default function RiderPage() {
           <div className="lg:col-span-4 space-y-3">
             <div className="lg:sticky lg:top-20">
               <Card className="border-none shadow-md">
-                <CardHeader className="py-3 px-4">
-                  <CardTitle className="text-lg sm:text-xl">Where to?</CardTitle>
-                </CardHeader>
                 <form onSubmit={handleSubmit}>
-                  <CardContent className="space-y-3 px-4 py-2">
+                  <CardContent className="space-y-4 px-4 py-4">
                     <PostcodeSearch
                       value={pickupLocation}
                       onChange={handlePickupChange}
                       placeholder="Pickup address"
-                      label="From"
                       iconColor="text-muted-foreground"
                       testId="input-pickup"
                       isCurrentLocation={isCurrentLocationPickup}
@@ -526,37 +522,33 @@ export default function RiderPage() {
                       value={dropoffLocation}
                       onChange={handleDropoffChange}
                       placeholder="Destination"
-                      label="To"
                       iconColor="text-secondary"
                       testId="input-dropoff"
                       compact
                     />
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-3">
                       <DateTimePicker
                         value={requestedTime}
                         onChange={setRequestedTime}
-                        label="When"
                         testId="input-time"
                         className="col-span-2"
                         compact
                       />
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-muted-foreground">Price (£)</label>
-                        <div className="relative">
-                          <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-accent" />
-                          <Input 
-                            type="number" 
-                            placeholder="20"
-                            min="1"
-                            max="500"
-                            step="1"
-                            className="pl-7 h-8 text-sm font-bold text-accent"
-                            value={offerPrice}
-                            onChange={(e) => setOfferPrice(e.target.value)}
-                            data-testid="input-price"
-                          />
-                        </div>
+                      <div className="relative">
+                        <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input 
+                          type="number" 
+                          placeholder="Your offer"
+                          min="1"
+                          max="500"
+                          step="1"
+                          className="pl-7 h-8 text-sm"
+                          value={offerPrice}
+                          onChange={(e) => setOfferPrice(e.target.value)}
+                          aria-label="Price offer in pounds"
+                          data-testid="input-price"
+                        />
                       </div>
                     </div>
 
