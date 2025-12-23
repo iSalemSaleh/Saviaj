@@ -4,6 +4,71 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Star, Navigation, Car } from 'lucide-react';
 
+// Calculate sunrise/sunset times based on location and date
+// Uses simplified algorithm for approximate times
+function getSunTimes(lat: number, lng: number, date: Date): { sunrise: Date; sunset: Date } {
+  const dayOfYear = Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 86400000);
+  
+  // Fractional year in radians
+  const gamma = (2 * Math.PI / 365) * (dayOfYear - 1 + (12 - 12) / 24);
+  
+  // Equation of time in minutes
+  const eqtime = 229.18 * (0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma)
+    - 0.014615 * Math.cos(2 * gamma) - 0.040849 * Math.sin(2 * gamma));
+  
+  // Solar declination in radians
+  const decl = 0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma)
+    - 0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma)
+    - 0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma);
+  
+  // Hour angle for sunrise/sunset
+  const latRad = lat * Math.PI / 180;
+  const zenith = 90.833 * Math.PI / 180;
+  
+  let ha = Math.acos(Math.cos(zenith) / (Math.cos(latRad) * Math.cos(decl)) - Math.tan(latRad) * Math.tan(decl));
+  ha = ha * 180 / Math.PI; // Convert to degrees
+  
+  // Calculate sunrise and sunset in minutes from midnight UTC
+  const sunriseMin = 720 - 4 * (lng + ha) - eqtime;
+  const sunsetMin = 720 - 4 * (lng - ha) - eqtime;
+  
+  // Convert to local Date objects
+  const sunrise = new Date(date);
+  sunrise.setUTCHours(0, 0, 0, 0);
+  sunrise.setUTCMinutes(sunriseMin);
+  
+  const sunset = new Date(date);
+  sunset.setUTCHours(0, 0, 0, 0);
+  sunset.setUTCMinutes(sunsetMin);
+  
+  return { sunrise, sunset };
+}
+
+function useIsDarkMode(lat: number | null, lng: number | null): boolean {
+  const [isDark, setIsDark] = useState(false);
+  
+  useEffect(() => {
+    if (lat === null || lat === undefined || lng === null || lng === undefined) return;
+    
+    const checkDarkMode = () => {
+      const now = new Date();
+      const { sunrise, sunset } = getSunTimes(lat, lng, now);
+      
+      // It's dark before sunrise or after sunset
+      const isNight = now < sunrise || now > sunset;
+      setIsDark(isNight);
+    };
+    
+    checkDarkMode();
+    // Check every minute
+    const interval = setInterval(checkDarkMode, 60000);
+    
+    return () => clearInterval(interval);
+  }, [lat, lng]);
+  
+  return isDark;
+}
+
 interface Location {
   lat: number;
   lng: number;
@@ -168,6 +233,9 @@ export function RiderLocationMap({
   const userIcon = useMemo(() => createUserLocationIcon(), []);
   const driverIcon = useMemo(() => createDriverIcon(), []);
   const destinationIcon = useMemo(() => createDestinationIcon(), []);
+  
+  // Check if it's dark based on sunrise/sunset at user's location
+  const isDark = useIsDarkMode(userLocation?.lat ?? null, userLocation?.lng ?? null);
 
   const fetchRoute = useCallback(async () => {
     if (!showRoute || !userLocation || !destination) {
@@ -224,7 +292,11 @@ export function RiderLocationMap({
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        url={isDark 
+          ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        }
+        key={isDark ? 'dark' : 'light'}
       />
       
       <MapUpdater

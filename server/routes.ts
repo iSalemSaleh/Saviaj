@@ -902,7 +902,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           phvLicenseUrl: isCommercialDriver ? phvLicenseUrl : null,
           phvLicenseNumber: isCommercialDriver ? phvLicenseNumber : null,
           phvLicenseExpiry: isCommercialDriver ? phvLicenseExpiry : null,
-          commercialStatusVerified: false,
+          // TESTING ONLY: Auto-verify commercial drivers before March 1, 2026
+          // This allows testing Pro driver features without manual verification
+          // This script expires on March 1, 2026 and should be removed after that date
+          commercialStatusVerified: isCommercialDriver && new Date() < new Date('2026-03-01T00:00:00Z'),
           updatedAt: new Date(),
         })
         .where(eq(users.id, userId))
