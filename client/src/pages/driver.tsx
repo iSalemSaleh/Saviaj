@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, CalendarDays, Calendar, Crosshair, Power, Radio } from "lucide-react";
+import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, CalendarDays, Calendar, Crosshair, Power, Radio, Bell, Check, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -134,6 +134,7 @@ export default function DriverPage() {
   // Commercial driver online status
   const [isOnlineForHire, setIsOnlineForHire] = useState(false);
   const [ratePerMile, setRatePerMile] = useState("");
+  const [driverTagline, setDriverTagline] = useState("");
   const [isUpdatingOnlineStatus, setIsUpdatingOnlineStatus] = useState(false);
 
   useEffect(() => {
@@ -166,6 +167,9 @@ export default function DriverPage() {
       setIsOnlineForHire(user.isOnlineForHire || false);
       if (user.ratePerMile) {
         setRatePerMile(user.ratePerMile);
+      }
+      if (user.driverTagline) {
+        setDriverTagline(user.driverTagline);
       }
     }
   }, [user]);
@@ -204,6 +208,7 @@ export default function DriverPage() {
       const response = await apiRequest("POST", "/api/driver/online-status", {
         isOnlineForHire: newOnlineStatus,
         ratePerMile: parseFloat(ratePerMile),
+        driverTagline: driverTagline.trim(),
         lat,
         lng,
       });
@@ -323,6 +328,40 @@ export default function DriverPage() {
   const { data: myRides = [], isLoading: ridesLoading } = useQuery<Ride[]>({
     queryKey: ["/api/rides"],
     enabled: !!user,
+  });
+
+  // Query for pending Pro Driver ride requests
+  const { data: pendingRequests = [], isLoading: pendingRequestsLoading } = useQuery<Ride[]>({
+    queryKey: ["/api/pro-driver/pending-requests"],
+    enabled: !!user?.isCommercialDriver && isOnlineForHire,
+    refetchInterval: 10000, // Poll every 10 seconds when online
+  });
+
+  const respondToRequestMutation = useMutation({
+    mutationFn: async ({ rideId, action }: { rideId: number; action: 'accept' | 'decline' }) => {
+      const response = await apiRequest("PATCH", `/api/pro-driver/respond-to-request/${rideId}`, { action });
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      toast({
+        title: variables.action === 'accept' ? "Ride Accepted!" : "Ride Declined",
+        description: variables.action === 'accept' 
+          ? "You've accepted the ride. The rider will be notified." 
+          : "You've declined the ride request.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/pro-driver/pending-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rides"] });
+      if (variables.action === 'accept') {
+        navigate(`/ride/${data.id}`);
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to respond to request",
+        variant: "destructive",
+      });
+    },
   });
 
   const createRouteMutation = useMutation({
@@ -557,43 +596,117 @@ export default function DriverPage() {
                       </Badge>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <PoundSterling className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0.50"
-                          max="10"
-                          value={ratePerMile}
-                          onChange={(e) => setRatePerMile(e.target.value)}
-                          placeholder="Rate/mile"
-                          className="pl-8 h-9 text-sm bg-white text-gray-900 border-none"
-                          disabled={isOnlineForHire}
-                          data-testid="input-rate-per-mile"
-                        />
+                    <div className="space-y-2">
+                      <Input
+                        type="text"
+                        value={driverTagline}
+                        onChange={(e) => setDriverTagline(e.target.value.slice(0, 100))}
+                        placeholder="Advertise your service (e.g., 'Airport specialist, 5+ years experience')"
+                        className="h-9 text-sm bg-white text-gray-900 border-none"
+                        disabled={isOnlineForHire}
+                        maxLength={100}
+                        data-testid="input-driver-tagline"
+                        aria-label="Service tagline"
+                      />
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <PoundSterling className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0.50"
+                            max="10"
+                            value={ratePerMile}
+                            onChange={(e) => setRatePerMile(e.target.value)}
+                            placeholder="Rate/mile"
+                            className="pl-8 h-9 text-sm bg-white text-gray-900 border-none"
+                            disabled={isOnlineForHire}
+                            data-testid="input-rate-per-mile"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleToggleOnlineStatus}
+                          disabled={isUpdatingOnlineStatus || (!user?.driverVerified && !user?.commercialStatusVerified)}
+                          className={`h-9 px-4 ${isOnlineForHire 
+                            ? 'bg-red-500 hover:bg-red-600' 
+                            : 'bg-white text-green-700 hover:bg-green-50'}`}
+                          data-testid="button-toggle-online"
+                        >
+                          {isUpdatingOnlineStatus ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <Power className="h-4 w-4 mr-1" />
+                              {isOnlineForHire ? 'Offline' : 'Online'}
+                            </>
+                          )}
+                        </Button>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleToggleOnlineStatus}
-                        disabled={isUpdatingOnlineStatus || (!user?.driverVerified && !user?.commercialStatusVerified)}
-                        className={`h-9 px-4 ${isOnlineForHire 
-                          ? 'bg-red-500 hover:bg-red-600' 
-                          : 'bg-white text-green-700 hover:bg-green-50'}`}
-                        data-testid="button-toggle-online"
-                      >
-                        {isUpdatingOnlineStatus ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <Power className="h-4 w-4 mr-1" />
-                            {isOnlineForHire ? 'Offline' : 'Online'}
-                          </>
-                        )}
-                      </Button>
                     </div>
                     
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Pending Ride Requests for Pro Drivers */}
+              {user?.isCommercialDriver && isOnlineForHire && pendingRequests.length > 0 && (
+                <Card className="border-none shadow-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white">
+                  <CardHeader className="py-3 px-4">
+                    <div className="flex items-center gap-2">
+                      <Bell className="h-5 w-5 animate-bounce" />
+                      <CardTitle className="text-lg text-white">Incoming Requests</CardTitle>
+                      <Badge className="bg-white/20 text-white">{pendingRequests.length}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 space-y-3">
+                    {pendingRequests.map((request) => (
+                      <div key={request.id} className="bg-white/10 rounded-lg p-3" data-testid={`pending-request-${request.id}`}>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-start gap-2 text-sm">
+                            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{request.pickupLocation}</p>
+                              <p className="text-white/70 truncate">→ {request.dropoffLocation}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <Badge className="bg-white text-amber-600 font-bold">
+                              £{request.agreedPrice}
+                            </Badge>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8 bg-red-500/80 hover:bg-red-600 text-white"
+                                onClick={() => respondToRequestMutation.mutate({ rideId: request.id, action: 'decline' })}
+                                disabled={respondToRequestMutation.isPending}
+                                data-testid={`button-decline-request-${request.id}`}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="h-8 bg-green-500 hover:bg-green-600 text-white"
+                                onClick={() => respondToRequestMutation.mutate({ rideId: request.id, action: 'accept' })}
+                                disabled={respondToRequestMutation.isPending}
+                                data-testid={`button-accept-request-${request.id}`}
+                              >
+                                {respondToRequestMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Check className="h-4 w-4 mr-1" />
+                                    Accept
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </CardContent>
                 </Card>
               )}

@@ -1739,6 +1739,110 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Pro Driver Direct Hire Request
+  app.post('/api/pro-driver/request-ride', isAuthenticated, isProfileComplete, async (req: any, res) => {
+    try {
+      const riderId = req.user.claims.sub;
+      const { driverId, pickupLocation, dropoffLocation, pickupLat, pickupLng, dropoffLat, dropoffLng, estimatedPrice, scheduledTime } = req.body;
+      
+      // Verify driver is online for hire
+      const driver = await storage.getUser(driverId);
+      if (!driver || !driver.isOnlineForHire || !driver.isCommercialDriver) {
+        return res.status(400).json({ message: "This driver is not available for hire" });
+      }
+      
+      // Create the ride with status pending_driver_confirmation
+      const ride = await storage.createRide({
+        riderId,
+        driverId,
+        pickupLocation,
+        dropoffLocation,
+        pickupLat,
+        pickupLng,
+        dropoffLat,
+        dropoffLng,
+        agreedPrice: estimatedPrice,
+        scheduledTime: new Date(scheduledTime),
+        status: 'pending_driver_confirmation',
+      });
+      
+      // Send notification to driver (via WebSocket if connected)
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'NEW_RIDE_REQUEST',
+        rideId: ride.id,
+        riderId,
+        pickupLocation,
+        dropoffLocation,
+        estimatedPrice,
+        scheduledTime,
+      }, driverId);
+      
+      res.status(201).json(ride);
+    } catch (error) {
+      console.error("Error creating Pro Driver ride request:", error);
+      res.status(500).json({ message: "Failed to request ride" });
+    }
+  });
+  
+  // Pro Driver Accept/Decline Ride Request
+  app.patch('/api/pro-driver/respond-to-request/:rideId', isAuthenticated, async (req: any, res) => {
+    try {
+      const driverId = req.user.claims.sub;
+      const rideId = parseInt(req.params.rideId);
+      const { action } = req.body; // 'accept' or 'decline'
+      
+      const ride = await storage.getRideById(rideId);
+      if (!ride) {
+        return res.status(404).json({ message: "Ride not found" });
+      }
+      
+      if (ride.driverId !== driverId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      if (ride.status !== 'pending_driver_confirmation') {
+        return res.status(400).json({ message: "This ride is no longer pending confirmation" });
+      }
+      
+      let newStatus: string;
+      if (action === 'accept') {
+        newStatus = 'pending_payment';
+      } else if (action === 'decline') {
+        newStatus = 'cancelled';
+      } else {
+        return res.status(400).json({ message: "Invalid action" });
+      }
+      
+      const updatedRide = await storage.updateRideStatus(rideId, newStatus);
+      
+      // Notify rider
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: action === 'accept' ? 'RIDE_REQUEST_ACCEPTED' : 'RIDE_REQUEST_DECLINED',
+        rideId: ride.id,
+        status: newStatus,
+      }, ride.riderId);
+      
+      res.json(updatedRide);
+    } catch (error) {
+      console.error("Error responding to Pro Driver ride request:", error);
+      res.status(500).json({ message: "Failed to respond to request" });
+    }
+  });
+  
+  // Get pending ride requests for a Pro Driver
+  app.get('/api/pro-driver/pending-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const driverId = req.user.claims.sub;
+      const pendingRequests = await storage.getPendingRideRequests(driverId);
+      res.json(pendingRequests);
+    } catch (error) {
+      console.error("Error fetching pending requests:", error);
+      res.status(500).json({ message: "Failed to fetch pending requests" });
+    }
+  });
+
   // Rating Routes
   app.post('/api/ratings', isAuthenticated, async (req: any, res) => {
     try {

@@ -999,6 +999,19 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
+
+  async getPendingRideRequests(driverId: string): Promise<Ride[]> {
+    return db
+      .select()
+      .from(rides)
+      .where(
+        and(
+          eq(rides.driverId, driverId),
+          eq(rides.status, 'pending_driver_confirmation')
+        )
+      )
+      .orderBy(desc(rides.createdAt));
+  }
 }
 
 export const storage = new DatabaseStorage();

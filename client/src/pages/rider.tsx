@@ -82,6 +82,7 @@ interface NearbyDriver {
   vehicleYear: string | null;
   vehicleColor: string | null;
   ratePerMile: string | null;
+  driverTagline: string | null;
   distanceFromPickup: number;
   currentLat: string | null;
   currentLng: string | null;
@@ -120,6 +121,7 @@ export default function RiderPage() {
   const [selectedOffer, setSelectedOffer] = useState<RiderOffer | null>(null);
   const [editPrice, setEditPrice] = useState("");
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
+  const [requestingDriverId, setRequestingDriverId] = useState<string | null>(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -281,6 +283,62 @@ export default function RiderPage() {
       });
     },
   });
+
+  const requestProDriverMutation = useMutation({
+    mutationFn: async (driver: NearbyDriver) => {
+      if (!pickupCoords || !dropoffCoords) throw new Error("Please select pickup and drop-off locations");
+      
+      const tripDistance = calculateDistance(
+        pickupCoords.lat, pickupCoords.lon,
+        dropoffCoords.lat, dropoffCoords.lon
+      );
+      const estimatedPrice = (tripDistance * parseFloat(driver.ratePerMile || "0")).toFixed(2);
+      
+      const response = await apiRequest("POST", "/api/pro-driver/request-ride", {
+        driverId: driver.id,
+        pickupLocation,
+        dropoffLocation,
+        pickupLat: pickupCoords.lat.toString(),
+        pickupLng: pickupCoords.lon.toString(),
+        dropoffLat: dropoffCoords.lat.toString(),
+        dropoffLng: dropoffCoords.lon.toString(),
+        estimatedPrice,
+        scheduledTime: requestedTime || new Date().toISOString(),
+      });
+      return response.json();
+    },
+    onSuccess: (ride) => {
+      toast({
+        title: "Ride Requested!",
+        description: "Your ride request has been sent to the driver. They will respond shortly.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/rides"] });
+      navigate(`/ride/${ride.id}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Request Failed",
+        description: error.message || "Failed to request ride. Please try again.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      setRequestingDriverId(null);
+    },
+  });
+
+  const handleRequestProDriver = (driver: NearbyDriver) => {
+    if (!dropoffCoords) {
+      toast({
+        title: "Destination Required",
+        description: "Please enter your destination before requesting a ride.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setRequestingDriverId(driver.id);
+    requestProDriverMutation.mutate(driver);
+  };
 
   const handleRevisePrice = () => {
     if (!selectedOffer || !editPrice) return;
@@ -880,6 +938,12 @@ export default function RiderPage() {
                               </div>
                             </div>
                             
+                            {driver.driverTagline && (
+                              <p className="text-sm text-muted-foreground italic mb-3" data-testid={`text-pro-driver-tagline-${driver.id}`}>
+                                "{driver.driverTagline}"
+                              </p>
+                            )}
+                            
                             {estimatedCost && dropoffCoords && (
                               <div className="bg-white rounded-lg p-3 border border-green-200">
                                 <div className="flex justify-between items-center">
@@ -899,8 +963,18 @@ export default function RiderPage() {
                             )}
                           </CardContent>
                           <CardFooter className="bg-green-100 p-3 flex justify-end">
-                            <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                              Request Ride <ArrowRight className="ml-2 h-4 w-4" />
+                            <Button 
+                              size="sm" 
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => handleRequestProDriver(driver)}
+                              disabled={requestingDriverId === driver.id || !dropoffCoords}
+                              data-testid={`button-request-pro-driver-${driver.id}`}
+                            >
+                              {requestingDriverId === driver.id ? (
+                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Requesting...</>
+                              ) : (
+                                <>Request Ride <ArrowRight className="ml-2 h-4 w-4" /></>
+                              )}
                             </Button>
                           </CardFooter>
                         </Card>
