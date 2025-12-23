@@ -178,11 +178,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Phone number is required" });
       }
       
-      // Validate UK phone number format
-      const ukPhonePattern = /^(\+44|0)7\d{9}$/;
+      // Validate international phone number format (must start with + and country code)
       const normalizedPhone = phoneNumber.replace(/\s/g, '');
-      if (!ukPhonePattern.test(normalizedPhone)) {
-        return res.status(400).json({ message: "Please enter a valid UK mobile number" });
+      const internationalPhonePattern = /^\+\d{7,15}$/;
+      if (!internationalPhonePattern.test(normalizedPhone)) {
+        return res.status(400).json({ message: "Please enter a valid phone number with country code" });
       }
       
       const { phoneVerifications } = await import("@shared/schema");
@@ -236,10 +236,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         // Check if Twilio is properly configured by attempting to get the client
         await getTwilioClient();
         
-        // Format phone number for Twilio (ensure +44 format)
-        const twilioPhone = normalizedPhone.startsWith('0') 
-          ? '+44' + normalizedPhone.slice(1) 
-          : normalizedPhone;
+        // Phone number already in international format with +
+        const twilioPhone = normalizedPhone;
         
         const smsSent = await sendVerificationSMS(twilioPhone, otpCode);
         

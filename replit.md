@@ -63,6 +63,19 @@ Preferred communication style: Simple, everyday language.
 2. **View Driver Routes**: Browse routes drivers have posted and request to join
 3. **Nearby Pro Drivers**: See commercial drivers currently online with their rates and request rides directly
 
+### Signup Flow
+1. **Step 1: Email Verification** - Email with 8-digit OTP via Microsoft Entra, username, and password
+2. **Step 2: Account Type** - Choose Rider or Driver
+3. **Step 3: Personal Info** - Name, DOB, phone (with international country selector), address
+4. **Steps 4-6 (Drivers only)**: License verification, vehicle details, bank info, optional commercial driver upgrade
+
+### International Phone Support
+- Country code dropdown with 70+ countries and flag emojis
+- Default country is UK (+44)
+- Phone numbers stored in international format (e.g., +447123456789)
+- Backend validates international phone format with regex: `/^\+\d{7,15}$/`
+- Twilio SMS works with any supported country
+
 ### Become-Driver Flow
 - Modular multi-step form (steps 3-6) matching signup flow
 - Step 3: Profile photo (only shown if user doesn't have one)

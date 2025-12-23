@@ -12,6 +12,7 @@ import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCirc
 import { apiRequest } from "@/lib/queryClient";
 import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
 import { EmailVerificationModal } from "@/components/EmailVerificationModal";
+import { CountryPhoneInput } from "@/components/CountryPhoneInput";
 
 type AccountType = "rider" | "driver";
 
@@ -271,12 +272,6 @@ export default function Signup() {
   const validateStep = () => {
     switch (step) {
       case 1:
-        if (!formData.accountType) {
-          setError("Please select an account type");
-          return false;
-        }
-        return true;
-      case 2:
         if (!formData.email || !formData.password || !formData.confirmPassword) {
           setError("Please fill in all fields");
           return false;
@@ -295,6 +290,12 @@ export default function Signup() {
         }
         if (formData.password !== formData.confirmPassword) {
           setError("Passwords do not match");
+          return false;
+        }
+        return true;
+      case 2:
+        if (!formData.accountType) {
+          setError("Please select an account type");
           return false;
         }
         return true;
@@ -356,54 +357,6 @@ export default function Signup() {
   const renderStep = () => {
     switch (step) {
       case 1:
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold mb-2">Choose Your Account Type</h2>
-              <p className="text-muted-foreground">How would you like to use AtlasRide?</p>
-            </div>
-
-            <RadioGroup
-              value={formData.accountType}
-              onValueChange={(value) => handleChange("accountType", value as AccountType)}
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
-            >
-              <Label
-                htmlFor="rider"
-                className={`flex flex-col items-center p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                  formData.accountType === "rider"
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <RadioGroupItem value="rider" id="rider" className="sr-only" />
-                <User className="h-12 w-12 mb-4 text-primary" />
-                <span className="text-lg font-semibold">Rider</span>
-                <span className="text-sm text-muted-foreground text-center mt-2">
-                  Find rides and post trip requests
-                </span>
-              </Label>
-
-              <Label
-                htmlFor="driver"
-                className={`flex flex-col items-center p-6 border-2 rounded-xl cursor-pointer transition-all ${
-                  formData.accountType === "driver"
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-primary/50"
-                }`}
-              >
-                <RadioGroupItem value="driver" id="driver" className="sr-only" />
-                <Car className="h-12 w-12 mb-4 text-secondary" />
-                <span className="text-lg font-semibold">Driver</span>
-                <span className="text-sm text-muted-foreground text-center mt-2">
-                  Share your routes and earn money
-                </span>
-              </Label>
-            </RadioGroup>
-          </div>
-        );
-
-      case 2:
         return (
           <div className="space-y-6">
             <div className="text-center mb-8">
@@ -511,6 +464,54 @@ export default function Signup() {
           </div>
         );
 
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold mb-2">Choose Your Account Type</h2>
+              <p className="text-muted-foreground">How would you like to use AtlasRide?</p>
+            </div>
+
+            <RadioGroup
+              value={formData.accountType}
+              onValueChange={(value) => handleChange("accountType", value as AccountType)}
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+            >
+              <Label
+                htmlFor="rider"
+                className={`flex flex-col items-center p-6 border-2 rounded-xl cursor-pointer transition-all ${
+                  formData.accountType === "rider"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <RadioGroupItem value="rider" id="rider" className="sr-only" />
+                <User className="h-12 w-12 mb-4 text-primary" />
+                <span className="text-lg font-semibold">Rider</span>
+                <span className="text-sm text-muted-foreground text-center mt-2">
+                  Find rides and post trip requests
+                </span>
+              </Label>
+
+              <Label
+                htmlFor="driver"
+                className={`flex flex-col items-center p-6 border-2 rounded-xl cursor-pointer transition-all ${
+                  formData.accountType === "driver"
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                <RadioGroupItem value="driver" id="driver" className="sr-only" />
+                <Car className="h-12 w-12 mb-4 text-secondary" />
+                <span className="text-lg font-semibold">Driver</span>
+                <span className="text-sm text-muted-foreground text-center mt-2">
+                  Share your routes and earn money
+                </span>
+              </Label>
+            </RadioGroup>
+          </div>
+        );
+
       case 3:
         return (
           <div className="space-y-6">
@@ -556,13 +557,11 @@ export default function Signup() {
 
               <div className="space-y-2">
                 <Label htmlFor="phoneNumber">Phone Number (Optional)</Label>
-                <Input
-                  id="phoneNumber"
-                  type="tel"
-                  placeholder="+44 7XXX XXXXXX"
+                <CountryPhoneInput
                   value={formData.phoneNumber}
-                  onChange={(e) => handleChange("phoneNumber", e.target.value)}
-                  data-testid="input-phone"
+                  onChange={(value) => handleChange("phoneNumber", value)}
+                  defaultCountry="GB"
+                  placeholder="7XXX XXXXXX"
                 />
               </div>
 
