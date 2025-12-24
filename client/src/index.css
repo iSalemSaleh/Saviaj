@@ -69,8 +69,8 @@
   --secondary: 180 70% 40%; /* Vibrant Aqua Teal */
   --secondary-foreground: 0 0% 100%;
 
-  /* Coral Accent for Actions/Price */
-  --accent: 14 85% 58%; /* Vibrant Coral */
+  /* Peacock Blue Accent for Actions/Cards */
+  --accent: 187 85% 35%; /* Peacock Teal */
   --accent-foreground: 0 0% 100%;
 
   /* Fresh Neutrals */
@@ -126,8 +126,8 @@
   --secondary: 180 70% 45%;
   --secondary-foreground: 0 0% 100%;
 
-  --accent: 14 85% 58%; /* Vibrant Coral */
-  --accent-foreground: 195 70% 10%;
+  --accent: 187 85% 45%; /* Peacock Teal */
+  --accent-foreground: 0 0% 100%;
 
   --muted: 195 50% 16%;
   --muted-foreground: 195 20% 60%; /* Light placeholder text for dark mode */
