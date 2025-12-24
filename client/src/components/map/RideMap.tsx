@@ -3,6 +3,22 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+// Check if system prefers dark mode
+function useSystemDarkMode(): boolean {
+  const [isDark, setIsDark] = useState(false);
+  
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    setIsDark(mediaQuery.matches);
+    
+    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+  
+  return isDark;
+}
+
 interface Location {
   lat: number;
   lng: number;
@@ -137,6 +153,8 @@ export function RideMap({
 
   const center: [number, number] = [pickupLocation.lat, pickupLocation.lng];
 
+  const isDark = useSystemDarkMode();
+  
   return (
     <MapContainer
       center={center}
@@ -146,9 +164,17 @@ export function RideMap({
       data-testid="ride-map"
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | &copy; <a href="https://carto.com/">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        key={isDark ? 'dark' : 'light'}
       />
+      {isDark && (
+        <style>{`
+          .leaflet-tile-pane {
+            filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+          }
+        `}</style>
+      )}
       
       <MapBoundsUpdater
         pickupLocation={pickupLocation}

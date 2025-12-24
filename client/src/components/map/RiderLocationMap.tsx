@@ -291,13 +291,18 @@ export function RiderLocationMap({
       data-testid="rider-location-map"
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url={isDark 
-          ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        }
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | &copy; <a href="https://carto.com/">CARTO</a>'
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        className={isDark ? 'dark-map-tiles' : ''}
         key={isDark ? 'dark' : 'light'}
       />
+      {isDark && (
+        <style>{`
+          .leaflet-tile-pane {
+            filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+          }
+        `}</style>
+      )}
       
       <MapUpdater
         userLocation={userLocation}
