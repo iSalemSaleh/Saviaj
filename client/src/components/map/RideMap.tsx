@@ -243,7 +243,7 @@ export function RideMap({
         <Polyline
           positions={routeCoordinates}
           pathOptions={{
-            color: '#1a365d',
+            color: '#e5e7eb',
             weight: 5,
             opacity: 0.75,
           }}

@@ -831,7 +831,7 @@ export default function RiderPage() {
                                 {getTimeUntilDeparture(route.departureTime)}
                               </Badge>
                               {getConfirmedRiders(route) > 0 && (
-                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                <Badge variant="secondary" className="text-xs bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent">
                                   <Users className="h-3 w-3 mr-1" />
                                   {getConfirmedRiders(route)} rider{getConfirmedRiders(route) > 1 ? 's' : ''} confirmed
                                 </Badge>
@@ -881,26 +881,26 @@ export default function RiderPage() {
             {pickupCoords && (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-green-600 flex items-center gap-2">
+                  <h2 className="text-2xl font-bold text-accent flex items-center gap-2">
                     <Crown className="h-6 w-6" />
                     Nearby Drivers
                     {nearbyDrivers.length > 0 && (
-                      <Badge className="bg-green-600 text-white">{nearbyDrivers.length} online</Badge>
+                      <Badge className="bg-accent text-white">{nearbyDrivers.length} online</Badge>
                     )}
                   </h2>
                 </div>
                 
                 {nearbyDriversLoading ? (
-                  <Card className="border-dashed border-green-500/30 bg-green-50">
+                  <Card className="border-dashed border-accent/30 bg-accent/5">
                     <CardContent className="p-8 text-center">
-                      <Loader2 className="h-8 w-8 text-green-500 mx-auto mb-3 animate-spin" />
+                      <Loader2 className="h-8 w-8 text-accent mx-auto mb-3 animate-spin" />
                       <p className="text-muted-foreground">Finding nearby drivers...</p>
                     </CardContent>
                   </Card>
                 ) : nearbyDrivers.length === 0 ? (
-                  <Card className="border-dashed border-green-500/30 bg-green-50">
+                  <Card className="border-dashed border-accent/30 bg-accent/5">
                     <CardContent className="p-8 text-center">
-                      <Radio className="h-12 w-12 text-green-500/40 mx-auto mb-3" />
+                      <Radio className="h-12 w-12 text-accent/40 mx-auto mb-3" />
                       <p className="text-muted-foreground">No drivers near you right now.</p>
                       <p className="text-sm text-muted-foreground mt-1">Try posting your route or checking driver routes.</p>
                     </CardContent>
@@ -911,7 +911,7 @@ export default function RiderPage() {
                     {(driversExpanded ? nearbyDrivers : nearbyDrivers.slice(0, INITIAL_DISPLAY_COUNT)).map((driver) => {
                       const estimatedCost = getEstimatedCost(driver);
                       return (
-                        <Card key={driver.id} className="group hover:border-green-500 transition-all hover:shadow-md border-green-500/30 bg-green-50" data-testid={`card-pro-driver-${driver.id}`}>
+                        <Card key={driver.id} className="group hover:border-accent transition-all hover:shadow-md border-accent/30 bg-accent/5" data-testid={`card-pro-driver-${driver.id}`}>
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start mb-4">
                               <Link href={`/driver/${driver.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity" data-testid={`link-pro-driver-${driver.id}`}>
@@ -929,7 +929,7 @@ export default function RiderPage() {
                                     <p className="font-semibold text-primary" data-testid={`text-pro-driver-name-${driver.id}`}>
                                       {driver.firstName || 'Driver'}{driver.lastName ? ` ${driver.lastName.charAt(0)}.` : ''}
                                     </p>
-                                    <Crown className="h-3.5 w-3.5 text-green-500" />
+                                    <Crown className="h-3.5 w-3.5 text-accent" />
                                   </div>
                                   <div className="flex items-center text-xs text-muted-foreground gap-1">
                                     <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
@@ -951,7 +951,7 @@ export default function RiderPage() {
                                 </div>
                               </Link>
                               <div className="text-right">
-                                <Badge variant="secondary" className="text-lg px-3 py-1 bg-green-600 text-white mb-1">
+                                <Badge variant="secondary" className="text-lg px-3 py-1 bg-accent text-white mb-1">
                                   £{driver.ratePerMile}/mi
                                 </Badge>
                                 <p className="text-xs text-muted-foreground">{driver.distanceFromPickup.toFixed(1)} mi away</p>
@@ -965,10 +965,10 @@ export default function RiderPage() {
                             )}
                             
                             {estimatedCost && dropoffCoords && (
-                              <div className="bg-white rounded-lg p-3 border border-green-200">
+                              <div className="bg-white rounded-lg p-3 border border-accent/20">
                                 <div className="flex justify-between items-center">
                                   <span className="text-sm text-muted-foreground">Estimated Trip Cost</span>
-                                  <span className="text-xl font-bold text-green-600">£{estimatedCost}</span>
+                                  <span className="text-xl font-bold text-accent">£{estimatedCost}</span>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   Based on {(calculateDistance(pickupCoords.lat, pickupCoords.lon, dropoffCoords.lat, dropoffCoords.lon)).toFixed(1)} mi at £{driver.ratePerMile}/mi
@@ -982,10 +982,10 @@ export default function RiderPage() {
                               </p>
                             )}
                           </CardContent>
-                          <CardFooter className="bg-green-100 p-2 flex justify-end">
+                          <CardFooter className="bg-accent/10 p-2 flex justify-end">
                             <Button 
                               size="sm" 
-                              className="bg-green-600 hover:bg-green-700 text-white"
+                              className="bg-accent hover:bg-accent/90 text-white"
                               onClick={() => handleRequestProDriver(driver)}
                               disabled={requestingDriverId === driver.id || !dropoffCoords}
                               data-testid={`button-request-pro-driver-${driver.id}`}
@@ -1004,7 +1004,7 @@ export default function RiderPage() {
                     {nearbyDrivers.length > INITIAL_DISPLAY_COUNT && (
                       <Button
                         variant="ghost"
-                        className="w-full text-green-600 hover:text-green-700"
+                        className="w-full text-accent hover:text-accent/80"
                         onClick={() => setDriversExpanded(!driversExpanded)}
                         data-testid="button-expand-drivers"
                       >
@@ -1165,7 +1165,7 @@ export default function RiderPage() {
                           {getTimeUntilDeparture(route.departureTime)}
                         </Badge>
                         {getConfirmedRiders(route) > 0 && (
-                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          <Badge variant="secondary" className="text-xs bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent">
                             <Users className="h-3 w-3 mr-1" />
                             {getConfirmedRiders(route)} confirmed
                           </Badge>
