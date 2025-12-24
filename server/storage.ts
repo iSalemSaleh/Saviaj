@@ -35,7 +35,7 @@ import {
   type InsertChatMessage,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, lt, gt, or } from "drizzle-orm";
+import { eq, and, desc, sql, lt, gt, or, isNotNull } from "drizzle-orm";
 
 // Feature flag for dual-write to new normalized tables
 const ENABLE_DUAL_WRITE = true;
@@ -473,6 +473,22 @@ export interface IStorage {
     currentLng: string | null;
   }>>;
   updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number): Promise<User>;
+  
+  // Settings and account management operations
+  updateUserProfile(id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+    homeAddress?: string;
+    city?: string;
+    postcode?: string;
+    profileImageUrl?: string;
+  }): Promise<User>;
+  updateUserPassword(id: string, newPasswordHash: string): Promise<User>;
+  softDeleteUser(id: string, reason?: string, deletedBy?: string): Promise<User>;
+  restoreUser(id: string): Promise<User>;
+  getDeletedUsers(): Promise<User[]>;
+  verifyUserPassword(id: string, passwordHash: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1435,6 +1451,95 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(rides.createdAt));
+  }
+
+  // Settings and account management operations
+  async updateUserProfile(id: string, data: {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+    homeAddress?: string;
+    city?: string;
+    postcode?: string;
+    profileImageUrl?: string;
+  }): Promise<User> {
+    const updateData: any = {
+      ...data,
+      updatedAt: new Date(),
+    };
+    
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+    
+    // Dual-write to normalized tables
+    if (ENABLE_DUAL_WRITE) {
+      await syncUserProfile(id, data);
+    }
+    
+    return user;
+  }
+
+  async updateUserPassword(id: string, newPasswordHash: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        passwordHash: newPasswordHash,
+        updatedAt: new Date() 
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async softDeleteUser(id: string, reason?: string, deletedBy?: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        deletedAt: new Date(),
+        deletedReason: reason || 'User requested account deletion',
+        deletedBy: deletedBy || 'self',
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async restoreUser(id: string): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        deletedAt: null,
+        deletedReason: null,
+        deletedBy: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async getDeletedUsers(): Promise<User[]> {
+    return db
+      .select()
+      .from(users)
+      .where(isNotNull(users.deletedAt))
+      .orderBy(desc(users.deletedAt));
+  }
+
+  async verifyUserPassword(id: string, passwordHash: string): Promise<boolean> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user?.passwordHash === passwordHash;
   }
 }
 
