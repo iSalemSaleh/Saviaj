@@ -79,6 +79,17 @@ export default function RideTrackingPage() {
     refetchInterval: 5000,
   });
 
+  // Fetch driver details to get vehicle color for the map
+  const { data: driverInfo } = useQuery<{
+    id: string;
+    vehicleMake?: string;
+    vehicleModel?: string;
+    vehicleColor?: string;
+  }>({
+    queryKey: [`/api/users/${ride?.driverId}`],
+    enabled: !!ride?.driverId,
+  });
+
   const { data: hasRated } = useQuery<{ hasRated: boolean }>({
     queryKey: [`/api/ratings/check/${rideId}`],
     enabled: rideId > 0 && !!user,
@@ -267,6 +278,7 @@ export default function RideTrackingPage() {
                   dropoffLocation={dropoffLocation}
                   driverLocation={driverLocation}
                   riderLocation={riderLocation}
+                  driverVehicleColor={driverInfo?.vehicleColor || null}
                   showRoute={true}
                   onEtaUpdate={setEta}
                   onDistanceUpdate={setDistance}

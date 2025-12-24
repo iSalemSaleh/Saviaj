@@ -2,6 +2,34 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import carIconImage from '../../assets/car-icon.png';
+
+// Convert vehicle color name to CSS hue-rotate value
+// The base car image has cyan/teal color (~180deg hue)
+function getColorFilter(vehicleColor: string | null): string {
+  if (!vehicleColor) return '';
+  
+  const color = vehicleColor.toLowerCase().trim();
+  
+  const colorToHue: Record<string, number> = {
+    'red': -180, 'orange': -150, 'yellow': -120, 'lime': -90, 'green': -60,
+    'teal': 0, 'cyan': 0, 'blue': 60, 'purple': 90, 'magenta': 120, 'pink': 150,
+    'black': 0, 'white': 0, 'gray': 0, 'grey': 0, 'silver': 0, 'gold': -130,
+    'brown': -160, 'maroon': -175, 'navy': 60, 'olive': -100, 'aqua': 0,
+    'turquoise': 10, 'indigo': 75, 'violet': 100, 'coral': -165, 'salmon': -155, 'beige': -120,
+  };
+  
+  const hueRotation = colorToHue[color];
+  
+  if (hueRotation !== undefined) {
+    if (color === 'black') return 'brightness(0.1) saturate(0)';
+    if (color === 'white' || color === 'silver') return 'brightness(1.5) saturate(0.3)';
+    if (color === 'gray' || color === 'grey') return 'saturate(0)';
+    return `hue-rotate(${hueRotation}deg)`;
+  }
+  
+  return '';
+}
 
 // Check if system prefers dark mode
 function useSystemDarkMode(): boolean {
@@ -29,22 +57,21 @@ interface RideMapProps {
   dropoffLocation: Location;
   driverLocation?: Location | null;
   riderLocation?: Location | null;
+  driverVehicleColor?: string | null;
   showRoute?: boolean;
   onEtaUpdate?: (eta: number) => void;
   onDistanceUpdate?: (distance: number) => void;
   className?: string;
 }
 
-const createIcon = (type: 'driver' | 'rider' | 'pickup' | 'dropoff') => {
+const createIcon = (type: 'rider' | 'pickup' | 'dropoff') => {
   const colors: Record<string, string> = {
-    driver: '#1a365d',
     rider: '#0891b2',
     pickup: '#22c55e',
     dropoff: '#ef4444',
   };
   
   const icons: Record<string, string> = {
-    driver: '🚗',
     rider: '👤',
     pickup: '📍',
     dropoff: '🏁',
@@ -66,6 +93,34 @@ const createIcon = (type: 'driver' | 'rider' | 'pickup' | 'dropoff') => {
     ">${icons[type]}</div>`,
     iconSize: [40, 40],
     iconAnchor: [20, 20],
+  });
+};
+
+const createDriverCarIcon = (vehicleColor: string | null = null) => {
+  const colorFilter = getColorFilter(vehicleColor);
+  return L.divIcon({
+    className: 'custom-car-marker',
+    html: `<div style="
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: drop-shadow(0 3px 8px rgba(0,0,0,0.5));
+    ">
+      <img 
+        src="${carIconImage}" 
+        alt="Driver" 
+        style="
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          ${colorFilter ? `filter: ${colorFilter};` : ''}
+        "
+      />
+    </div>`,
+    iconSize: [56, 56],
+    iconAnchor: [28, 28],
   });
 };
 
@@ -106,6 +161,7 @@ export function RideMap({
   dropoffLocation,
   driverLocation,
   riderLocation,
+  driverVehicleColor,
   showRoute = true,
   onEtaUpdate,
   onDistanceUpdate,
@@ -115,7 +171,7 @@ export function RideMap({
 
   const pickupIcon = useMemo(() => createIcon('pickup'), []);
   const dropoffIcon = useMemo(() => createIcon('dropoff'), []);
-  const driverIcon = useMemo(() => createIcon('driver'), []);
+  const driverIcon = useMemo(() => createDriverCarIcon(driverVehicleColor), [driverVehicleColor]);
   const riderIcon = useMemo(() => createIcon('rider'), []);
 
   const fetchRoute = useCallback(async () => {

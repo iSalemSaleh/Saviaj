@@ -3,6 +3,90 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Star, Navigation, Car } from 'lucide-react';
+import carIconImage from '../../assets/car-icon.png';
+
+// Convert vehicle color name to CSS hue-rotate value
+// The base car image has cyan/teal color (~180deg hue)
+function getColorFilter(vehicleColor: string | null): string {
+  if (!vehicleColor) return '';
+  
+  const color = vehicleColor.toLowerCase().trim();
+  
+  // Map common color names to hue rotation degrees
+  // Base image is cyan (~180deg), so we calculate rotation from there
+  const colorToHue: Record<string, number> = {
+    'red': -180,        // 0deg
+    'orange': -150,     // 30deg
+    'yellow': -120,     // 60deg
+    'lime': -90,        // 90deg
+    'green': -60,       // 120deg
+    'teal': 0,          // 180deg (base)
+    'cyan': 0,          // 180deg (base)
+    'blue': 60,         // 240deg
+    'purple': 90,       // 270deg
+    'magenta': 120,     // 300deg
+    'pink': 150,        // 330deg
+    'black': 0,         // Use grayscale
+    'white': 0,         // Use brightness
+    'gray': 0,          // Use grayscale
+    'grey': 0,          // Use grayscale
+    'silver': 0,        // Use grayscale
+    'gold': -130,       // ~50deg
+    'brown': -160,      // ~20deg
+    'maroon': -175,     // ~5deg
+    'navy': 60,         // Same as blue
+    'olive': -100,      // ~80deg
+    'aqua': 0,          // Same as cyan
+    'turquoise': 10,    // ~190deg
+    'indigo': 75,       // ~255deg
+    'violet': 100,      // ~280deg
+    'coral': -165,      // ~15deg
+    'salmon': -155,     // ~25deg
+    'beige': -120,      // ~60deg with low saturation
+  };
+  
+  const hueRotation = colorToHue[color];
+  
+  if (hueRotation !== undefined) {
+    // Special handling for grayscale colors
+    if (color === 'black') {
+      return 'brightness(0.1) saturate(0)';
+    }
+    if (color === 'white' || color === 'silver') {
+      return 'brightness(1.5) saturate(0.3)';
+    }
+    if (color === 'gray' || color === 'grey') {
+      return 'saturate(0)';
+    }
+    return `hue-rotate(${hueRotation}deg)`;
+  }
+  
+  // Try to parse hex colors
+  if (color.startsWith('#')) {
+    // Convert hex to HSL and calculate hue rotation
+    const hex = color.slice(1);
+    const r = parseInt(hex.slice(0, 2), 16) / 255;
+    const g = parseInt(hex.slice(2, 4), 16) / 255;
+    const b = parseInt(hex.slice(4, 6), 16) / 255;
+    
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0;
+    
+    if (max !== min) {
+      const d = max - min;
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+    }
+    
+    const targetHue = h * 360;
+    const rotation = targetHue - 180; // 180 is cyan
+    return `hue-rotate(${rotation}deg)`;
+  }
+  
+  return '';
+}
 
 // Calculate sunrise/sunset times based on location and date
 // Uses simplified algorithm for approximate times
@@ -100,23 +184,31 @@ interface RiderLocationMapProps {
   onDriverClick?: (driver: NearbyDriver) => void;
 }
 
-const createDriverIcon = () => {
+const createDriverIcon = (vehicleColor: string | null = null) => {
+  const colorFilter = getColorFilter(vehicleColor);
   return L.divIcon({
-    className: 'custom-marker',
+    className: 'custom-car-marker',
     html: `<div style="
-      width: 32px;
-      height: 32px;
-      background-color: #22c55e;
-      border-radius: 50%;
+      width: 48px;
+      height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
-      border: 2px solid white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    ">🚗</div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+    ">
+      <img 
+        src="${carIconImage}" 
+        alt="Driver" 
+        style="
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          ${colorFilter ? `filter: ${colorFilter};` : ''}
+        "
+      />
+    </div>`,
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
   });
 };
 
@@ -231,8 +323,16 @@ export function RiderLocationMap({
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
 
   const userIcon = useMemo(() => createUserLocationIcon(), []);
-  const driverIcon = useMemo(() => createDriverIcon(), []);
   const destinationIcon = useMemo(() => createDestinationIcon(), []);
+  
+  // Create icons for each driver based on their vehicle color
+  const driverIcons = useMemo(() => {
+    const icons: Record<string, L.DivIcon> = {};
+    nearbyDrivers.forEach(driver => {
+      icons[driver.id] = createDriverIcon(driver.vehicleColor);
+    });
+    return icons;
+  }, [nearbyDrivers]);
   
   // Check if it's dark based on sunrise/sunset at user's location
   const isDark = useIsDarkMode(userLocation?.lat ?? null, userLocation?.lng ?? null);
@@ -342,7 +442,7 @@ export function RiderLocationMap({
           <Marker
             key={driver.id}
             position={[parseFloat(driver.currentLat), parseFloat(driver.currentLng)]}
-            icon={driverIcon}
+            icon={driverIcons[driver.id] || createDriverIcon(null)}
             eventHandlers={{
               click: () => onDriverClick?.(driver),
             }}
