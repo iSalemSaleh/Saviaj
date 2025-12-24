@@ -400,6 +400,7 @@ export interface IStorage {
       vehicleModel: string | null;
       vehicleYear: string | null;
       vehicleColor: string | null;
+      vehicleRegistration: string | null;
       driverVerified: boolean | null;
     };
     distanceToRider?: number;
@@ -467,6 +468,7 @@ export interface IStorage {
     vehicleModel: string | null;
     vehicleYear: string | null;
     vehicleColor: string | null;
+    vehicleRegistration: string | null;
     ratePerMile: string | null;
     distanceFromPickup: number;
     currentLat: string | null;
@@ -838,6 +840,7 @@ export class DatabaseStorage implements IStorage {
       vehicleModel: string | null;
       vehicleYear: string | null;
       vehicleColor: string | null;
+      vehicleRegistration: string | null;
       driverVerified: boolean | null;
     };
     distanceToRider?: number;
@@ -856,6 +859,7 @@ export class DatabaseStorage implements IStorage {
           vehicleModel: users.vehicleModel,
           vehicleYear: users.vehicleYear,
           vehicleColor: users.vehicleColor,
+          vehicleRegistration: users.vehicleRegistration,
           driverVerified: users.driverVerified,
         }
       })
@@ -1325,6 +1329,7 @@ export class DatabaseStorage implements IStorage {
     vehicleModel: string | null;
     vehicleYear: string | null;
     vehicleColor: string | null;
+    vehicleRegistration: string | null;
     ratePerMile: string | null;
     driverTagline: string | null;
     distanceFromPickup: number;
@@ -1344,6 +1349,7 @@ export class DatabaseStorage implements IStorage {
         vehicleModel: users.vehicleModel,
         vehicleYear: users.vehicleYear,
         vehicleColor: users.vehicleColor,
+        vehicleRegistration: users.vehicleRegistration,
         ratePerMile: users.ratePerMile,
         driverTagline: users.driverTagline,
         currentLat: users.currentLat,

@@ -428,9 +428,9 @@ export function RiderLocationMap({
         <Polyline
           positions={routeCoordinates}
           pathOptions={{
-            color: '#e5e7eb',
+            color: '#0e7490',
             weight: 5,
-            opacity: 0.75,
+            opacity: 0.85,
           }}
         />
       )}

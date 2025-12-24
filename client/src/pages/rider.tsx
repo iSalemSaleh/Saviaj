@@ -30,6 +30,7 @@ interface DriverInfo {
   vehicleModel: string | null;
   vehicleYear: string | null;
   vehicleColor: string | null;
+  vehicleRegistration: string | null;
   driverVerified: boolean | null;
 }
 
@@ -81,6 +82,7 @@ interface NearbyDriver {
   vehicleModel: string | null;
   vehicleYear: string | null;
   vehicleColor: string | null;
+  vehicleRegistration: string | null;
   ratePerMile: string | null;
   driverTagline: string | null;
   distanceFromPickup: number;
@@ -812,6 +814,7 @@ export default function RiderPage() {
                                     <Car className="h-3 w-3 mr-1" />
                                     {route.driver.vehicleColor && <span className="capitalize">{route.driver.vehicleColor} </span>}
                                     {route.driver.vehicleMake} {route.driver.vehicleModel}
+                                    {route.driver.vehicleRegistration && <span className="ml-1 font-medium">• {route.driver.vehicleRegistration}</span>}
                                   </div>
                                 )}
                               </div>
@@ -946,6 +949,7 @@ export default function RiderPage() {
                                       <Car className="h-3 w-3 mr-1" />
                                       {driver.vehicleColor && <span className="capitalize">{driver.vehicleColor} </span>}
                                       {driver.vehicleMake} {driver.vehicleModel}
+                                      {driver.vehicleRegistration && <span className="ml-1 font-medium">• {driver.vehicleRegistration}</span>}
                                     </div>
                                   )}
                                 </div>
@@ -1120,6 +1124,7 @@ export default function RiderPage() {
                                 <Car className="h-3 w-3 mr-1" />
                                 {route.driver.vehicleColor && <span className="capitalize">{route.driver.vehicleColor} </span>}
                                 {route.driver.vehicleMake} {route.driver.vehicleModel}
+                                {route.driver.vehicleRegistration && <span className="ml-1 font-medium">• {route.driver.vehicleRegistration}</span>}
                               </div>
                             )}
                           </div>
