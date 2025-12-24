@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car, Radio, Crown } from "lucide-react";
+import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car, Radio, Crown, ChevronDown, ChevronUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -122,6 +122,9 @@ export default function RiderPage() {
   const [editPrice, setEditPrice] = useState("");
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
   const [requestingDriverId, setRequestingDriverId] = useState<string | null>(null);
+  const [routesExpanded, setRoutesExpanded] = useState(false);
+  const [driversExpanded, setDriversExpanded] = useState(false);
+  const INITIAL_DISPLAY_COUNT = 5;
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -778,10 +781,11 @@ export default function RiderPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {nearbyRoutes.map((route) => (
-                      <Card key={route.id} className="group hover:border-accent transition-all hover:shadow-lg cursor-pointer border-accent/30 bg-accent/5" data-testid={`card-nearby-route-${route.id}`}>
-                        <CardContent className="p-6">
+                  <div className="space-y-3">
+                    <div className="grid md:grid-cols-2 gap-3">
+                    {(routesExpanded ? nearbyRoutes : nearbyRoutes.slice(0, INITIAL_DISPLAY_COUNT)).map((route) => (
+                      <Card key={route.id} className="group hover:border-accent transition-all hover:shadow-md cursor-pointer border-accent/30 bg-accent/5" data-testid={`card-nearby-route-${route.id}`}>
+                        <CardContent className="p-4">
                           <div className="flex justify-between items-start mb-4">
                             <Link href={`/driver/${route.driverId}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity" data-testid={`link-driver-profile-nearby-${route.id}`}>
                               <Avatar>
@@ -846,13 +850,28 @@ export default function RiderPage() {
                             </div>
                           </div>
                         </CardContent>
-                        <CardFooter className="bg-accent/10 p-3 flex justify-end">
+                        <CardFooter className="bg-accent/10 p-2 flex justify-end">
                           <Button size="sm" className="bg-accent hover:bg-accent/90">
                             Request Seat <ArrowRight className="ml-2 h-4 w-4" />
                           </Button>
                         </CardFooter>
                       </Card>
                     ))}
+                    </div>
+                    {nearbyRoutes.length > INITIAL_DISPLAY_COUNT && (
+                      <Button
+                        variant="ghost"
+                        className="w-full text-accent hover:text-accent/80"
+                        onClick={() => setRoutesExpanded(!routesExpanded)}
+                        data-testid="button-expand-routes"
+                      >
+                        {routesExpanded ? (
+                          <>Show Less <ChevronUp className="ml-2 h-4 w-4" /></>
+                        ) : (
+                          <>Show {nearbyRoutes.length - INITIAL_DISPLAY_COUNT} More <ChevronDown className="ml-2 h-4 w-4" /></>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -887,12 +906,13 @@ export default function RiderPage() {
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    {nearbyDrivers.map((driver) => {
+                  <div className="space-y-3">
+                    <div className="grid md:grid-cols-2 gap-3">
+                    {(driversExpanded ? nearbyDrivers : nearbyDrivers.slice(0, INITIAL_DISPLAY_COUNT)).map((driver) => {
                       const estimatedCost = getEstimatedCost(driver);
                       return (
-                        <Card key={driver.id} className="group hover:border-green-500 transition-all hover:shadow-lg border-green-500/30 bg-green-50" data-testid={`card-pro-driver-${driver.id}`}>
-                          <CardContent className="p-6">
+                        <Card key={driver.id} className="group hover:border-green-500 transition-all hover:shadow-md border-green-500/30 bg-green-50" data-testid={`card-pro-driver-${driver.id}`}>
+                          <CardContent className="p-4">
                             <div className="flex justify-between items-start mb-4">
                               <Link href={`/driver/${driver.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity" data-testid={`link-pro-driver-${driver.id}`}>
                                 <div className="relative">
@@ -962,7 +982,7 @@ export default function RiderPage() {
                               </p>
                             )}
                           </CardContent>
-                          <CardFooter className="bg-green-100 p-3 flex justify-end">
+                          <CardFooter className="bg-green-100 p-2 flex justify-end">
                             <Button 
                               size="sm" 
                               className="bg-green-600 hover:bg-green-700 text-white"
@@ -980,6 +1000,21 @@ export default function RiderPage() {
                         </Card>
                       );
                     })}
+                    </div>
+                    {nearbyDrivers.length > INITIAL_DISPLAY_COUNT && (
+                      <Button
+                        variant="ghost"
+                        className="w-full text-green-600 hover:text-green-700"
+                        onClick={() => setDriversExpanded(!driversExpanded)}
+                        data-testid="button-expand-drivers"
+                      >
+                        {driversExpanded ? (
+                          <>Show Less <ChevronUp className="ml-2 h-4 w-4" /></>
+                        ) : (
+                          <>Show {nearbyDrivers.length - INITIAL_DISPLAY_COUNT} More <ChevronDown className="ml-2 h-4 w-4" /></>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
