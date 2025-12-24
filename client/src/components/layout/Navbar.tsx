@@ -269,7 +269,7 @@ export default function Navbar() {
                       </Button>
                     </Link>
                     <Link href="/settings" onClick={() => setIsOpen(false)}>
-                      <Button className="w-full" variant="ghost">
+                      <Button className="w-full" variant="ghost" data-testid="button-settings-mobile">
                         <Settings className="h-4 w-4 mr-2" />
                         Settings
                       </Button>
