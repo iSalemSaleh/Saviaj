@@ -96,6 +96,11 @@ export const users = pgTable("users", {
   stripeCustomerId: varchar("stripe_customer_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // Admin and soft-delete fields
+  isAdmin: boolean("is_admin").default(false),
+  deletedAt: timestamp("deleted_at"),
+  deletedReason: varchar("deleted_reason"),
+  deletedBy: varchar("deleted_by"), // 'self' or admin userId
 });
 
 export type UpsertUser = typeof users.$inferInsert;
