@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Menu, Bell, Check, MessageSquare, History } from "lucide-react";
+import { Menu, Bell, Check, MessageSquare, History, Settings } from "lucide-react";
 import { useState, useCallback } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -210,6 +210,11 @@ export default function Navbar() {
                     <History className="h-5 w-5" />
                   </Button>
                 </Link>
+                <Link href="/settings">
+                  <Button variant="ghost" size="icon" title="Settings" data-testid="button-settings">
+                    <Settings className="h-5 w-5" />
+                  </Button>
+                </Link>
                 <span className="text-sm text-muted-foreground ml-2">
                   Welcome, {(user as any).firstName || 'User'}
                 </span>
@@ -261,6 +266,12 @@ export default function Navbar() {
                       <Button className="w-full" variant="ghost">
                         <History className="h-4 w-4 mr-2" />
                         History
+                      </Button>
+                    </Link>
+                    <Link href="/settings" onClick={() => setIsOpen(false)}>
+                      <Button className="w-full" variant="ghost">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Settings
                       </Button>
                     </Link>
                     <Button 
