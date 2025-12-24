@@ -2139,4 +2139,163 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       res.status(500).json({ message: "Failed to mark messages as read" });
     }
   });
+
+  // ==================== Settings Routes ====================
+  
+  // Update user profile (name, phone, address)
+  app.patch('/api/settings/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { firstName, lastName, phoneNumber, homeAddress, city, postcode } = req.body;
+      
+      // Validate phone number if provided (international format)
+      if (phoneNumber && !/^\+\d{7,15}$/.test(phoneNumber)) {
+        return res.status(400).json({ message: "Invalid phone number format. Use international format (e.g., +447123456789)" });
+      }
+      
+      const updatedUser = await storage.updateUserProfile(userId, {
+        firstName,
+        lastName,
+        phoneNumber,
+        homeAddress,
+        city,
+        postcode,
+      });
+      
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Change password
+  app.post('/api/settings/change-password', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { currentPassword, newPassword } = req.body;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+      
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "New password must be at least 8 characters" });
+      }
+      
+      // Get user and verify current password
+      const user = await storage.getUser(userId);
+      if (!user || !user.passwordHash) {
+        return res.status(400).json({ message: "Password change not available for this account" });
+      }
+      
+      const bcrypt = await import("bcrypt");
+      const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+      if (!isValid) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+      
+      // Hash new password and update
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+      await storage.updateUserPassword(userId, newPasswordHash);
+      
+      res.json({ success: true, message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // Soft delete account
+  app.delete('/api/settings/account', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { reason, password } = req.body;
+      
+      // Verify password before deletion
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (user.passwordHash) {
+        if (!password) {
+          return res.status(400).json({ message: "Password is required to delete account" });
+        }
+        const bcrypt = await import("bcrypt");
+        const isValid = await bcrypt.compare(password, user.passwordHash);
+        if (!isValid) {
+          return res.status(401).json({ message: "Incorrect password" });
+        }
+      }
+      
+      await storage.softDeleteUser(userId, reason, 'self');
+      
+      // Clear session
+      req.logout?.(() => {});
+      req.session?.destroy?.(() => {});
+      
+      res.json({ success: true, message: "Account scheduled for deletion" });
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      res.status(500).json({ message: "Failed to delete account" });
+    }
+  });
+
+  // Admin: Get deleted users (requires admin flag)
+  app.get('/api/admin/deleted-users', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const deletedUsers = await storage.getDeletedUsers();
+      res.json(deletedUsers);
+    } catch (error) {
+      console.error("Error fetching deleted users:", error);
+      res.status(500).json({ message: "Failed to fetch deleted users" });
+    }
+  });
+
+  // Admin: Restore deleted user
+  app.post('/api/admin/restore-user/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const adminId = req.user.claims.sub;
+      const admin = await storage.getUser(adminId);
+      
+      if (!admin?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      
+      const targetUserId = req.params.id;
+      const restoredUser = await storage.restoreUser(targetUserId);
+      
+      res.json(restoredUser);
+    } catch (error) {
+      console.error("Error restoring user:", error);
+      res.status(500).json({ message: "Failed to restore user" });
+    }
+  });
+
+  // Upload profile image
+  app.post('/api/settings/profile-image', isAuthenticated, upload.single('profileImage'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+      
+      const profileImageUrl = `/uploads/${req.file.filename}`;
+      const updatedUser = await storage.updateUserProfile(userId, { profileImageUrl });
+      
+      res.json({ profileImageUrl: updatedUser.profileImageUrl });
+    } catch (error) {
+      console.error("Error uploading profile image:", error);
+      res.status(500).json({ message: "Failed to upload profile image" });
+    }
+  });
 }
