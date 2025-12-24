@@ -765,19 +765,19 @@ export default function RiderPage() {
             {pickupCoords && dropoffCoords && (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-accent flex items-center gap-2">
+                  <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
                     <MapPin className="h-6 w-6" />
                     Nearby Driver Routes
                     {nearbyRoutes.length > 0 && (
-                      <Badge className="bg-accent text-white">{nearbyRoutes.length} found</Badge>
+                      <Badge className="bg-primary text-white">{nearbyRoutes.length} found</Badge>
                     )}
                   </h2>
                 </div>
                 
                 {nearbyRoutes.length === 0 ? (
-                  <Card className="border-dashed border-accent/30 bg-accent/5">
+                  <Card className="border-0 shadow-sm bg-muted/30">
                     <CardContent className="p-8 text-center">
-                      <MapPin className="h-12 w-12 text-accent/40 mx-auto mb-3" />
+                      <MapPin className="h-12 w-12 text-primary/40 mx-auto mb-3" />
                       <p className="text-muted-foreground">No driver routes near your location yet.</p>
                       <p className="text-sm text-muted-foreground mt-1">Post your request and drivers will see it!</p>
                     </CardContent>
@@ -786,7 +786,7 @@ export default function RiderPage() {
                   <div className="space-y-3">
                     <div className="grid md:grid-cols-2 gap-3">
                     {(routesExpanded ? nearbyRoutes : nearbyRoutes.slice(0, INITIAL_DISPLAY_COUNT)).map((route) => (
-                      <Card key={route.id} className="group hover:border-accent transition-all hover:shadow-md cursor-pointer border-accent/30 bg-accent/5" data-testid={`card-nearby-route-${route.id}`}>
+                      <Card key={route.id} className="group border-0 shadow-sm hover:shadow-md transition-all cursor-pointer bg-card" data-testid={`card-nearby-route-${route.id}`}>
                         <CardContent className="p-4">
                           <div className="flex justify-between items-start mb-4">
                             <Link href={`/driver/${route.driverId}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity" data-testid={`link-driver-profile-nearby-${route.id}`}>
@@ -820,13 +820,13 @@ export default function RiderPage() {
                               </div>
                             </Link>
                             {route.pricePerSeat && (
-                              <Badge variant="secondary" className="text-lg px-3 py-1 bg-accent text-white">
+                              <Badge variant="secondary" className="text-lg px-3 py-1 bg-primary text-white">
                                 £{route.pricePerSeat}
                               </Badge>
                             )}
                           </div>
                           <div className="space-y-2">
-                            <p className="text-sm"><span className="text-accent">●</span> {route.startLocation}</p>
+                            <p className="text-sm"><span className="text-primary">●</span> {route.startLocation}</p>
                             <p className="text-sm"><span className="text-secondary">●</span> {route.endLocation}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-2">
                               <Badge variant="outline" className="text-xs">
@@ -834,7 +834,7 @@ export default function RiderPage() {
                                 {getTimeUntilDeparture(route.departureTime)}
                               </Badge>
                               {getConfirmedRiders(route) > 0 && (
-                                <Badge variant="secondary" className="text-xs bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent">
+                                <Badge variant="secondary" className="text-xs bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground">
                                   <Users className="h-3 w-3 mr-1" />
                                   {getConfirmedRiders(route)} rider{getConfirmedRiders(route) > 1 ? 's' : ''} confirmed
                                 </Badge>
@@ -853,8 +853,8 @@ export default function RiderPage() {
                             </div>
                           </div>
                         </CardContent>
-                        <CardFooter className="bg-accent/10 p-2 flex justify-end">
-                          <Button size="sm" className="bg-accent hover:bg-accent/90">
+                        <CardFooter className="bg-primary/5 p-2 flex justify-end">
+                          <Button size="sm" className="bg-primary hover:bg-primary/90">
                             Request Seat <ArrowRight className="ml-2 h-4 w-4" />
                           </Button>
                         </CardFooter>
@@ -864,7 +864,7 @@ export default function RiderPage() {
                     {nearbyRoutes.length > INITIAL_DISPLAY_COUNT && (
                       <Button
                         variant="ghost"
-                        className="w-full text-accent hover:text-accent/80"
+                        className="w-full text-primary hover:text-primary/80"
                         onClick={() => setRoutesExpanded(!routesExpanded)}
                         data-testid="button-expand-routes"
                       >
@@ -884,26 +884,26 @@ export default function RiderPage() {
             {pickupCoords && (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-accent flex items-center gap-2">
+                  <h2 className="text-2xl font-bold text-primary flex items-center gap-2">
                     <Crown className="h-6 w-6" />
                     Nearby Drivers
                     {nearbyDrivers.length > 0 && (
-                      <Badge className="bg-accent text-white">{nearbyDrivers.length} online</Badge>
+                      <Badge className="bg-primary text-white">{nearbyDrivers.length} online</Badge>
                     )}
                   </h2>
                 </div>
                 
                 {nearbyDriversLoading ? (
-                  <Card className="border-dashed border-accent/30 bg-accent/5">
+                  <Card className="border-0 shadow-sm bg-muted/30">
                     <CardContent className="p-8 text-center">
-                      <Loader2 className="h-8 w-8 text-accent mx-auto mb-3 animate-spin" />
+                      <Loader2 className="h-8 w-8 text-primary mx-auto mb-3 animate-spin" />
                       <p className="text-muted-foreground">Finding nearby drivers...</p>
                     </CardContent>
                   </Card>
                 ) : nearbyDrivers.length === 0 ? (
-                  <Card className="border-dashed border-accent/30 bg-accent/5">
+                  <Card className="border-0 shadow-sm bg-muted/30">
                     <CardContent className="p-8 text-center">
-                      <Radio className="h-12 w-12 text-accent/40 mx-auto mb-3" />
+                      <Radio className="h-12 w-12 text-primary/40 mx-auto mb-3" />
                       <p className="text-muted-foreground">No drivers near you right now.</p>
                       <p className="text-sm text-muted-foreground mt-1">Try posting your route or checking driver routes.</p>
                     </CardContent>
@@ -914,7 +914,7 @@ export default function RiderPage() {
                     {(driversExpanded ? nearbyDrivers : nearbyDrivers.slice(0, INITIAL_DISPLAY_COUNT)).map((driver) => {
                       const estimatedCost = getEstimatedCost(driver);
                       return (
-                        <Card key={driver.id} className="group hover:border-accent transition-all hover:shadow-md border-accent/30 bg-accent/5" data-testid={`card-pro-driver-${driver.id}`}>
+                        <Card key={driver.id} className="group border-0 shadow-sm hover:shadow-md transition-all bg-card" data-testid={`card-pro-driver-${driver.id}`}>
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start mb-4">
                               <Link href={`/driver/${driver.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity" data-testid={`link-pro-driver-${driver.id}`}>
@@ -932,7 +932,7 @@ export default function RiderPage() {
                                     <p className="font-semibold text-primary" data-testid={`text-pro-driver-name-${driver.id}`}>
                                       {driver.firstName || 'Driver'}{driver.lastName ? ` ${driver.lastName.charAt(0)}.` : ''}
                                     </p>
-                                    <Crown className="h-3.5 w-3.5 text-accent" />
+                                    <Crown className="h-3.5 w-3.5 text-primary" />
                                   </div>
                                   <div className="flex items-center text-xs text-muted-foreground gap-1">
                                     <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
@@ -955,7 +955,7 @@ export default function RiderPage() {
                                 </div>
                               </Link>
                               <div className="text-right">
-                                <Badge variant="secondary" className="text-lg px-3 py-1 bg-accent text-white mb-1">
+                                <Badge variant="secondary" className="text-lg px-3 py-1 bg-primary text-white mb-1">
                                   £{driver.ratePerMile}/mi
                                 </Badge>
                                 <p className="text-xs text-muted-foreground">{driver.distanceFromPickup.toFixed(1)} mi away</p>
@@ -969,10 +969,10 @@ export default function RiderPage() {
                             )}
                             
                             {estimatedCost && dropoffCoords && (
-                              <div className="bg-white rounded-lg p-3 border border-accent/20">
+                              <div className="bg-muted/30 rounded-lg p-3">
                                 <div className="flex justify-between items-center">
                                   <span className="text-sm text-muted-foreground">Estimated Trip Cost</span>
-                                  <span className="text-xl font-bold text-accent">£{estimatedCost}</span>
+                                  <span className="text-xl font-bold text-primary">£{estimatedCost}</span>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   Based on {(calculateDistance(pickupCoords.lat, pickupCoords.lon, dropoffCoords.lat, dropoffCoords.lon)).toFixed(1)} mi at £{driver.ratePerMile}/mi
@@ -986,10 +986,10 @@ export default function RiderPage() {
                               </p>
                             )}
                           </CardContent>
-                          <CardFooter className="bg-accent/10 p-2 flex justify-end">
+                          <CardFooter className="bg-primary/5 p-2 flex justify-end">
                             <Button 
                               size="sm" 
-                              className="bg-accent hover:bg-accent/90 text-white"
+                              className="bg-primary hover:bg-primary/90 text-white"
                               onClick={() => handleRequestProDriver(driver)}
                               disabled={requestingDriverId === driver.id || !dropoffCoords}
                               data-testid={`button-request-pro-driver-${driver.id}`}
@@ -1008,7 +1008,7 @@ export default function RiderPage() {
                     {nearbyDrivers.length > INITIAL_DISPLAY_COUNT && (
                       <Button
                         variant="ghost"
-                        className="w-full text-accent hover:text-accent/80"
+                        className="w-full text-primary hover:text-primary/80"
                         onClick={() => setDriversExpanded(!driversExpanded)}
                         data-testid="button-expand-drivers"
                       >
