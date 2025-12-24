@@ -641,106 +641,103 @@ export default function DriverPage() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {/* Tagline - Label or Edit mode */}
-                        <div className="bg-white/10 rounded-lg p-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-white/60 uppercase tracking-wide">Your Advert</span>
-                            {!isEditingTagline && (
-                              <button
-                                type="button"
-                                onClick={() => setIsEditingTagline(true)}
-                                className="p-1 hover:bg-white/20 rounded transition-colors"
-                                data-testid="button-edit-tagline"
-                                aria-label="Edit tagline"
-                              >
-                                <Pencil className="h-3.5 w-3.5 text-white/70" />
-                              </button>
-                            )}
-                          </div>
-                          {isEditingTagline ? (
-                            <div className="mt-2 flex gap-2">
-                              <Input
-                                type="text"
-                                value={driverTagline}
-                                onChange={(e) => setDriverTagline(e.target.value.slice(0, 100))}
-                                placeholder="e.g., 'Airport specialist, 5+ years experience'"
-                                className="h-8 text-sm bg-white text-gray-900 border-none flex-1"
-                                maxLength={100}
-                                autoFocus
-                                onKeyDown={(e) => e.key === 'Enter' && setIsEditingTagline(false)}
-                                data-testid="input-driver-tagline"
-                                aria-label="Service tagline"
-                              />
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={() => setIsEditingTagline(false)}
-                                className="h-8 px-2 bg-white/20 hover:bg-white/30"
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-white mt-1" data-testid="text-tagline-display">
-                              {driverTagline || <span className="text-white/50 italic">No advert set - tap to add</span>}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Rate - Label or Edit mode */}
-                        <div className="bg-white/10 rounded-lg p-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-white/60 uppercase tracking-wide">Your Rate</span>
-                            {!isEditingRate && (
-                              <button
-                                type="button"
-                                onClick={() => setIsEditingRate(true)}
-                                className="p-1 hover:bg-white/20 rounded transition-colors"
-                                data-testid="button-edit-rate"
-                                aria-label="Edit rate"
-                              >
-                                <Pencil className="h-3.5 w-3.5 text-white/70" />
-                              </button>
-                            )}
-                          </div>
-                          {isEditingRate ? (
-                            <div className="mt-2 flex gap-2">
-                              <div className="relative flex-1">
-                                <PoundSterling className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                      <div className="space-y-2">
+                        {/* Compact card with both tagline and rate */}
+                        <div className="bg-white/10 rounded-lg p-2.5 space-y-2">
+                          {/* Tagline row */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-white/60 w-14 flex-shrink-0">Tagline</span>
+                            {isEditingTagline ? (
+                              <div className="flex-1 flex gap-1">
                                 <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0.50"
-                                  max="10"
-                                  value={ratePerMile}
-                                  onChange={(e) => setRatePerMile(e.target.value)}
-                                  placeholder="Rate/mile"
-                                  className="pl-8 h-8 text-sm bg-white text-gray-900 border-none"
+                                  type="text"
+                                  value={driverTagline}
+                                  onChange={(e) => setDriverTagline(e.target.value.slice(0, 100))}
+                                  placeholder="e.g., Airport specialist"
+                                  className="h-7 text-xs bg-white text-gray-900 border-none flex-1"
+                                  maxLength={100}
                                   autoFocus
-                                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingRate(false)}
-                                  data-testid="input-rate-per-mile"
-                                  aria-label="Rate per mile"
+                                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingTagline(false)}
+                                  data-testid="input-driver-tagline"
+                                  aria-label="Service tagline"
                                 />
+                                <button
+                                  type="button"
+                                  onClick={() => setIsEditingTagline(false)}
+                                  className="p-1 bg-white/20 hover:bg-white/30 rounded"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
                               </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={() => setIsEditingRate(false)}
-                                className="h-8 px-2 bg-white/20 hover:bg-white/30"
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-white mt-1" data-testid="text-rate-display">
-                              {ratePerMile ? (
-                                <span className="font-semibold">£{ratePerMile} per mile</span>
-                              ) : (
-                                <span className="text-white/50 italic">No rate set - tap to add</span>
-                              )}
-                            </p>
-                          )}
+                            ) : (
+                              <div className="flex-1 flex items-center justify-between">
+                                <p className="text-xs text-white truncate" data-testid="text-tagline-display">
+                                  {driverTagline || <span className="text-white/50 italic">Tap to add</span>}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsEditingTagline(true)}
+                                  className="p-1 hover:bg-white/20 rounded transition-colors flex-shrink-0"
+                                  data-testid="button-edit-tagline"
+                                  aria-label="Edit tagline"
+                                >
+                                  <Pencil className="h-3 w-3 text-white/70" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Rate row */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-white/60 w-14 flex-shrink-0">Rate</span>
+                            {isEditingRate ? (
+                              <div className="flex-1 flex gap-1">
+                                <div className="relative flex-1">
+                                  <PoundSterling className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-500" />
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.50"
+                                    max="10"
+                                    value={ratePerMile}
+                                    onChange={(e) => setRatePerMile(e.target.value)}
+                                    placeholder="per mile"
+                                    className="pl-6 h-7 text-xs bg-white text-gray-900 border-none"
+                                    autoFocus
+                                    onKeyDown={(e) => e.key === 'Enter' && setIsEditingRate(false)}
+                                    data-testid="input-rate-per-mile"
+                                    aria-label="Rate per mile"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsEditingRate(false)}
+                                  className="p-1 bg-white/20 hover:bg-white/30 rounded"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex-1 flex items-center justify-between">
+                                <p className="text-xs text-white" data-testid="text-rate-display">
+                                  {ratePerMile ? (
+                                    <span className="font-semibold">£{ratePerMile}/mile</span>
+                                  ) : (
+                                    <span className="text-white/50 italic">Tap to set</span>
+                                  )}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsEditingRate(true)}
+                                  className="p-1 hover:bg-white/20 rounded transition-colors flex-shrink-0"
+                                  data-testid="button-edit-rate"
+                                  aria-label="Edit rate"
+                                >
+                                  <Pencil className="h-3 w-3 text-white/70" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {/* Go Online Button */}
@@ -753,14 +750,14 @@ export default function DriverPage() {
                             handleToggleOnlineStatus();
                           }}
                           disabled={isUpdatingOnlineStatus}
-                          className="w-full h-10 bg-white text-green-700 hover:bg-green-50 font-semibold"
+                          className="w-full h-8 bg-white text-green-700 hover:bg-green-50 font-semibold text-sm"
                           data-testid="button-toggle-online"
                         >
                           {isUpdatingOnlineStatus ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <>
-                              <Power className="h-4 w-4 mr-2" />
+                              <Power className="h-4 w-4 mr-1" />
                               Go Online
                             </>
                           )}
