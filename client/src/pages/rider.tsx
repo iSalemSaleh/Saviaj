@@ -560,495 +560,318 @@ export default function RiderPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      {/* Full-screen map background */}
-      <div className="fixed inset-0 z-0">
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Fixed Navbar */}
+      <div className="flex-shrink-0 z-50 backdrop-blur-md bg-background/90 border-b border-border">
+        <Navbar />
+      </div>
+      
+      {/* TOP: Request Form - compact, fixed height */}
+      <div className="flex-shrink-0 z-20 px-3 py-3 bg-background/95 border-b border-border">
+        <form onSubmit={handleSubmit} className="space-y-2">
+          <PostcodeSearch
+            value={pickupLocation}
+            onChange={handlePickupChange}
+            placeholder="Pickup address"
+            iconColor="text-muted-foreground"
+            testId="input-pickup"
+            isCurrentLocation={isCurrentLocationPickup}
+            compact
+          />
+          <PostcodeSearch
+            value={dropoffLocation}
+            onChange={handleDropoffChange}
+            placeholder="Destination"
+            iconColor="text-secondary"
+            testId="input-dropoff"
+            compact
+          />
+          <div className="flex gap-2">
+            <DateTimePicker
+              value={requestedTime}
+              onChange={setRequestedTime}
+              testId="input-time"
+              className="flex-1"
+              compact
+            />
+            <div className="relative w-24">
+              <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input 
+                type="number" 
+                placeholder="Offer"
+                min="1"
+                max="500"
+                step="1"
+                className="pl-7 h-8 text-sm"
+                value={offerPrice}
+                onChange={(e) => setOfferPrice(e.target.value)}
+                aria-label="Price offer in pounds"
+                data-testid="input-price"
+              />
+            </div>
+            <Button 
+              type="submit" 
+              className="h-8 px-4 text-sm"
+              disabled={createOfferMutation.isPending}
+              data-testid="button-post-request"
+            >
+              {createOfferMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* MIDDLE: Map Section - takes remaining space */}
+      <div className="flex-1 relative min-h-0">
         <RiderLocationMap
           userLocation={userLocation}
           destination={dropoffCoords ? { lat: dropoffCoords.lat, lng: dropoffCoords.lon } : undefined}
           nearbyDrivers={nearbyDrivers}
           showRoute={!!dropoffCoords}
           onRouteInfo={(distance, duration) => setRouteInfo({ distance, duration })}
-          fullScreen
         />
-      </div>
-
-      {/* Fixed Navbar with glassmorphism */}
-      <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-sm bg-background/30 border-b border-white/10">
-        <Navbar />
-      </div>
-      
-      {/* Overlay content */}
-      <div className="relative z-10 pt-16 min-h-screen pointer-events-none">
-        <div className="container mx-auto px-2 sm:px-4 py-4">
-          <div className="grid lg:grid-cols-12 gap-4">
-          
-            {/* Left Panel: Compact Request Form - Glass effect */}
-            <div className="lg:col-span-4 pointer-events-auto">
-              <div className="lg:sticky lg:top-20 space-y-3">
-                <div className="backdrop-blur-md bg-background/40 rounded-xl shadow-lg border border-white/10 overflow-hidden">
-                  <form onSubmit={handleSubmit}>
-                    <div className="space-y-4 px-4 py-4">
-                      <PostcodeSearch
-                        value={pickupLocation}
-                        onChange={handlePickupChange}
-                        placeholder="Pickup address"
-                        iconColor="text-muted-foreground"
-                        testId="input-pickup"
-                        isCurrentLocation={isCurrentLocationPickup}
-                        compact
-                      />
-                      
-                      <PostcodeSearch
-                        value={dropoffLocation}
-                        onChange={handleDropoffChange}
-                        placeholder="Destination"
-                        iconColor="text-secondary"
-                        testId="input-dropoff"
-                        compact
-                      />
-
-                      <div className="grid grid-cols-3 gap-3">
-                        <DateTimePicker
-                          value={requestedTime}
-                          onChange={setRequestedTime}
-                          testId="input-time"
-                          className="col-span-2"
-                          compact
-                        />
-                        <div className="relative">
-                          <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                          <Input 
-                            type="number" 
-                            placeholder="Your offer"
-                            min="1"
-                            max="500"
-                            step="1"
-                            className="pl-7 h-8 text-sm bg-background/50"
-                            value={offerPrice}
-                            onChange={(e) => setOfferPrice(e.target.value)}
-                            aria-label="Price offer in pounds"
-                            data-testid="input-price"
-                          />
+        
+        {/* My Pending Offers - floating badge on map */}
+        {user && myPendingOffers.length > 0 && (
+          <div className="absolute top-2 right-2 z-10">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="secondary" className="shadow-lg">
+                  <Badge className="bg-primary text-white mr-2">{myPendingOffers.length}</Badge>
+                  My Requests
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>My Pending Requests</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+                  {myPendingOffers.map((offer) => (
+                    <div key={offer.id} className="p-3 bg-muted/50 rounded-lg border" data-testid={`my-offer-${offer.id}`}>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{offer.pickupLocation}</p>
+                          <p className="text-xs text-muted-foreground">to</p>
+                          <p className="text-sm font-medium truncate">{offer.dropoffLocation}</p>
+                        </div>
+                        <Badge className="bg-primary text-white shrink-0">£{offer.offerPrice}</Badge>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(offer.requestedTime)} at {formatTime(offer.requestedTime)}
+                        </p>
+                        <div className="flex gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2"
+                            onClick={() => {
+                              setSelectedOffer(offer);
+                              setEditPrice(offer.offerPrice);
+                              setEditDialogOpen(true);
+                            }}
+                            data-testid={`button-edit-offer-${offer.id}`}
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 px-2 text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => cancelOfferMutation.mutate(offer.id)}
+                            disabled={cancelOfferMutation.isPending}
+                            data-testid={`button-cancel-offer-${offer.id}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
-
-                      <Button 
-                        type="submit" 
-                        className="w-full h-10 text-sm shadow-sm"
-                        disabled={createOfferMutation.isPending}
-                        data-testid="button-post-request"
-                      >
-                        {createOfferMutation.isPending ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Posting...
-                          </>
-                        ) : (
-                          "Post Request"
-                        )}
-                      </Button>
                     </div>
-                  </form>
+                  ))}
                 </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
+      </div>
 
-              {/* My Pending Offers Section */}
-              {user && myPendingOffers.length > 0 && (
-                <div className="backdrop-blur-md bg-background/40 rounded-xl shadow-lg border border-white/10 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-white/10">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold">My Pending Requests</span>
-                      <Badge variant="outline">{myPendingOffers.length}</Badge>
-                    </div>
-                  </div>
-                  <div className="p-4 space-y-3">
-                    {myPendingOffers.map((offer) => (
-                      <div 
-                        key={offer.id} 
-                        className="p-3 bg-muted/50 rounded-lg border"
-                        data-testid={`my-offer-${offer.id}`}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{offer.pickupLocation}</p>
-                            <p className="text-xs text-muted-foreground">to</p>
-                            <p className="text-sm font-medium truncate">{offer.dropoffLocation}</p>
-                          </div>
-                          <Badge className="bg-primary text-white shrink-0">
-                            £{offer.offerPrice}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            {formatDate(offer.requestedTime)} at {formatTime(offer.requestedTime)}
-                          </p>
-                          <div className="flex gap-1">
-                            <Dialog open={editDialogOpen && selectedOffer?.id === offer.id} onOpenChange={(open) => {
-                              setEditDialogOpen(open);
-                              if (open) {
-                                setSelectedOffer(offer);
-                                setEditPrice(offer.offerPrice);
-                              } else {
-                                setSelectedOffer(null);
-                                setEditPrice("");
-                              }
-                            }}>
-                              <DialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-7 px-2"
-                                  data-testid={`button-edit-offer-${offer.id}`}
-                                >
-                                  <Edit2 className="h-3 w-3" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Revise Offer Price</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4 pt-4">
-                                  <p className="text-sm text-muted-foreground">
-                                    Current price: <strong>£{offer.offerPrice}</strong>
-                                  </p>
-                                  <div className="space-y-2">
-                                    <label className="text-sm font-medium">New Price (£)</label>
-                                    <div className="relative">
-                                      <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                      <Input 
-                                        type="number"
-                                        placeholder="Enter new price"
-                                        min="1"
-                                        max="500"
-                                        className="pl-9"
-                                        value={editPrice}
-                                        onChange={(e) => setEditPrice(e.target.value)}
-                                        data-testid="input-edit-price"
-                                      />
-                                    </div>
-                                  </div>
-                                  <Button 
-                                    onClick={handleRevisePrice}
-                                    className="w-full"
-                                    disabled={reviseOfferMutation.isPending || !editPrice}
-                                    data-testid="button-submit-revision"
-                                  >
-                                    {reviseOfferMutation.isPending ? (
-                                      <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Updating...
-                                      </>
-                                    ) : (
-                                      "Update Price"
-                                    )}
-                                  </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-7 px-2 text-red-500 hover:text-red-600 hover:bg-red-50"
-                              onClick={() => cancelOfferMutation.mutate(offer.id)}
-                              disabled={cancelOfferMutation.isPending}
-                              data-testid={`button-cancel-offer-${offer.id}`}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+      {/* BOTTOM: Nearby Drivers Panel - compact, scrollable */}
+      <div className="flex-shrink-0 z-20 bg-background border-t border-border max-h-[35vh] overflow-y-auto">
+        {/* Tab-like header */}
+        <div className="sticky top-0 bg-background border-b border-border px-3 py-2 flex items-center gap-4">
+          <button
+            className={`text-sm font-medium flex items-center gap-1 pb-1 ${!allRoutesExpanded ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
+            onClick={() => setAllRoutesExpanded(false)}
+          >
+            <Crown className="h-4 w-4" />
+            Pro Drivers
+            {nearbyDrivers.length > 0 && <Badge className="bg-primary text-white text-xs ml-1">{nearbyDrivers.length}</Badge>}
+          </button>
+          <button
+            className={`text-sm font-medium flex items-center gap-1 pb-1 ${allRoutesExpanded ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
+            onClick={() => setAllRoutesExpanded(true)}
+          >
+            <MapPin className="h-4 w-4" />
+            Routes
+            {filteredAndSortedRoutes.length > 0 && <Badge variant="outline" className="text-xs ml-1">{filteredAndSortedRoutes.length}</Badge>}
+          </button>
+        </div>
+
+        {/* Pro Drivers Tab */}
+        {!allRoutesExpanded && (
+          <div className="p-3">
+            {nearbyDriversLoading ? (
+              <div className="text-center py-4">
+                <Loader2 className="h-6 w-6 text-primary mx-auto animate-spin" />
+                <p className="text-xs text-muted-foreground mt-1">Finding drivers...</p>
               </div>
-            </div>
-
-            {/* Right Panel: Routes & Drivers - Glass effect */}
-            <div className="lg:col-span-8 space-y-4 pointer-events-auto">
-            
-              {/* Nearby Routes Section - shows when pickup is set */}
-              {pickupCoords && dropoffCoords && (
-                <div className="backdrop-blur-md bg-background/40 rounded-xl shadow-lg border border-white/10 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-white/10">
-                    <h2 className="font-semibold text-primary flex items-center gap-2">
-                      <MapPin className="h-5 w-5" />
-                      Nearby Driver Routes
-                      {nearbyRoutes.length > 0 && (
-                        <Badge className="bg-primary text-white text-xs">{nearbyRoutes.length}</Badge>
-                      )}
-                    </h2>
-                  </div>
-                
-                  {nearbyRoutes.length === 0 ? (
-                    <div className="p-6 text-center">
-                      <MapPin className="h-10 w-10 text-primary/40 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">No driver routes near your location yet.</p>
-                      <p className="text-xs text-muted-foreground mt-1">Post your request and drivers will see it!</p>
-                    </div>
-                  ) : (
-                    <div className="p-4 space-y-3">
-                      <div className="grid md:grid-cols-2 gap-3">
-                      {(routesExpanded ? nearbyRoutes : nearbyRoutes.slice(0, INITIAL_DISPLAY_COUNT)).map((route) => (
-                        <div key={route.id} className="group bg-white/50 dark:bg-white/10 rounded-lg hover:bg-white/70 dark:hover:bg-white/20 transition-all cursor-pointer" data-testid={`card-nearby-route-${route.id}`}>
-                          <div className="p-3">
-                            <div className="flex justify-between items-start mb-3">
-                              <Link href={`/driver/${route.driverId}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity" data-testid={`link-driver-profile-nearby-${route.id}`}>
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
-                                  <AvatarFallback>{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <div className="flex items-center gap-1">
-                                    <p className="font-medium text-sm text-primary" data-testid={`text-driver-name-${route.id}`}>
-                                      {route.driver?.firstName || 'Driver'}{route.driver?.lastName ? ` ${route.driver.lastName.charAt(0)}.` : ''}
-                                    </p>
-                                    {route.driver?.driverVerified && (
-                                      <Shield className="h-3 w-3 text-green-500" />
-                                    )}
-                                  </div>
-                                  <div className="flex items-center text-xs text-muted-foreground gap-1">
-                                    <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500" />
-                                    <span>{route.driver?.driverRating ? parseFloat(route.driver.driverRating).toFixed(1) : 'New'}</span>
-                                  </div>
-                                </div>
-                              </Link>
-                              {route.pricePerSeat && (
-                                <Badge variant="secondary" className="text-sm px-2 py-0.5 bg-primary text-white">
-                                  £{route.pricePerSeat}
-                                </Badge>
-                              )}
+            ) : nearbyDrivers.length === 0 ? (
+              <div className="text-center py-4">
+                <Radio className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+                <p className="text-sm text-muted-foreground mt-1">No Pro drivers nearby</p>
+              </div>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {nearbyDrivers.slice(0, 10).map((driver) => {
+                  const estimatedCost = getEstimatedCost(driver);
+                  return (
+                    <div key={driver.id} className="flex-shrink-0 w-40 p-3 bg-muted/50 rounded-lg border" data-testid={`card-pro-driver-${driver.id}`}>
+                      <Link href={`/driver/${driver.id}`} className="block" data-testid={`link-pro-driver-${driver.id}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="relative">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage src={driver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${driver.id}`} />
+                              <AvatarFallback>{driver.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                            </Avatar>
+                            <div className="absolute -bottom-0.5 -right-0.5 bg-green-500 rounded-full p-0.5">
+                              <Radio className="h-2 w-2 text-white" />
                             </div>
-                            <div className="space-y-1 text-xs">
-                              <p><span className="text-primary">●</span> {route.startLocation}</p>
-                              <p><span className="text-secondary">●</span> {route.endLocation}</p>
-                            </div>
-                            <div className="flex items-center justify-between mt-2">
-                              <Badge variant="outline" className="text-xs">
-                                <Clock className="h-2.5 w-2.5 mr-1" />
-                                {getTimeUntilDeparture(route.departureTime)}
-                              </Badge>
-                              <Button size="sm" className="h-7 text-xs bg-primary hover:bg-primary/90">
-                                Request <ArrowRight className="ml-1 h-3 w-3" />
-                              </Button>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate text-primary" data-testid={`text-pro-driver-name-${driver.id}`}>
+                              {driver.firstName || 'Driver'}
+                            </p>
+                            <div className="flex items-center text-xs text-muted-foreground">
+                              <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500 mr-0.5" />
+                              {driver.driverRating ? parseFloat(driver.driverRating).toFixed(1) : 'New'}
                             </div>
                           </div>
                         </div>
-                      ))}
-                      </div>
-                      {nearbyRoutes.length > INITIAL_DISPLAY_COUNT && (
-                        <Button
-                          variant="ghost"
-                          className="w-full text-primary hover:text-primary/80 text-sm"
-                          onClick={() => setRoutesExpanded(!routesExpanded)}
-                          data-testid="button-expand-routes"
-                        >
-                          {routesExpanded ? (
-                            <>Show Less <ChevronUp className="ml-2 h-4 w-4" /></>
-                          ) : (
-                            <>Show {nearbyRoutes.length - INITIAL_DISPLAY_COUNT} More <ChevronDown className="ml-2 h-4 w-4" /></>
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Nearby Drivers Section - shows when pickup is set */}
-              {pickupCoords && (
-                <div className="backdrop-blur-md bg-background/40 rounded-xl shadow-lg border border-white/10 overflow-hidden">
-                  <div className="px-4 py-3 border-b border-white/10">
-                    <h2 className="font-semibold text-primary flex items-center gap-2">
-                      <Crown className="h-5 w-5" />
-                      Nearby Drivers
-                      {nearbyDrivers.length > 0 && (
-                        <Badge className="bg-primary text-white text-xs">{nearbyDrivers.length}</Badge>
-                      )}
-                    </h2>
-                  </div>
-                
-                  {nearbyDriversLoading ? (
-                    <div className="p-6 text-center">
-                      <Loader2 className="h-8 w-8 text-primary mx-auto mb-2 animate-spin" />
-                      <p className="text-sm text-muted-foreground">Finding nearby drivers...</p>
-                    </div>
-                  ) : nearbyDrivers.length === 0 ? (
-                    <div className="p-6 text-center">
-                      <Radio className="h-10 w-10 text-primary/40 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">No drivers near you right now.</p>
-                      <p className="text-xs text-muted-foreground mt-1">Try posting your route or checking driver routes.</p>
-                    </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="grid md:grid-cols-2 gap-3">
-                    {(driversExpanded ? nearbyDrivers : nearbyDrivers.slice(0, INITIAL_DISPLAY_COUNT)).map((driver) => {
-                      const estimatedCost = getEstimatedCost(driver);
-                      return (
-                        <div key={driver.id} className="group bg-white/50 dark:bg-white/10 rounded-lg hover:bg-white/70 dark:hover:bg-white/20 transition-all" data-testid={`card-pro-driver-${driver.id}`}>
-                          <div className="p-3">
-                            <div className="flex justify-between items-start mb-2">
-                              <Link href={`/driver/${driver.id}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity" data-testid={`link-pro-driver-${driver.id}`}>
-                                <div className="relative">
-                                  <Avatar className="h-8 w-8">
-                                    <AvatarImage src={driver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${driver.id}`} />
-                                    <AvatarFallback>{driver.firstName?.charAt(0) || 'D'}</AvatarFallback>
-                                  </Avatar>
-                                  <div className="absolute -bottom-0.5 -right-0.5 bg-green-500 rounded-full p-0.5">
-                                    <Radio className="h-2 w-2 text-white animate-pulse" />
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="flex items-center gap-1">
-                                    <p className="font-medium text-sm text-primary" data-testid={`text-pro-driver-name-${driver.id}`}>
-                                      {driver.firstName || 'Driver'}{driver.lastName ? ` ${driver.lastName.charAt(0)}.` : ''}
-                                    </p>
-                                    <Crown className="h-3 w-3 text-primary" />
-                                  </div>
-                                  <div className="flex items-center text-xs text-muted-foreground gap-1">
-                                    <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500" />
-                                    <span>{driver.driverRating ? parseFloat(driver.driverRating).toFixed(1) : 'New'}</span>
-                                  </div>
-                                </div>
-                              </Link>
-                              <div className="text-right">
-                                <Badge variant="secondary" className="text-sm px-2 py-0.5 bg-primary text-white">
-                                  £{driver.ratePerMile}/mi
-                                </Badge>
-                                <p className="text-xs text-muted-foreground mt-0.5">{driver.distanceFromPickup.toFixed(1)} mi</p>
-                              </div>
-                            </div>
-                            
-                            {estimatedCost && dropoffCoords && (
-                              <div className="flex items-center justify-between bg-muted/30 rounded px-2 py-1 text-sm">
-                                <span className="text-muted-foreground text-xs">Est. cost</span>
-                                <span className="font-bold text-primary">£{estimatedCost}</span>
-                              </div>
-                            )}
-                            
-                            <div className="flex justify-end mt-2">
-                              <Button 
-                                size="sm" 
-                                className="h-7 text-xs bg-primary hover:bg-primary/90 text-white"
-                                onClick={() => handleRequestProDriver(driver)}
-                                disabled={requestingDriverId === driver.id || !dropoffCoords}
-                                data-testid={`button-request-pro-driver-${driver.id}`}
-                              >
-                                {requestingDriverId === driver.id ? (
-                                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Requesting...</>
-                                ) : (
-                                  <>Request <ArrowRight className="ml-1 h-3 w-3" /></>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
+                        <div className="text-xs text-muted-foreground mb-2">
+                          £{driver.ratePerMile}/mi • {driver.distanceFromPickup.toFixed(1)} mi
                         </div>
-                      );
-                    })}
-                    </div>
-                    {nearbyDrivers.length > INITIAL_DISPLAY_COUNT && (
-                      <Button
-                        variant="ghost"
-                        className="w-full text-primary hover:text-primary/80"
-                        onClick={() => setDriversExpanded(!driversExpanded)}
-                        data-testid="button-expand-drivers"
+                        {estimatedCost && <p className="text-sm font-bold text-primary">Est. £{estimatedCost}</p>}
+                      </Link>
+                      <Button 
+                        size="sm" 
+                        className="w-full h-7 mt-2 text-xs"
+                        onClick={() => handleRequestProDriver(driver)}
+                        disabled={requestingDriverId === driver.id || !dropoffCoords}
+                        data-testid={`button-request-pro-driver-${driver.id}`}
                       >
-                        {driversExpanded ? (
-                          <>Show Less <ChevronUp className="ml-2 h-4 w-4" /></>
-                        ) : (
-                          <>Show {nearbyDrivers.length - INITIAL_DISPLAY_COUNT} More <ChevronDown className="ml-2 h-4 w-4" /></>
-                        )}
+                        {requestingDriverId === driver.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Request'}
                       </Button>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  );
+                })}
               </div>
             )}
+          </div>
+        )}
 
-            {/* All Available Routes - Collapsible */}
-            <div className="backdrop-blur-md bg-background/40 rounded-xl shadow-lg border border-white/10 overflow-hidden">
-              <button
-                type="button"
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
-                onClick={() => setAllRoutesExpanded(!allRoutesExpanded)}
-                data-testid="button-toggle-all-routes"
-              >
-                <h2 className="font-semibold text-primary flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  All Available Routes
-                  <Badge className="bg-primary text-white text-xs">{filteredAndSortedRoutes.length}</Badge>
-                </h2>
-                {allRoutesExpanded ? <ChevronUp className="h-5 w-5 text-primary" /> : <ChevronDown className="h-5 w-5 text-primary" />}
-              </button>
-
-              {allRoutesExpanded && (
-                <div className="p-4 border-t border-white/10">
-                  {routesLoading ? (
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="animate-pulse bg-white/20 rounded-lg h-24" />
-                      ))}
-                    </div>
-                  ) : filteredAndSortedRoutes.length === 0 ? (
-                    <div className="p-6 text-center">
-                      <Calendar className="h-10 w-10 text-primary/40 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">No driver routes available at the moment.</p>
-                      <p className="text-xs text-muted-foreground mt-1">Post your request and drivers will see it!</p>
-                    </div>
-                  ) : (
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {filteredAndSortedRoutes.slice(0, 4).map((route) => (
-                        <div key={route.id} className="group bg-white/50 dark:bg-white/10 rounded-lg hover:bg-white/70 dark:hover:bg-white/20 transition-all cursor-pointer" data-testid={`card-route-${route.id}`}>
-                          <div className="p-3">
-                            <div className="flex justify-between items-start mb-2">
-                              <Link href={`/driver/${route.driverId}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity" data-testid={`link-driver-profile-${route.id}`}>
-                                <Avatar className="h-8 w-8">
-                                  <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
-                                  <AvatarFallback>{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium text-sm text-primary" data-testid={`text-driver-name-route-${route.id}`}>
-                                    {route.driver?.firstName || 'Driver'}{route.driver?.lastName ? ` ${route.driver.lastName.charAt(0)}.` : ''}
-                                  </p>
-                                  <div className="flex items-center text-xs text-muted-foreground gap-1">
-                                    <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500" />
-                                    <span>{route.driver?.driverRating ? parseFloat(route.driver.driverRating).toFixed(1) : 'New'}</span>
-                                  </div>
-                                </div>
-                              </Link>
-                              {route.pricePerSeat && (
-                                <Badge variant="secondary" className="text-sm px-2 py-0.5 bg-primary text-white">
-                                  £{route.pricePerSeat}
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="space-y-1 text-xs">
-                              <p><span className="text-primary">●</span> {route.startLocation}</p>
-                              <p><span className="text-secondary">●</span> {route.endLocation}</p>
-                            </div>
-                            <div className="flex items-center justify-between mt-2">
-                              <Badge variant="outline" className="text-xs">
-                                <Clock className="h-2.5 w-2.5 mr-1" />
-                                {getTimeUntilDeparture(route.departureTime)}
-                              </Badge>
-                              <Button size="sm" className="h-7 text-xs bg-primary hover:bg-primary/90">
-                                View <ArrowRight className="ml-1 h-3 w-3" />
-                              </Button>
-                            </div>
+        {/* Routes Tab */}
+        {allRoutesExpanded && (
+          <div className="p-3">
+            {routesLoading ? (
+              <div className="text-center py-4">
+                <Loader2 className="h-6 w-6 text-primary mx-auto animate-spin" />
+              </div>
+            ) : filteredAndSortedRoutes.length === 0 ? (
+              <div className="text-center py-4">
+                <MapPin className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+                <p className="text-sm text-muted-foreground mt-1">No routes available</p>
+              </div>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {filteredAndSortedRoutes.slice(0, 10).map((route) => (
+                  <div key={route.id} className="flex-shrink-0 w-48 p-3 bg-muted/50 rounded-lg border" data-testid={`card-route-${route.id}`}>
+                    <Link href={`/driver/${route.driverId}`} className="block" data-testid={`link-driver-profile-${route.id}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Avatar className="h-7 w-7">
+                          <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
+                          <AvatarFallback>{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate text-primary" data-testid={`text-driver-name-route-${route.id}`}>
+                            {route.driver?.firstName || 'Driver'}
+                          </p>
+                          <div className="flex items-center text-xs text-muted-foreground">
+                            <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500 mr-0.5" />
+                            {route.driver?.driverRating ? parseFloat(route.driver.driverRating).toFixed(1) : 'New'}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                        {route.pricePerSeat && <Badge className="bg-primary text-white text-xs">£{route.pricePerSeat}</Badge>}
+                      </div>
+                      <div className="text-xs space-y-0.5 mb-2">
+                        <p className="truncate"><span className="text-primary">●</span> {route.startLocation}</p>
+                        <p className="truncate"><span className="text-secondary">●</span> {route.endLocation}</p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        <Clock className="h-2.5 w-2.5 mr-1" />
+                        {getTimeUntilDeparture(route.departureTime)}
+                      </Badge>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          
-        </div>
+        )}
       </div>
+
+      {/* Edit Price Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revise Offer Price</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            {selectedOffer && (
+              <p className="text-sm text-muted-foreground">
+                Current price: <strong>£{selectedOffer.offerPrice}</strong>
+              </p>
+            )}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">New Price (£)</label>
+              <div className="relative">
+                <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  type="number"
+                  placeholder="Enter new price"
+                  min="1"
+                  max="500"
+                  className="pl-9"
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(e.target.value)}
+                  data-testid="input-edit-price"
+                />
+              </div>
+            </div>
+            <Button 
+              onClick={handleRevisePrice}
+              className="w-full"
+              disabled={reviseOfferMutation.isPending || !editPrice}
+              data-testid="button-submit-revision"
+            >
+              {reviseOfferMutation.isPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Updating...</>
+              ) : (
+                "Update Price"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
-  </div>
   );
 }
