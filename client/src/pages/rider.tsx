@@ -126,6 +126,7 @@ export default function RiderPage() {
   const [requestingDriverId, setRequestingDriverId] = useState<string | null>(null);
   const [routesExpanded, setRoutesExpanded] = useState(false);
   const [driversExpanded, setDriversExpanded] = useState(false);
+  const [allRoutesExpanded, setAllRoutesExpanded] = useState(false);
   const INITIAL_DISPLAY_COUNT = 5;
 
   useEffect(() => {
@@ -573,7 +574,7 @@ export default function RiderPage() {
       </div>
 
       {/* Fixed Navbar with glassmorphism */}
-      <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-background/70 border-b border-white/10">
+      <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-sm bg-background/30 border-b border-white/10">
         <Navbar />
       </div>
       
@@ -585,7 +586,7 @@ export default function RiderPage() {
             {/* Left Panel: Compact Request Form - Glass effect */}
             <div className="lg:col-span-4 pointer-events-auto">
               <div className="lg:sticky lg:top-20 space-y-3">
-                <div className="backdrop-blur-xl bg-background/80 rounded-xl shadow-xl border border-white/20 overflow-hidden">
+                <div className="backdrop-blur-md bg-background/40 rounded-xl shadow-lg border border-white/10 overflow-hidden">
                   <form onSubmit={handleSubmit}>
                     <div className="space-y-4 px-4 py-4">
                       <PostcodeSearch
@@ -653,7 +654,7 @@ export default function RiderPage() {
 
               {/* My Pending Offers Section */}
               {user && myPendingOffers.length > 0 && (
-                <div className="backdrop-blur-xl bg-background/80 rounded-xl shadow-xl border border-white/20 overflow-hidden">
+                <div className="backdrop-blur-md bg-background/40 rounded-xl shadow-lg border border-white/10 overflow-hidden">
                   <div className="px-4 py-3 border-b border-white/10">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold">My Pending Requests</span>
@@ -769,7 +770,7 @@ export default function RiderPage() {
             
               {/* Nearby Routes Section - shows when pickup is set */}
               {pickupCoords && dropoffCoords && (
-                <div className="backdrop-blur-xl bg-background/80 rounded-xl shadow-xl border border-white/20 overflow-hidden">
+                <div className="backdrop-blur-md bg-background/40 rounded-xl shadow-lg border border-white/10 overflow-hidden">
                   <div className="px-4 py-3 border-b border-white/10">
                     <h2 className="font-semibold text-primary flex items-center gap-2">
                       <MapPin className="h-5 w-5" />
@@ -857,7 +858,7 @@ export default function RiderPage() {
 
               {/* Nearby Drivers Section - shows when pickup is set */}
               {pickupCoords && (
-                <div className="backdrop-blur-xl bg-background/80 rounded-xl shadow-xl border border-white/20 overflow-hidden">
+                <div className="backdrop-blur-md bg-background/40 rounded-xl shadow-lg border border-white/10 overflow-hidden">
                   <div className="px-4 py-3 border-b border-white/10">
                     <h2 className="font-semibold text-primary flex items-center gap-2">
                       <Crown className="h-5 w-5" />
@@ -965,177 +966,81 @@ export default function RiderPage() {
               </div>
             )}
 
-            {/* All Available Routes */}
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-primary">
-                    Available Routes
-                  </h2>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="future-dates"
-                      checked={showFutureDates}
-                      onCheckedChange={setShowFutureDates}
-                      data-testid="switch-future-dates"
-                    />
-                    <label htmlFor="future-dates" className="text-sm flex items-center gap-1 cursor-pointer">
-                      <CalendarDays className="h-4 w-4" />
-                      Future dates
-                    </label>
-                  </div>
-                </div>
-              </div>
+            {/* All Available Routes - Collapsible */}
+            <div className="backdrop-blur-md bg-background/40 rounded-xl shadow-lg border border-white/10 overflow-hidden">
+              <button
+                type="button"
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/5 transition-colors"
+                onClick={() => setAllRoutesExpanded(!allRoutesExpanded)}
+                data-testid="button-toggle-all-routes"
+              >
+                <h2 className="font-semibold text-primary flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  All Available Routes
+                  <Badge className="bg-primary text-white text-xs">{filteredAndSortedRoutes.length}</Badge>
+                </h2>
+                {allRoutesExpanded ? <ChevronUp className="h-5 w-5 text-primary" /> : <ChevronDown className="h-5 w-5 text-primary" />}
+              </button>
 
-              <div className="flex items-center gap-2 mb-4">
-                <Badge variant={!showFutureDates ? "default" : "outline"}>
-                  Next 24 hours
-                </Badge>
-                {showFutureDates && (
-                  <Badge variant="secondary">
-                    + Future dates
-                  </Badge>
-                )}
-                <Badge variant="outline" className="ml-auto">
-                  {filteredAndSortedRoutes.length} routes
-                </Badge>
-              </div>
-
-              {routesLoading ? (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <Card key={i} className="animate-pulse">
-                      <CardContent className="p-6">
-                        <div className="h-20 bg-muted rounded" />
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : filteredAndSortedRoutes.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="p-12 text-center">
-                    <Calendar className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
-                    <p className="text-muted-foreground">
-                      {showFutureDates 
-                        ? "No driver routes available at the moment."
-                        : "No routes available in the next 24 hours."}
-                    </p>
-                    {!showFutureDates && (
-                      <Button 
-                        variant="link" 
-                        onClick={() => setShowFutureDates(true)}
-                        className="mt-2"
-                      >
-                        Future dates
-                      </Button>
-                    )}
-                    <p className="text-sm text-muted-foreground mt-2">Post a request and wait for drivers to respond!</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {filteredAndSortedRoutes.map((route) => (
-                  <Card key={route.id} className="group hover:border-primary/50 transition-all hover:shadow-md cursor-pointer" data-testid={`card-route-${route.id}`}>
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <Link href={`/driver/${route.driverId}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity" data-testid={`link-driver-profile-${route.id}`}>
-                          <Avatar>
-                            <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
-                            <AvatarFallback>{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <p className="font-semibold text-primary" data-testid={`text-driver-name-route-${route.id}`}>
-                                {route.driver?.firstName || 'Driver'}{route.driver?.lastName ? ` ${route.driver.lastName.charAt(0)}.` : ''}
-                              </p>
-                              {route.driver?.driverVerified && (
-                                <Shield className="h-3.5 w-3.5 text-green-500" />
+              {allRoutesExpanded && (
+                <div className="p-4 border-t border-white/10">
+                  {routesLoading ? (
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="animate-pulse bg-white/20 rounded-lg h-24" />
+                      ))}
+                    </div>
+                  ) : filteredAndSortedRoutes.length === 0 ? (
+                    <div className="p-6 text-center">
+                      <Calendar className="h-10 w-10 text-primary/40 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No driver routes available at the moment.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Post your request and drivers will see it!</p>
+                    </div>
+                  ) : (
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {filteredAndSortedRoutes.slice(0, 4).map((route) => (
+                        <div key={route.id} className="group bg-white/50 dark:bg-white/10 rounded-lg hover:bg-white/70 dark:hover:bg-white/20 transition-all cursor-pointer" data-testid={`card-route-${route.id}`}>
+                          <div className="p-3">
+                            <div className="flex justify-between items-start mb-2">
+                              <Link href={`/driver/${route.driverId}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity" data-testid={`link-driver-profile-${route.id}`}>
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
+                                  <AvatarFallback>{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <p className="font-medium text-sm text-primary" data-testid={`text-driver-name-route-${route.id}`}>
+                                    {route.driver?.firstName || 'Driver'}{route.driver?.lastName ? ` ${route.driver.lastName.charAt(0)}.` : ''}
+                                  </p>
+                                  <div className="flex items-center text-xs text-muted-foreground gap-1">
+                                    <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500" />
+                                    <span>{route.driver?.driverRating ? parseFloat(route.driver.driverRating).toFixed(1) : 'New'}</span>
+                                  </div>
+                                </div>
+                              </Link>
+                              {route.pricePerSeat && (
+                                <Badge variant="secondary" className="text-sm px-2 py-0.5 bg-primary text-white">
+                                  £{route.pricePerSeat}
+                                </Badge>
                               )}
                             </div>
-                            <div className="flex items-center text-xs text-muted-foreground gap-1">
-                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                              <span>{route.driver?.driverRating ? parseFloat(route.driver.driverRating).toFixed(1) : 'New'}</span>
-                              <span>•</span>
-                              <span>{route.availableSeats} seats left</span>
+                            <div className="space-y-1 text-xs">
+                              <p><span className="text-primary">●</span> {route.startLocation}</p>
+                              <p><span className="text-secondary">●</span> {route.endLocation}</p>
                             </div>
-                            {route.driver?.vehicleMake && (
-                              <div className="flex items-center text-xs text-muted-foreground mt-0.5">
-                                <Car className="h-3 w-3 mr-1" />
-                                {route.driver.vehicleColor && <span className="capitalize">{route.driver.vehicleColor} </span>}
-                                {route.driver.vehicleMake} {route.driver.vehicleModel}
-                                {route.driver.vehicleRegistration && <span className="ml-1 font-medium">• {route.driver.vehicleRegistration}</span>}
-                              </div>
-                            )}
-                          </div>
-                        </Link>
-                        {route.pricePerSeat && (
-                          <Badge variant="secondary" className="text-lg px-3 py-1 bg-primary/10 text-primary">
-                            £{route.pricePerSeat}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="space-y-3 relative">
-                        <div className="absolute left-[7px] top-2 bottom-2 w-0.5 bg-border -z-10" />
-                        
-                        <div className="flex items-center gap-3">
-                          <div className="h-4 w-4 rounded-full border-2 border-primary bg-background z-10" />
-                          <div>
-                            <p className="text-sm font-medium">{route.startLocation}</p>
-                            <p className="text-xs text-muted-foreground">{formatDate(route.departureTime)} at {formatTime(route.departureTime)}</p>
+                            <div className="flex items-center justify-between mt-2">
+                              <Badge variant="outline" className="text-xs">
+                                <Clock className="h-2.5 w-2.5 mr-1" />
+                                {getTimeUntilDeparture(route.departureTime)}
+                              </Badge>
+                              <Button size="sm" className="h-7 text-xs bg-primary hover:bg-primary/90">
+                                View <ArrowRight className="ml-1 h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                        
-                        {getConfirmedRiders(route) > 0 && (
-                          <div className="flex items-center gap-3 pl-1">
-                            <div className="h-2 w-2 rounded-full bg-green-500 z-10" />
-                            <p className="text-xs text-green-600 dark:text-green-400">
-                              {getConfirmedRiders(route)} stop{getConfirmedRiders(route) > 1 ? 's' : ''} on this route
-                            </p>
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center gap-3">
-                          <div className="h-4 w-4 rounded-full border-2 border-secondary bg-background z-10" />
-                          <div>
-                            <p className="text-sm font-medium">{route.endLocation}</p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-wrap items-center gap-2 mt-4">
-                        <Badge variant="outline" className="text-xs">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {getTimeUntilDeparture(route.departureTime)}
-                        </Badge>
-                        {getConfirmedRiders(route) > 0 && (
-                          <Badge variant="secondary" className="text-xs bg-accent/10 text-accent dark:bg-accent/20 dark:text-accent">
-                            <Users className="h-3 w-3 mr-1" />
-                            {getConfirmedRiders(route)} confirmed
-                          </Badge>
-                        )}
-                        {getDistanceAndETA(route) && (
-                          <>
-                            <Badge variant="outline" className="text-xs">
-                              <Navigation className="h-3 w-3 mr-1" />
-                              {getDistanceAndETA(route)!.distance}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs text-muted-foreground">
-                              ~{getDistanceAndETA(route)!.eta} away
-                            </Badge>
-                          </>
-                        )}
-                      </div>
-                    </CardContent>
-                    <CardFooter className="bg-muted/10 p-3 flex justify-end">
-                      <Button size="sm" variant="ghost" className="group-hover:text-primary group-hover:bg-primary/5">
-                        View Route <ArrowRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                  ))}
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
