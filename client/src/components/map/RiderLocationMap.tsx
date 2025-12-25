@@ -182,6 +182,7 @@ interface RiderLocationMapProps {
   onRouteInfo?: (distance: number, duration: number) => void;
   className?: string;
   onDriverClick?: (driver: NearbyDriver) => void;
+  fullScreen?: boolean;
 }
 
 const createDriverIcon = (vehicleColor: string | null = null) => {
@@ -319,6 +320,7 @@ export function RiderLocationMap({
   onRouteInfo,
   className = "",
   onDriverClick,
+  fullScreen = false,
 }: RiderLocationMapProps) {
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
 
@@ -371,7 +373,7 @@ export function RiderLocationMap({
 
   if (!userLocation) {
     return (
-      <div className={`w-full h-full flex items-center justify-center bg-muted rounded-lg ${className}`}>
+      <div className={`w-full h-full flex items-center justify-center bg-muted ${fullScreen ? '' : 'rounded-lg'} ${className}`}>
         <div className="text-center text-muted-foreground">
           <Navigation className="h-8 w-8 mx-auto mb-2 animate-pulse" />
           <p>Getting your location...</p>
@@ -386,9 +388,10 @@ export function RiderLocationMap({
     <MapContainer
       center={center}
       zoom={13}
-      className={`w-full h-full rounded-lg ${className}`}
-      style={{ minHeight: '150px' }}
+      className={`w-full h-full ${fullScreen ? '' : 'rounded-lg'} ${className}`}
+      style={{ minHeight: fullScreen ? '100vh' : '150px', height: fullScreen ? '100vh' : undefined }}
       data-testid="rider-location-map"
+      zoomControl={!fullScreen}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> | &copy; <a href="https://carto.com/">CARTO</a>'
