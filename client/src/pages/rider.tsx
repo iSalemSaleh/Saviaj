@@ -566,8 +566,8 @@ export default function RiderPage() {
         <Navbar />
       </div>
       
-      {/* TOP: Request Form - compact, fixed height */}
-      <div className="flex-shrink-0 z-20 px-3 py-3 bg-background/95 border-b border-border">
+      {/* TOP: Request Form - compact, glassmorphism */}
+      <div className="flex-shrink-0 z-20 px-3 py-3 backdrop-blur-md bg-background/70 border-b border-white/10 shadow-sm">
         <form onSubmit={handleSubmit} className="space-y-2">
           <PostcodeSearch
             value={pickupLocation}
@@ -636,7 +636,7 @@ export default function RiderPage() {
           <div className="absolute top-2 right-2 z-10">
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="sm" variant="secondary" className="shadow-lg">
+                <Button size="sm" variant="secondary" className="shadow-lg backdrop-blur-sm bg-white/80 dark:bg-slate-800/80 border border-white/20">
                   <Badge className="bg-primary text-white mr-2">{myPendingOffers.length}</Badge>
                   My Requests
                 </Button>
@@ -695,10 +695,10 @@ export default function RiderPage() {
         )}
       </div>
 
-      {/* BOTTOM: Nearby Drivers Panel - compact, scrollable */}
-      <div className="flex-shrink-0 z-20 bg-background border-t border-border max-h-[35vh] overflow-y-auto">
+      {/* BOTTOM: Nearby Drivers Panel - glassmorphism, scrollable */}
+      <div className="flex-shrink-0 z-20 backdrop-blur-md bg-background/80 border-t border-white/10 max-h-[35vh] overflow-y-auto shadow-lg">
         {/* Tab-like header */}
-        <div className="sticky top-0 bg-background border-b border-border px-3 py-2 flex items-center gap-4">
+        <div className="sticky top-0 backdrop-blur-md bg-background/90 border-b border-white/10 px-3 py-2 flex items-center gap-4">
           <button
             className={`text-sm font-medium flex items-center gap-1 pb-1 ${!allRoutesExpanded ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'}`}
             onClick={() => setAllRoutesExpanded(false)}
@@ -735,7 +735,7 @@ export default function RiderPage() {
                 {nearbyDrivers.slice(0, 10).map((driver) => {
                   const estimatedCost = getEstimatedCost(driver);
                   return (
-                    <div key={driver.id} className="flex-shrink-0 w-40 p-3 bg-muted/50 rounded-lg border" data-testid={`card-pro-driver-${driver.id}`}>
+                    <div key={driver.id} className="flex-shrink-0 w-40 p-3 backdrop-blur-sm bg-white/40 dark:bg-white/10 rounded-xl border border-white/20 shadow-sm hover:bg-white/50 dark:hover:bg-white/15 transition-all" data-testid={`card-pro-driver-${driver.id}`}>
                       <Link href={`/driver/${driver.id}`} className="block" data-testid={`link-pro-driver-${driver.id}`}>
                         <div className="flex items-center gap-2 mb-2">
                           <div className="relative">
@@ -794,7 +794,7 @@ export default function RiderPage() {
             ) : (
               <div className="flex gap-3 overflow-x-auto pb-2">
                 {filteredAndSortedRoutes.slice(0, 10).map((route) => (
-                  <div key={route.id} className="flex-shrink-0 w-48 p-3 bg-muted/50 rounded-lg border" data-testid={`card-route-${route.id}`}>
+                  <div key={route.id} className="flex-shrink-0 w-48 p-3 backdrop-blur-sm bg-white/40 dark:bg-white/10 rounded-xl border border-white/20 shadow-sm hover:bg-white/50 dark:hover:bg-white/15 transition-all" data-testid={`card-route-${route.id}`}>
                     <Link href={`/driver/${route.driverId}`} className="block" data-testid={`link-driver-profile-${route.id}`}>
                       <div className="flex items-center gap-2 mb-2">
                         <Avatar className="h-7 w-7">
