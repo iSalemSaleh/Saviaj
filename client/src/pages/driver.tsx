@@ -700,11 +700,9 @@ export default function DriverPage() {
             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               {user?.isCommercialDriver && (
                 <>
-                  <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                    isOnlineForHire ? 'bg-green-500/20 text-green-700' : 'bg-slate-200 text-slate-500'
-                  }`}>
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-200">
                     <Radio className={`h-2.5 w-2.5 ${isOnlineForHire ? 'text-green-500 animate-pulse' : 'text-slate-400'}`} />
-                    <span>{isOnlineForHire ? 'Online' : 'Offline'}</span>
+                    <span className={isOnlineForHire ? 'text-green-600' : 'text-slate-500'}>{isOnlineForHire ? 'Online' : 'Offline'}</span>
                     <Switch
                       checked={isOnlineForHire}
                       onCheckedChange={handleToggleOnlineStatus}
