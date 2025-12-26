@@ -153,11 +153,24 @@ export default function DriverPage() {
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setUserLocation({ lat, lng });
+          setStartCoords({ lat, lon: lng });
+          
+          try {
+            const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${lat}&lon=${lng}`);
+            const data = await response.json();
+            if (data.address) {
+              setStartLocation(data.address);
+            } else {
+              setStartLocation("Your current location");
+            }
+          } catch (error) {
+            console.log("Reverse geocode error:", error);
+            setStartLocation("Your current location");
+          }
         },
         (error) => {
           console.log("Geolocation error:", error.message);
