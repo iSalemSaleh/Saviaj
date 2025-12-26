@@ -321,7 +321,7 @@ export default function DriverPage() {
       const response = await fetch("/api/rider-offers?status=pending");
       return response.json();
     },
-    refetchInterval: 15000,
+    refetchInterval: 200, // Refresh every 0.2 seconds for time-critical bids
   });
 
   const filteredOffers = useMemo(() => {
@@ -358,13 +358,13 @@ export default function DriverPage() {
   const { data: myRides = [], isLoading: ridesLoading } = useQuery<Ride[]>({
     queryKey: ["/api/rides"],
     enabled: !!user,
-    refetchInterval: 10000,
+    refetchInterval: 200, // Refresh every 0.2 seconds for time-critical updates
   });
 
   const { data: pendingRequests = [], isLoading: pendingRequestsLoading } = useQuery<Ride[]>({
     queryKey: ["/api/pro-driver/pending-requests"],
     enabled: !!user?.isCommercialDriver && isOnlineForHire,
-    refetchInterval: 10000,
+    refetchInterval: 200, // Refresh every 0.2 seconds for time-critical updates
   });
 
   const respondToRequestMutation = useMutation({

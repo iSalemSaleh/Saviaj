@@ -225,7 +225,7 @@ export default function RiderPage() {
       const response = await fetch(url);
       return response.json();
     },
-    refetchInterval: 15000, // Refresh every 15 seconds
+    refetchInterval: 1000, // Refresh every 1 second for nearby routes
   });
 
   const { data: myOffers = [], isLoading: myOffersLoading } = useQuery<RiderOffer[]>({
@@ -235,7 +235,7 @@ export default function RiderPage() {
       return response.json();
     },
     enabled: !!user,
-    refetchInterval: 10000, // Refresh every 10 seconds
+    refetchInterval: 200, // Refresh every 0.2 seconds for time-critical bids
   });
 
   // Query for nearby commercial drivers (Pro drivers)
@@ -252,10 +252,10 @@ export default function RiderPage() {
       return response.json();
     },
     enabled: !!pickupCoords,
-    refetchInterval: 15000, // Refresh every 15 seconds
+    refetchInterval: 1000, // Refresh every 1 second for nearby drivers
   });
 
-  // Query for bids on a specific offer
+  // Query for bids on a specific offer - refreshes every 0.2 seconds when dialog is open
   const { data: offerBids = [], isLoading: bidsLoading, refetch: refetchBids } = useQuery<Bid[]>({
     queryKey: ["/api/bids/offer", viewingBidsForOffer?.id],
     queryFn: async () => {
@@ -264,27 +264,26 @@ export default function RiderPage() {
       return response.json();
     },
     enabled: !!viewingBidsForOffer && bidsDialogOpen,
+    refetchInterval: bidsDialogOpen ? 200 : false, // Refresh every 0.2 seconds when viewing bids
   });
 
-  // Mutation to accept a bid
+  // Mutation to accept a bid - now redirects to payment
   const acceptBidMutation = useMutation({
     mutationFn: async (bidId: number) => {
       const response = await apiRequest("PATCH", `/api/bids/${bidId}/accept`, {});
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: { ride: { id: number }; clientSecret: string }) => {
       toast({
-        title: "Bid Accepted!",
-        description: "Your ride has been confirmed. Redirecting to ride details...",
+        title: "Offer Accepted!",
+        description: "Redirecting to payment...",
       });
       setBidsDialogOpen(false);
       setViewingBidsForOffer(null);
       queryClient.invalidateQueries({ queryKey: ["/api/rider-offers/mine"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rides"] });
-      // Navigate to the ride page after a short delay
-      setTimeout(() => {
-        navigate("/rider");
-      }, 1500);
+      // Navigate to ride page with payment info
+      navigate(`/ride/${data.ride.id}?payment=pending&secret=${encodeURIComponent(data.clientSecret)}`);
     },
     onError: (error: Error) => {
       toast({

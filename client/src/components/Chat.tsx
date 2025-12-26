@@ -45,7 +45,7 @@ export function Chat({
   const { data: messages = [] } = useQuery<ChatMessage[]>({
     queryKey: [`/api/rides/${rideId}/messages`],
     enabled: isOpen && rideId > 0,
-    refetchInterval: 5000,
+    refetchInterval: 200, // Refresh every 0.2 seconds for instant messaging
   });
 
   useEffect(() => {

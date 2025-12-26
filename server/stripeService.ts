@@ -46,6 +46,16 @@ export class StripeService {
     });
   }
 
+  async retrievePaymentIntent(paymentIntentId: string) {
+    const stripe = await getUncachableStripeClient();
+    try {
+      return await stripe.paymentIntents.retrieve(paymentIntentId);
+    } catch (error) {
+      console.error("Error retrieving payment intent:", error);
+      return null;
+    }
+  }
+
   async getProduct(productId: string) {
     const result = await db.execute(
       sql`SELECT * FROM stripe.products WHERE id = ${productId}`

@@ -35,7 +35,8 @@ import {
   type InsertChatMessage,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, lt, gt, or, isNotNull } from "drizzle-orm";
+import { eq, and, desc, sql, lt, gt, or, isNotNull, ne } from "drizzle-orm";
+import { pool } from "./db";
 
 // Feature flag for dual-write to new normalized tables
 const ENABLE_DUAL_WRITE = true;
@@ -413,12 +414,18 @@ export interface IStorage {
   getRidesByUserId(userId: string): Promise<Ride[]>;
   getRideById(id: number): Promise<Ride | undefined>;
   updateRideStatus(id: number, status: string): Promise<Ride>;
+  updateRide(id: number, updates: Partial<{ status: string; paymentStatus: string }>): Promise<Ride>;
   
   // Bid operations
   createBid(bid: InsertBid): Promise<Bid>;
   getBidsByOfferId(offerId: number): Promise<Bid[]>;
   getBidsByDriverId(driverId: string): Promise<Bid[]>;
   updateBidStatus(id: number, status: string): Promise<Bid>;
+  acceptBidWithTransaction(bidId: number, paymentIntentId: string): Promise<{
+    bid: Bid;
+    ride: Ride;
+    offer: RiderOffer;
+  }>;
   
   // Notification operations
   getNotifications(userId: string): Promise<Notification[]>;
@@ -976,6 +983,19 @@ export class DatabaseStorage implements IStorage {
     return ride;
   }
 
+  async updateRide(id: number, updates: Partial<{ status: string; paymentStatus: string }>): Promise<Ride> {
+    const [ride] = await db
+      .update(rides)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+        ...(updates.status === 'completed' && { completedAt: new Date() }),
+      })
+      .where(eq(rides.id, id))
+      .returning();
+    return ride;
+  }
+
   // Bid operations
   async createBid(bid: InsertBid): Promise<Bid> {
     const [newBid] = await db
@@ -1019,6 +1039,114 @@ export class DatabaseStorage implements IStorage {
       .where(eq(bids.id, id))
       .returning();
     return bid;
+  }
+
+  async acceptBidWithTransaction(bidId: number, paymentIntentId: string): Promise<{
+    bid: Bid;
+    ride: Ride;
+    offer: RiderOffer;
+  }> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Get the bid
+      const bidResult = await client.query(
+        'SELECT * FROM bids WHERE id = $1 FOR UPDATE',
+        [bidId]
+      );
+      if (bidResult.rows.length === 0) {
+        throw new Error('Bid not found');
+      }
+      const bid = bidResult.rows[0];
+      
+      if (bid.status !== 'pending') {
+        throw new Error('Bid is no longer available');
+      }
+      
+      // Lock and get the rider offer
+      const offerResult = await client.query(
+        'SELECT * FROM rider_offers WHERE id = $1 FOR UPDATE',
+        [bid.rider_offer_id]
+      );
+      if (offerResult.rows.length === 0) {
+        throw new Error('Offer not found');
+      }
+      const offer = offerResult.rows[0];
+      
+      if (offer.status !== 'pending') {
+        throw new Error('This offer has already been accepted');
+      }
+      
+      // Update the accepted bid
+      await client.query(
+        'UPDATE bids SET status = $1, updated_at = NOW() WHERE id = $2',
+        ['accepted', bidId]
+      );
+      
+      // Reject all other pending bids on this offer
+      await client.query(
+        'UPDATE bids SET status = $1, updated_at = NOW() WHERE rider_offer_id = $2 AND id != $3 AND status = $4',
+        ['rejected', bid.rider_offer_id, bidId, 'pending']
+      );
+      
+      // Update the offer status
+      await client.query(
+        'UPDATE rider_offers SET status = $1, accepted_driver_id = $2, updated_at = NOW() WHERE id = $3',
+        ['accepted', bid.driver_id, bid.rider_offer_id]
+      );
+      
+      // Create the ride with payment_pending status
+      const paymentDeadline = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+      const rideResult = await client.query(
+        `INSERT INTO rides (
+          rider_id, driver_id, pickup_location, dropoff_location,
+          pickup_lat, pickup_lng, dropoff_lat, dropoff_lng,
+          agreed_price, scheduled_time, status, payment_status,
+          rider_offer_id, payment_deadline, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
+        RETURNING *`,
+        [
+          offer.rider_id,
+          bid.driver_id,
+          offer.pickup_location,
+          offer.dropoff_location,
+          offer.pickup_lat,
+          offer.pickup_lng,
+          offer.dropoff_lat,
+          offer.dropoff_lng,
+          bid.bid_price,
+          offer.requested_time,
+          'payment_pending',
+          'pending',
+          offer.id,
+          paymentDeadline
+        ]
+      );
+      
+      await client.query('COMMIT');
+      
+      // Convert snake_case to camelCase for the returned objects
+      const convertToCamelCase = (obj: any) => {
+        const result: any = {};
+        for (const key in obj) {
+          const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+          result[camelKey] = obj[key];
+        }
+        return result;
+      };
+      
+      return {
+        bid: convertToCamelCase(bidResult.rows[0]) as Bid,
+        ride: convertToCamelCase(rideResult.rows[0]) as Ride,
+        offer: convertToCamelCase(offerResult.rows[0]) as RiderOffer,
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   // Notification operations

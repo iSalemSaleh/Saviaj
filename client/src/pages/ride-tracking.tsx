@@ -45,6 +45,10 @@ interface Ride {
   agreedPrice: string;
   scheduledTime: string;
   status: string;
+  paymentStatus: string | null;
+  paymentDeadline: string | null;
+  paymentIntentId: string | null;
+  riderOfferId: number | null;
 }
 
 export default function RideTrackingPage() {
@@ -62,6 +66,8 @@ export default function RideTrackingPage() {
   const [showChat, setShowChat] = useState(false);
   const [pendingMessages, setPendingMessages] = useState<any[]>([]);
 
+  const [pendingPaymentSecret, setPendingPaymentSecret] = useState<string | null>(null);
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('payment') === 'success') {
@@ -72,12 +78,20 @@ export default function RideTrackingPage() {
       });
       window.history.replaceState({}, '', `/ride/${rideId}`);
     }
+    // Handle pending payment redirect from bid acceptance
+    if (urlParams.get('payment') === 'pending') {
+      const secret = urlParams.get('secret');
+      if (secret) {
+        setPendingPaymentSecret(decodeURIComponent(secret));
+      }
+      window.history.replaceState({}, '', `/ride/${rideId}`);
+    }
   }, [rideId, toast]);
 
   const { data: ride, isLoading: rideLoading } = useQuery<Ride>({
     queryKey: [`/api/rides/${rideId}`],
     enabled: rideId > 0,
-    refetchInterval: 5000,
+    refetchInterval: 200, // Refresh every 0.2 seconds for real-time status updates
   });
 
   // Fetch driver details to get vehicle color for the map

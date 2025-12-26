@@ -10,6 +10,7 @@ import { setupWebSocket } from "./websocket";
 import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema, users } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql } from "drizzle-orm";
+import { stripeService } from "./stripeService";
 
 // UK-specific validation functions
 // DVLA format: 16 alphanumeric characters (SSSSS YYMMDD IICCC)
@@ -1354,10 +1355,26 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const userId = req.session?.userId || req.user?.claims?.sub;
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
-      // Get the bid first to check the driver's limits
+      // Get the bid first to check the driver's limits and verify ownership
       const existingBid = await storage.getBidById(bidId);
       if (!existingBid) {
         return res.status(404).json({ message: "Bid not found" });
+      }
+      
+      // Get the rider offer to verify the user owns it
+      const offer = await storage.getRiderOfferById(existingBid.riderOfferId);
+      if (!offer) {
+        return res.status(404).json({ message: "Offer not found" });
+      }
+      
+      // Check if user is the offer owner
+      if (offer.riderId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // Check if offer is still pending
+      if (offer.status !== 'pending') {
+        return res.status(400).json({ message: "This offer has already been accepted" });
       }
       
       // Check if the driver has reached their daily limits before accepting
@@ -1378,45 +1395,34 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         });
       }
       
-      // Update bid status
-      const bid = await storage.updateBidStatus(bidId, "accepted");
+      // Create PaymentIntent with Stripe
+      const paymentIntent = await stripeService.createPaymentIntent(
+        Math.round(price * 100), // Convert to pence
+        'gbp',
+        { 
+          rideOfferId: offer.id.toString(),
+          bidId: bidId.toString(),
+          riderId: offer.riderId,
+          driverId: existingBid.driverId
+        }
+      );
       
-      // Get the rider offer
-      const offer = await storage.getRiderOfferById(bid.riderOfferId);
-      if (!offer) {
-        return res.status(404).json({ message: "Offer not found" });
-      }
-      
-      // Check if user is the offer owner
-      if (offer.riderId !== userId) {
-        return res.status(403).json({ message: "Unauthorized" });
-      }
-      
-      // Update offer status
-      await storage.updateRiderOfferStatus(offer.id, "accepted", bid.driverId);
-      
-      // Create ride
-      await storage.createRide({
-        riderId: offer.riderId,
-        driverId: bid.driverId,
-        pickupLocation: offer.pickupLocation,
-        dropoffLocation: offer.dropoffLocation,
-        pickupLat: offer.pickupLat,
-        pickupLng: offer.pickupLng,
-        dropoffLat: offer.dropoffLat,
-        dropoffLng: offer.dropoffLng,
-        agreedPrice: bid.bidPrice,
-        scheduledTime: offer.requestedTime,
-        riderOfferId: offer.id,
-      });
+      // Execute the transactional bid acceptance
+      const result = await storage.acceptBidWithTransaction(bidId, paymentIntent.id);
       
       // Track daily activity for private driver limits
-      await storage.incrementDriverDailyActivity(bid.driverId, new Date().toISOString().split('T')[0], price);
+      await storage.incrementDriverDailyActivity(existingBid.driverId, new Date().toISOString().split('T')[0], price);
       
-      res.json(bid);
-    } catch (error) {
+      // Return the ride with client secret for payment
+      res.json({
+        bid: result.bid,
+        ride: result.ride,
+        clientSecret: paymentIntent.client_secret,
+        paymentDeadline: result.ride.paymentDeadline
+      });
+    } catch (error: any) {
       console.error("Error accepting bid:", error);
-      res.status(500).json({ message: "Failed to accept bid" });
+      res.status(500).json({ message: error.message || "Failed to accept bid" });
     }
   });
 
@@ -1578,6 +1584,92 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     } catch (error) {
       console.error("Error creating payment session:", error);
       res.status(500).json({ message: "Failed to create payment session" });
+    }
+  });
+
+  // Confirm Payment (called after successful Stripe payment)
+  // SECURITY: Verifies payment intent status with Stripe before confirming ride
+  app.post('/api/rides/:id/confirm-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const { paymentIntentId } = req.body;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const ride = await storage.getRideById(rideId);
+      if (!ride) {
+        return res.status(404).json({ message: "Ride not found" });
+      }
+
+      if (ride.riderId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      // Verify payment status is payment_pending
+      if (ride.status !== 'payment_pending') {
+        return res.status(400).json({ message: "Ride is not awaiting payment" });
+      }
+
+      // Verify payment intent matches
+      if (ride.paymentIntentId !== paymentIntentId) {
+        return res.status(400).json({ message: "Payment intent mismatch" });
+      }
+
+      // CRITICAL: Verify payment actually succeeded with Stripe
+      const paymentIntent = await stripeService.retrievePaymentIntent(paymentIntentId);
+      
+      if (!paymentIntent) {
+        return res.status(400).json({ message: "Payment intent not found" });
+      }
+
+      // SECURITY: Verify PaymentIntent metadata matches this ride to prevent reuse attacks
+      const expectedAmount = Math.round(parseFloat(ride.agreedPrice) * 100);
+      if (paymentIntent.amount !== expectedAmount) {
+        console.log(`Payment amount mismatch for ride ${rideId}: expected=${expectedAmount}, got=${paymentIntent.amount}`);
+        return res.status(400).json({ message: "Payment amount mismatch" });
+      }
+      
+      if (paymentIntent.currency !== 'gbp') {
+        console.log(`Payment currency mismatch for ride ${rideId}: expected=gbp, got=${paymentIntent.currency}`);
+        return res.status(400).json({ message: "Payment currency mismatch" });
+      }
+      
+      // Verify metadata matches to prevent PaymentIntent reuse from other rides
+      const metadata = paymentIntent.metadata || {};
+      if (metadata.rideOfferId) {
+        // This is a PaymentIntent from bid acceptance - verify it matches the ride's offer
+        if (ride.riderOfferId && metadata.rideOfferId !== ride.riderOfferId.toString()) {
+          console.log(`Payment rideOfferId mismatch for ride ${rideId}: expected=${ride.riderOfferId}, got=${metadata.rideOfferId}`);
+          return res.status(400).json({ message: "Payment was for a different offer" });
+        }
+      }
+      if (metadata.rideId && metadata.rideId !== rideId.toString()) {
+        console.log(`Payment rideId mismatch for ride ${rideId}: expected=${rideId}, got=${metadata.rideId}`);
+        return res.status(400).json({ message: "Payment was for a different ride" });
+      }
+
+      // Only confirm if payment succeeded or requires capture (for manual capture mode)
+      if (paymentIntent.status !== 'succeeded' && paymentIntent.status !== 'requires_capture') {
+        console.log(`Payment verification failed for ride ${rideId}: status=${paymentIntent.status}`);
+        return res.status(400).json({ 
+          message: "Payment has not been completed", 
+          paymentStatus: paymentIntent.status 
+        });
+      }
+
+      // Update ride status to confirmed
+      const updatedRide = await storage.updateRide(rideId, {
+        status: 'confirmed',
+        paymentStatus: paymentIntent.status === 'succeeded' ? 'paid' : 'authorized'
+      });
+
+      res.json({ 
+        message: "Payment confirmed", 
+        ride: updatedRide 
+      });
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+      res.status(500).json({ message: "Failed to confirm payment" });
     }
   });
 
