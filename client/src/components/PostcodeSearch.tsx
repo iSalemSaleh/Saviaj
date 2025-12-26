@@ -130,7 +130,7 @@ export default function PostcodeSearch({
         )}
         <Input
           placeholder={placeholder}
-          className={`${compact ? 'pl-7 h-8 text-sm' : 'pl-9 h-11'} ${inputClassName}`}
+          className={`${compact ? 'pl-7 h-8 text-sm' : 'pl-9 h-11'} bg-white dark:bg-slate-900 border-gray-200 ${inputClassName}`}
           value={query || value}
           onChange={handleInputChange}
           onFocus={handleFocus}

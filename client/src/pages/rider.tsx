@@ -631,7 +631,7 @@ export default function RiderPage() {
                   min="1"
                   max="500"
                   step="1"
-                  className="pl-6 h-8 text-sm bg-white/70 dark:bg-slate-900/70"
+                  className="pl-6 h-8 text-sm bg-white dark:bg-slate-900 border-gray-200"
                   value={offerPrice}
                   onChange={(e) => setOfferPrice(e.target.value)}
                   aria-label="Price offer"
@@ -654,7 +654,7 @@ export default function RiderPage() {
       {/* OVERLAY: Target button to refocus map */}
       <button
         onClick={() => setCenterTrigger(prev => prev + 1)}
-        className="fixed bottom-56 right-3 z-40 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-800/90 shadow-lg backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-white dark:hover:bg-slate-700 transition-colors"
+        className="fixed bottom-[280px] right-3 z-50 w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow-lg border border-gray-200 dark:border-slate-600 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
         data-testid="button-refocus-map"
         title="Center on my location"
       >
@@ -676,7 +676,7 @@ export default function RiderPage() {
           >
             <div className="flex items-center gap-2">
               <Crown className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Pro Drivers</span>
+              <span className="text-sm font-medium">Nearby Drivers</span>
               {nearbyDrivers.length > 0 && <Badge className="bg-primary text-white text-xs">{nearbyDrivers.length}</Badge>}
             </div>
             {driversCardOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
