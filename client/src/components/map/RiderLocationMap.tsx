@@ -183,6 +183,7 @@ interface RiderLocationMapProps {
   className?: string;
   onDriverClick?: (driver: NearbyDriver) => void;
   fullScreen?: boolean;
+  centerTrigger?: number; // Increment to recenter map on user location
 }
 
 const createDriverIcon = (vehicleColor: string | null = null) => {
@@ -284,10 +285,12 @@ function MapUpdater({
   userLocation, 
   destination,
   nearbyDrivers,
+  centerTrigger,
 }: {
   userLocation: Location | null;
   destination?: Location | null;
   nearbyDrivers?: NearbyDriver[];
+  centerTrigger?: number;
 }) {
   const map = useMap();
 
@@ -309,6 +312,13 @@ function MapUpdater({
     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
   }, [map, userLocation, destination, nearbyDrivers]);
 
+  // Recenter on user location when centerTrigger changes
+  useEffect(() => {
+    if (centerTrigger && centerTrigger > 0 && userLocation) {
+      map.flyTo([userLocation.lat, userLocation.lng], 15, { duration: 0.5 });
+    }
+  }, [map, centerTrigger, userLocation]);
+
   return null;
 }
 
@@ -321,6 +331,7 @@ export function RiderLocationMap({
   className = "",
   onDriverClick,
   fullScreen = false,
+  centerTrigger = 0,
 }: RiderLocationMapProps) {
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
 
@@ -411,6 +422,7 @@ export function RiderLocationMap({
         userLocation={userLocation}
         destination={destination}
         nearbyDrivers={nearbyDrivers}
+        centerTrigger={centerTrigger}
       />
 
       <Marker position={[userLocation.lat, userLocation.lng]} icon={userIcon}>
