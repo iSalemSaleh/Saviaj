@@ -203,6 +203,7 @@ export default function RiderPage() {
       const response = await fetch(url);
       return response.json();
     },
+    refetchInterval: 15000, // Refresh every 15 seconds
   });
 
   const { data: myOffers = [], isLoading: myOffersLoading } = useQuery<RiderOffer[]>({
@@ -212,6 +213,7 @@ export default function RiderPage() {
       return response.json();
     },
     enabled: !!user,
+    refetchInterval: 10000, // Refresh every 10 seconds
   });
 
   // Query for nearby commercial drivers (Pro drivers)
@@ -228,6 +230,7 @@ export default function RiderPage() {
       return response.json();
     },
     enabled: !!pickupCoords,
+    refetchInterval: 15000, // Refresh every 15 seconds
   });
 
   // Calculate estimated cost based on driver's rate and trip distance
