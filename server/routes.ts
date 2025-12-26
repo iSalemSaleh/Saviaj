@@ -738,7 +738,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Update user driver status (with KYC license upload)
   app.post('/api/user/driver-status', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const { isDriver, driverLicenseUrl } = req.body;
       
       const user = await storage.updateUserDriverStatus(userId, isDriver, driverLicenseUrl);
@@ -752,7 +753,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Complete user profile (onboarding)
   app.post('/api/user/complete-profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const { 
         firstName, 
         lastName, 
@@ -850,7 +852,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Upgrade existing user to driver
   app.post('/api/user/upgrade-to-driver', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const { 
         driverLicenseUrl,
         driverLicenseNumber,
@@ -1008,7 +1011,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Serve uploaded license files (protected - requires authentication)
   app.get('/api/uploads/licenses/:filename', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const user = await storage.getUser(userId);
       const filename = req.params.filename;
       
@@ -1032,7 +1036,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Rider Offer Routes
   app.post('/api/rider-offers', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const validatedData = insertRiderOfferSchema.parse({
         ...req.body,
         riderId: userId,
@@ -1059,7 +1064,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.get('/api/rider-offers/mine', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const offers = await storage.getRiderOffersByUser(userId);
       res.json(offers);
     } catch (error) {
@@ -1087,7 +1093,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.patch('/api/rider-offers/:id/accept', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const driverId = req.user.claims.sub;
+      const driverId = req.session?.userId || req.user?.claims?.sub;
+      if (!driverId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       // Check private driver limits
       const limitCheck = await checkPrivateDriverLimits(driverId);
@@ -1143,7 +1150,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.patch('/api/rider-offers/:id/revise', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const { offerPrice } = req.body;
       
       if (!offerPrice || offerPrice < 1 || offerPrice > 500) {
@@ -1174,7 +1182,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.patch('/api/rider-offers/:id/cancel', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const existingOffer = await storage.getRiderOfferById(id);
       if (!existingOffer) {
@@ -1200,7 +1209,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Driver Route Routes
   app.post('/api/driver-routes', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       // Check private driver limits
       const limitCheck = await checkPrivateDriverLimits(userId);
@@ -1239,7 +1249,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.get('/api/driver-routes/mine', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const routes = await storage.getDriverRoutesByUser(userId);
       res.json(routes);
     } catch (error) {
@@ -1251,7 +1262,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Driver daily activity (for showing limits)
   app.get('/api/driver/daily-activity', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const user = await storage.getUser(userId);
       
       // Commercial drivers have no limits
@@ -1289,7 +1301,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Bid Routes
   app.post('/api/bids', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const validatedData = insertBidSchema.parse({
         ...req.body,
         driverId: userId,
@@ -1317,7 +1330,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.patch('/api/bids/:id/accept', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
       const bidId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       // Get the bid first to check the driver's limits
       const existingBid = await storage.getBidById(bidId);
@@ -1388,7 +1402,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Ride Routes
   app.get('/api/rides', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const rides = await storage.getRidesByUserId(userId);
       res.json(rides);
     } catch (error) {
@@ -1430,7 +1445,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.post('/api/rides/:id/create-payment-intent', isAuthenticated, async (req: any, res) => {
     try {
       const rideId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const ride = await storage.getRideById(rideId);
       if (!ride) {
@@ -1460,7 +1476,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.post('/api/rides/:id/payment-session', isAuthenticated, async (req: any, res) => {
     try {
       const rideId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const ride = await storage.getRideById(rideId);
       if (!ride) {
@@ -1503,7 +1520,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.post('/api/rides/:id/payment', isAuthenticated, async (req: any, res) => {
     try {
       const rideId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const ride = await storage.getRideById(rideId);
       if (!ride) {
@@ -1640,7 +1658,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Notification Routes
   app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const notifications = await storage.getNotifications(userId);
       res.json(notifications);
     } catch (error) {
@@ -1651,7 +1670,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.get('/api/notifications/unread-count', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const count = await storage.getUnreadNotificationCount(userId);
       res.json({ count });
     } catch (error) {
@@ -1663,7 +1683,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Unread messages count endpoint
   app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const count = await storage.getUnreadMessageCount(userId);
       res.json({ count });
     } catch (error) {
@@ -1678,7 +1699,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (isNaN(id)) {
         return res.status(400).json({ message: "Invalid notification ID" });
       }
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const notification = await storage.markNotificationRead(id, userId);
       if (!notification) {
         return res.status(404).json({ message: "Notification not found" });
@@ -1692,7 +1714,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.patch('/api/notifications/read-all', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       await storage.markAllNotificationsRead(userId);
       res.json({ success: true });
     } catch (error) {
@@ -1716,7 +1739,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // User Availability Routes
   app.post('/api/user/availability', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const { activeMode, isAvailable, lat, lng } = req.body;
       const user = await storage.updateUserAvailability(userId, activeMode, isAvailable, lat, lng);
       res.json(user);
@@ -1739,7 +1765,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Commercial Driver Availability Routes
   app.post('/api/driver/online-status', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const { isOnlineForHire, ratePerMile, driverTagline, lat, lng } = req.body;
       
       // Verify user is a commercial driver
@@ -1792,7 +1821,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Pro Driver Direct Hire Request
   app.post('/api/pro-driver/request-ride', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
-      const riderId = req.user.claims.sub;
+      const riderId = req.session?.userId || req.user?.claims?.sub;
+      if (!riderId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const { driverId, pickupLocation, dropoffLocation, pickupLat, pickupLng, dropoffLat, dropoffLng, estimatedPrice, scheduledTime } = req.body;
       
       // Verify driver is online for hire
@@ -1838,7 +1870,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Pro Driver Accept/Decline Ride Request
   app.patch('/api/pro-driver/respond-to-request/:rideId', isAuthenticated, async (req: any, res) => {
     try {
-      const driverId = req.user.claims.sub;
+      const driverId = req.session?.userId || req.user?.claims?.sub;
+      if (!driverId) { return res.status(401).json({ message: "Unauthorized" }); }
       const rideId = parseInt(req.params.rideId);
       const { action } = req.body; // 'accept' or 'decline'
       
@@ -1884,7 +1917,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Get pending ride requests for a Pro Driver
   app.get('/api/pro-driver/pending-requests', isAuthenticated, async (req: any, res) => {
     try {
-      const driverId = req.user.claims.sub;
+      const driverId = req.session?.userId || req.user?.claims?.sub;
+      if (!driverId) { return res.status(401).json({ message: "Unauthorized" }); }
       const pendingRequests = await storage.getPendingRideRequests(driverId);
       res.json(pendingRequests);
     } catch (error) {
@@ -1896,7 +1930,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Rating Routes
   app.post('/api/ratings', isAuthenticated, async (req: any, res) => {
     try {
-      const raterId = req.user.claims.sub;
+      const raterId = req.session?.userId || req.user?.claims?.sub;
+      if (!raterId) { return res.status(401).json({ message: "Unauthorized" }); }
       const { rideId, ratedUserId, raterRole, rating, comment } = req.body;
       
       // Check if already rated
@@ -1998,7 +2033,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.get('/api/ratings/check/:rideId', isAuthenticated, async (req: any, res) => {
     try {
       const rideId = parseInt(req.params.rideId);
-      const raterId = req.user.claims.sub;
+      const raterId = req.session?.userId || req.user?.claims?.sub;
+      if (!raterId) { return res.status(401).json({ message: "Unauthorized" }); }
       const hasRated = await storage.hasUserRatedRide(rideId, raterId);
       res.json({ hasRated });
     } catch (error) {
@@ -2011,7 +2047,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.patch('/api/rides/:id/start-pickup', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const ride = await storage.getRideById(id);
       if (!ride) return res.status(404).json({ message: "Ride not found" });
@@ -2028,7 +2065,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.patch('/api/rides/:id/start-trip', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const ride = await storage.getRideById(id);
       if (!ride) return res.status(404).json({ message: "Ride not found" });
@@ -2045,7 +2083,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.patch('/api/rides/:id/complete', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const ride = await storage.getRideById(id);
       if (!ride) return res.status(404).json({ message: "Ride not found" });
@@ -2067,7 +2106,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.patch('/api/rides/:id/cancel', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const ride = await storage.getRideById(id);
       if (!ride) return res.status(404).json({ message: "Ride not found" });
@@ -2099,7 +2139,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.patch('/api/driver-routes/:id/close', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const route = await storage.getDriverRouteById(id);
       if (!route) return res.status(404).json({ message: "Route not found" });
@@ -2129,7 +2170,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.get('/api/rides/:id/messages', isAuthenticated, async (req: any, res) => {
     try {
       const rideId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const ride = await storage.getRideById(rideId);
       if (!ride) {
@@ -2151,7 +2193,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.patch('/api/rides/:id/messages/read', isAuthenticated, async (req: any, res) => {
     try {
       const rideId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       const ride = await storage.getRideById(rideId);
       if (!ride) {
@@ -2175,7 +2218,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Update user profile (name, phone, address)
   app.patch('/api/settings/profile', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const { firstName, lastName, phoneNumber, homeAddress, city, postcode } = req.body;
       
       // Validate phone number if provided (international format)
@@ -2202,7 +2246,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Change password
   app.post('/api/settings/change-password', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const { currentPassword, newPassword } = req.body;
       
       if (!currentPassword || !newPassword) {
@@ -2239,7 +2284,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Soft delete account
   app.delete('/api/settings/account', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const { reason, password } = req.body;
       
       // Verify password before deletion
@@ -2275,7 +2321,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Admin: Get deleted users (requires admin flag)
   app.get('/api/admin/deleted-users', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const user = await storage.getUser(userId);
       
       if (!user?.isAdmin) {
@@ -2293,7 +2340,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Admin: Restore deleted user
   app.post('/api/admin/restore-user/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const adminId = req.user.claims.sub;
+      const adminId = req.session?.userId || req.user?.claims?.sub;
+      if (!adminId) { return res.status(401).json({ message: "Unauthorized" }); }
       const admin = await storage.getUser(adminId);
       
       if (!admin?.isAdmin) {
@@ -2313,7 +2361,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Upload profile image
   app.post('/api/settings/profile-image', isAuthenticated, profileImageUpload.single('profileImage'), async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
       if (!req.file) {
         return res.status(400).json({ message: "No image file provided" });
