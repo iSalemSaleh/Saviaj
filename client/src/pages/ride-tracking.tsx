@@ -60,6 +60,7 @@ export default function RideTrackingPage() {
   const [rating, setRating] = useState(5);
   const [ratingComment, setRatingComment] = useState("");
   const [showChat, setShowChat] = useState(false);
+  const [pendingMessages, setPendingMessages] = useState<any[]>([]);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -166,8 +167,12 @@ export default function RideTrackingPage() {
   const isRideActive = ride?.status === 'in_progress' || ride?.status === 'scheduled' || ride?.status === 'en_route_pickup' || ride?.status === 'matched';
 
   const handleChatMessage = useCallback((message: any) => {
+    // Always try to add to chat if it's open
     if ((window as any).__chatAddMessage) {
       (window as any).__chatAddMessage(message);
+    } else {
+      // Store pending messages if chat is not open
+      setPendingMessages(prev => [...prev, message]);
     }
     // Show toast notification for incoming messages (not messages we sent)
     if (message.type === 'chat_message' && message.senderId !== currentUserId && !showChat) {
@@ -179,6 +184,16 @@ export default function RideTrackingPage() {
       });
     }
   }, [currentUserId, showChat, toast]);
+
+  // When chat opens, flush pending messages
+  useEffect(() => {
+    if (showChat && pendingMessages.length > 0 && (window as any).__chatAddMessage) {
+      pendingMessages.forEach(msg => {
+        (window as any).__chatAddMessage(msg);
+      });
+      setPendingMessages([]);
+    }
+  }, [showChat, pendingMessages]);
 
   const {
     driverLocation,

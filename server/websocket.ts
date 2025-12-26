@@ -33,6 +33,18 @@ interface RideRoom {
 }
 
 const rideRooms = new Map<number, RideRoom>();
+const userConnections = new Map<string, WebSocket>();
+
+// Broadcast a message to a specific user by their userId
+export function broadcast(message: any, userId: string) {
+  const ws = userConnections.get(userId);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(message));
+    console.log(`[WebSocket] Broadcasted message to user ${userId}:`, message.type);
+  } else {
+    console.log(`[WebSocket] User ${userId} not connected, message not delivered`);
+  }
+}
 
 export function setupWebSocket(server: Server) {
   const wss = new WebSocketServer({ server, path: '/ws' });
@@ -84,6 +96,9 @@ export function setupWebSocket(server: Server) {
             currentUserType = actualUserType;
             currentUserId = userId;
             verifiedRide = { riderId: ride.riderId, driverId: ride.driverId };
+
+            // Store user connection for broadcast functionality
+            userConnections.set(userId, ws);
 
             if (!rideRooms.has(locMessage.rideId)) {
               rideRooms.set(locMessage.rideId, { 
@@ -228,6 +243,11 @@ export function setupWebSocket(server: Server) {
     });
 
     ws.on('close', () => {
+      // Remove from user connections
+      if (currentUserId) {
+        userConnections.delete(currentUserId);
+      }
+      
       if (currentRideId !== null && currentUserType) {
         const room = rideRooms.get(currentRideId);
         if (room) {

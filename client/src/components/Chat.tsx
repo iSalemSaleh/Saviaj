@@ -45,12 +45,25 @@ export function Chat({
   const { data: messages = [] } = useQuery<ChatMessage[]>({
     queryKey: [`/api/rides/${rideId}/messages`],
     enabled: isOpen && rideId > 0,
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
 
   useEffect(() => {
     if (messages.length > 0) {
-      setLocalMessages(messages);
+      setLocalMessages(prev => {
+        // Merge fetched messages with local messages, avoiding duplicates
+        const existingIds = new Set(prev.filter(m => m.id).map(m => m.id));
+        const newFromApi = messages.filter(m => !existingIds.has(m.id));
+        // Also keep any local messages without IDs (optimistic adds)
+        const localOnly = prev.filter(m => !m.id);
+        // Combine and sort by createdAt
+        const merged = [...messages, ...localOnly.filter(local => 
+          !messages.some(api => api.message === local.message && api.senderId === local.senderId)
+        )];
+        return merged.sort((a, b) => 
+          new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+      });
     }
   }, [messages]);
 
