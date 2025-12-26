@@ -4,14 +4,12 @@ import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, CalendarDays, Calendar, Crosshair, Power, Radio, Bell, Check, X, Pencil } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, Crosshair, Power, Radio, Bell, Check, X, ChevronDown, ChevronUp, Route, Users, History } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -29,10 +27,10 @@ const UNIT_TO_MILES: Record<DetourUnit, number> = {
 };
 
 const UNIT_LABELS: Record<DetourUnit, string> = {
-  miles: "Miles",
-  km: "Kilometers",
-  meters: "Meters",
-  yards: "Yards",
+  miles: "Mi",
+  km: "Km",
+  meters: "M",
+  yards: "Yd",
 };
 
 interface RiderOffer {
@@ -87,6 +85,8 @@ interface UserLocation {
   lng: number;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export default function DriverPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
@@ -94,6 +94,7 @@ export default function DriverPage() {
   const { toast } = useToast();
   
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [centerTrigger, setCenterTrigger] = useState(0);
 
   const [startLocation, setStartLocation] = useState("");
   const [startCoords, setStartCoords] = useState<{lat: number; lon: number} | null>(null);
@@ -105,6 +106,12 @@ export default function DriverPage() {
   const [availableSeats, setAvailableSeats] = useState("");
   const [pricePerSeat, setPricePerSeat] = useState("");
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  const [formExpanded, setFormExpanded] = useState(true);
+  const [offersCardOpen, setOffersCardOpen] = useState(false);
+  const [activeRidesCardOpen, setActiveRidesCardOpen] = useState(false);
+  const [historyCardOpen, setHistoryCardOpen] = useState(false);
+  const [offersPage, setOffersPage] = useState(0);
 
   const handleStartChange = (value: string, lat?: number, lon?: number) => {
     setStartLocation(value);
@@ -131,13 +138,10 @@ export default function DriverPage() {
   const [showFutureDates, setShowFutureDates] = useState(true);
   const [currentTime, setCurrentTime] = useState(Date.now());
   
-  // Commercial driver online status
   const [isOnlineForHire, setIsOnlineForHire] = useState(false);
   const [ratePerMile, setRatePerMile] = useState("");
   const [driverTagline, setDriverTagline] = useState("");
   const [isUpdatingOnlineStatus, setIsUpdatingOnlineStatus] = useState(false);
-  const [isEditingTagline, setIsEditingTagline] = useState(false);
-  const [isEditingRate, setIsEditingRate] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -163,7 +167,6 @@ export default function DriverPage() {
     }
   }, []);
 
-  // Initialize commercial driver online status from user data
   useEffect(() => {
     if (user?.isCommercialDriver) {
       setIsOnlineForHire(user.isOnlineForHire || false);
@@ -176,12 +179,8 @@ export default function DriverPage() {
     }
   }, [user]);
 
-  // Handle toggling online status for commercial drivers
   const handleToggleOnlineStatus = async () => {
-    console.log("handleToggleOnlineStatus called", { isCommercialDriver: user?.isCommercialDriver, isOnlineForHire, ratePerMile });
-    
     if (!user?.isCommercialDriver) {
-      console.log("Not a commercial driver, returning early");
       toast({
         title: "Error",
         description: "Only commercial drivers can go online.",
@@ -192,9 +191,7 @@ export default function DriverPage() {
     
     const newOnlineStatus = !isOnlineForHire;
     
-    // Require rate per mile when going online
     if (newOnlineStatus && (!ratePerMile || parseFloat(ratePerMile) <= 0)) {
-      console.log("Rate validation failed:", { ratePerMile });
       toast({
         title: "Rate Required",
         description: "Please set your rate per mile before going online.",
@@ -206,7 +203,6 @@ export default function DriverPage() {
     setIsUpdatingOnlineStatus(true);
     
     try {
-      // Get current location when going online (optional - continue if it fails)
       let lat: number | undefined;
       let lng: number | undefined;
       
@@ -221,8 +217,6 @@ export default function DriverPage() {
           console.log("Geolocation unavailable, proceeding without location:", geoError);
         }
       }
-      
-      console.log("Sending online status update:", { isOnlineForHire: newOnlineStatus, ratePerMile: parseFloat(ratePerMile), lat, lng });
       
       const response = await apiRequest("POST", "/api/driver/online-status", {
         isOnlineForHire: newOnlineStatus,
@@ -314,6 +308,7 @@ export default function DriverPage() {
       const response = await fetch("/api/rider-offers?status=pending");
       return response.json();
     },
+    refetchInterval: 15000,
   });
 
   const filteredOffers = useMemo(() => {
@@ -344,16 +339,19 @@ export default function DriverPage() {
     return distanceToPickup <= detourDistanceInMiles && distanceToDropoff <= detourDistanceInMiles;
   }) : [];
 
+  const displayOffers = startCoords && endCoords ? nearbyOffers : filteredOffers;
+  const paginatedOffers = displayOffers.slice(offersPage * ITEMS_PER_PAGE, (offersPage + 1) * ITEMS_PER_PAGE);
+
   const { data: myRides = [], isLoading: ridesLoading } = useQuery<Ride[]>({
     queryKey: ["/api/rides"],
     enabled: !!user,
+    refetchInterval: 10000,
   });
 
-  // Query for pending Pro Driver ride requests
   const { data: pendingRequests = [], isLoading: pendingRequestsLoading } = useQuery<Ride[]>({
     queryKey: ["/api/pro-driver/pending-requests"],
     enabled: !!user?.isCommercialDriver && isOnlineForHire,
-    refetchInterval: 10000, // Poll every 10 seconds when online
+    refetchInterval: 10000,
   });
 
   const respondToRequestMutation = useMutation({
@@ -403,6 +401,7 @@ export default function DriverPage() {
       setDetourUnit("miles");
       setAvailableSeats("");
       setPricePerSeat("");
+      setFormExpanded(false);
     },
     onError: (error: Error) => {
       toast({
@@ -591,736 +590,588 @@ export default function DriverPage() {
   const activeRides = myRides.filter(r => r.status === "scheduled" || r.status === "in_progress");
   const completedRides = myRides.filter(r => r.status === "completed");
 
+  const handleRecenter = () => {
+    setCenterTrigger(prev => prev + 1);
+  };
+
+  const handleCardToggle = (card: 'offers' | 'active' | 'history') => {
+    if (card === 'offers') {
+      setOffersCardOpen(!offersCardOpen);
+      setActiveRidesCardOpen(false);
+      setHistoryCardOpen(false);
+    } else if (card === 'active') {
+      setActiveRidesCardOpen(!activeRidesCardOpen);
+      setOffersCardOpen(false);
+      setHistoryCardOpen(false);
+    } else {
+      setHistoryCardOpen(!historyCardOpen);
+      setOffersCardOpen(false);
+      setActiveRidesCardOpen(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-muted/20">
-      <Navbar />
-      
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
-        <div className="grid lg:grid-cols-12 gap-4 lg:gap-6">
-          
-          {/* Left Panel: Post Route */}
-          <div className="lg:col-span-4 space-y-3">
-            <div className="lg:sticky lg:top-20 space-y-3">
-              {/* Commercial Driver Online Status Card */}
-              {user?.isCommercialDriver && (
-                <Card className={`border-none shadow-lg ${isOnlineForHire ? 'bg-gradient-to-r from-green-600 to-green-500' : 'bg-gradient-to-r from-slate-700 to-slate-600'} text-white`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Radio className={`h-4 w-4 ${isOnlineForHire ? 'animate-pulse' : 'opacity-60'}`} />
-                        <span className="font-semibold text-sm">Pro Driver Status</span>
-                      </div>
-                      <Badge variant="secondary" className={isOnlineForHire ? 'bg-white/20 text-white border-white/30' : 'bg-white/10 text-white/80 border-white/20'}>
-                        {isOnlineForHire ? 'ONLINE' : 'OFFLINE'}
-                      </Badge>
-                    </div>
-                    
-                    {isOnlineForHire ? (
-                      <div className="space-y-3">
-                        <div className="bg-white/20 rounded-lg p-3 text-center">
-                          <p className="text-sm font-medium">You're visible to nearby riders</p>
-                          {driverTagline && <p className="text-xs text-white/80 mt-1">"{driverTagline}"</p>}
-                          <p className="text-xs text-white/80 mt-1">Rate: £{ratePerMile}/mile</p>
-                        </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={handleToggleOnlineStatus}
-                          disabled={isUpdatingOnlineStatus}
-                          className="w-full h-9 bg-red-500 hover:bg-red-600"
-                          data-testid="button-toggle-online"
-                        >
-                          {isUpdatingOnlineStatus ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Power className="h-4 w-4 mr-1" />
-                              Go Offline
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {/* Compact card with both tagline and rate */}
-                        <div className="bg-white/10 rounded-lg p-2.5 space-y-2">
-                          {/* Tagline row */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-white/60 w-14 flex-shrink-0">Tagline</span>
-                            {isEditingTagline ? (
-                              <div className="flex-1 flex gap-1">
-                                <Input
-                                  type="text"
-                                  value={driverTagline}
-                                  onChange={(e) => setDriverTagline(e.target.value.slice(0, 100))}
-                                  placeholder="e.g., Airport specialist"
-                                  className="h-7 text-xs bg-white text-gray-900 border-none flex-1"
-                                  maxLength={100}
-                                  autoFocus
-                                  onKeyDown={(e) => e.key === 'Enter' && setIsEditingTagline(false)}
-                                  data-testid="input-driver-tagline"
-                                  aria-label="Service tagline"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setIsEditingTagline(false)}
-                                  className="p-1 bg-white/20 hover:bg-white/30 rounded"
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex-1 flex items-center justify-between">
-                                <p className="text-xs text-white truncate" data-testid="text-tagline-display">
-                                  {driverTagline || <span className="text-white/50 italic">Tap to add</span>}
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsEditingTagline(true)}
-                                  className="p-1 hover:bg-white/20 rounded transition-colors flex-shrink-0"
-                                  data-testid="button-edit-tagline"
-                                  aria-label="Edit tagline"
-                                >
-                                  <Pencil className="h-3 w-3 text-white/70" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
+    <div className="h-screen w-screen overflow-hidden relative">
+      <div className="fixed inset-0 z-0">
+        <RiderLocationMap
+          userLocation={startCoords ? { lat: startCoords.lat, lng: startCoords.lon } : userLocation}
+          destination={endCoords ? { lat: endCoords.lat, lng: endCoords.lon } : undefined}
+          nearbyDrivers={[]}
+          showRoute={!!startCoords && !!endCoords}
+          centerTrigger={centerTrigger}
+        />
+      </div>
 
-                          {/* Rate row */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-white/60 w-14 flex-shrink-0">Rate</span>
-                            {isEditingRate ? (
-                              <div className="flex-1 flex gap-1">
-                                <div className="relative flex-1">
-                                  <PoundSterling className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-500" />
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    min="0.50"
-                                    max="10"
-                                    value={ratePerMile}
-                                    onChange={(e) => setRatePerMile(e.target.value)}
-                                    placeholder="per mile"
-                                    className="pl-6 h-7 text-xs bg-white text-gray-900 border-none"
-                                    autoFocus
-                                    onKeyDown={(e) => e.key === 'Enter' && setIsEditingRate(false)}
-                                    data-testid="input-rate-per-mile"
-                                    aria-label="Rate per mile"
-                                  />
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsEditingRate(false)}
-                                  className="p-1 bg-white/20 hover:bg-white/30 rounded"
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex-1 flex items-center justify-between">
-                                <p className="text-xs text-white" data-testid="text-rate-display">
-                                  {ratePerMile ? (
-                                    <span className="font-semibold">£{ratePerMile}/mile</span>
-                                  ) : (
-                                    <span className="text-white/50 italic">Tap to set</span>
-                                  )}
-                                </p>
-                                <button
-                                  type="button"
-                                  onClick={() => setIsEditingRate(true)}
-                                  className="p-1 hover:bg-white/20 rounded transition-colors flex-shrink-0"
-                                  data-testid="button-edit-rate"
-                                  aria-label="Edit rate"
-                                >
-                                  <Pencil className="h-3 w-3 text-white/70" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <Navbar />
+      </div>
 
-                        {/* Go Online Button */}
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => {
-                            setIsEditingTagline(false);
-                            setIsEditingRate(false);
-                            handleToggleOnlineStatus();
-                          }}
-                          disabled={isUpdatingOnlineStatus}
-                          className="w-full h-8 bg-white text-green-700 hover:bg-green-50 font-semibold text-sm"
-                          data-testid="button-toggle-online"
-                        >
-                          {isUpdatingOnlineStatus ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Power className="h-4 w-4 mr-1" />
-                              Go Online
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    )}
-                    
-                  </CardContent>
-                </Card>
-              )}
-              
-              {/* Pending Ride Requests for Pro Drivers */}
-              {user?.isCommercialDriver && isOnlineForHire && pendingRequests.length > 0 && (
-                <Card className="border-none shadow-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white">
-                  <CardHeader className="py-3 px-4">
-                    <div className="flex items-center gap-2">
-                      <Bell className="h-5 w-5 animate-bounce" />
-                      <CardTitle className="text-lg text-white">Incoming Requests</CardTitle>
-                      <Badge className="bg-white/20 text-white">{pendingRequests.length}</Badge>
+      {user?.isCommercialDriver && (
+        <div className="fixed top-16 right-4 z-40">
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-full backdrop-blur-md shadow-lg border ${
+            isOnlineForHire 
+              ? 'bg-green-500/90 border-green-400 text-white' 
+              : 'bg-slate-800/90 border-slate-600 text-white'
+          }`}>
+            <Radio className={`h-4 w-4 ${isOnlineForHire ? 'animate-pulse' : 'opacity-60'}`} />
+            <span className="text-xs font-semibold">{isOnlineForHire ? 'ONLINE' : 'OFFLINE'}</span>
+            {isOnlineForHire && ratePerMile && (
+              <Badge variant="secondary" className="bg-white/20 text-white text-[10px] px-1.5">
+                £{ratePerMile}/mi
+              </Badge>
+            )}
+            <Switch
+              checked={isOnlineForHire}
+              onCheckedChange={handleToggleOnlineStatus}
+              disabled={isUpdatingOnlineStatus}
+              className="scale-75"
+              data-testid="switch-online-status"
+            />
+          </div>
+        </div>
+      )}
+
+      {pendingRequests.length > 0 && (
+        <div className="fixed top-28 right-4 z-40 w-72">
+          <div className="bg-amber-500/95 backdrop-blur-md rounded-xl shadow-lg border border-amber-400 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Bell className="h-4 w-4 animate-bounce text-white" />
+              <span className="text-sm font-semibold text-white">Incoming Requests</span>
+              <Badge className="bg-white/20 text-white text-xs">{pendingRequests.length}</Badge>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {pendingRequests.slice(0, 3).map((request) => (
+                <div key={request.id} className="bg-white/10 rounded-lg p-2" data-testid={`pending-request-${request.id}`}>
+                  <div className="flex items-start gap-2 text-xs text-white mb-1">
+                    <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{request.pickupLocation}</p>
+                      <p className="text-white/70 truncate">→ {request.dropoffLocation}</p>
                     </div>
-                  </CardHeader>
-                  <CardContent className="px-4 pb-4 space-y-3">
-                    {pendingRequests.map((request) => (
-                      <div key={request.id} className="bg-white/10 rounded-lg p-3" data-testid={`pending-request-${request.id}`}>
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-start gap-2 text-sm">
-                            <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{request.pickupLocation}</p>
-                              <p className="text-white/70 truncate">→ {request.dropoffLocation}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <Badge className="bg-white text-amber-600 font-bold">
-                              £{request.agreedPrice}
-                            </Badge>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-8 bg-red-500/80 hover:bg-red-600 text-white"
-                                onClick={() => respondToRequestMutation.mutate({ rideId: request.id, action: 'decline' })}
-                                disabled={respondToRequestMutation.isPending}
-                                data-testid={`button-decline-request-${request.id}`}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="h-8 bg-green-500 hover:bg-green-600 text-white"
-                                onClick={() => respondToRequestMutation.mutate({ rideId: request.id, action: 'accept' })}
-                                disabled={respondToRequestMutation.isPending}
-                                data-testid={`button-accept-request-${request.id}`}
-                              >
-                                {respondToRequestMutation.isPending ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Check className="h-4 w-4 mr-1" />
-                                    Accept
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-              
-              <Card className="border-none shadow-md bg-primary text-primary-foreground">
-                <CardHeader className="py-3 px-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg sm:text-xl text-white">Post Your Route</CardTitle>
+                    <Badge className="bg-white text-amber-600 font-bold text-xs">£{request.agreedPrice}</Badge>
+                  </div>
+                  <div className="flex gap-1 justify-end">
                     <Button
-                      type="button"
-                      variant="ghost"
                       size="sm"
-                      onClick={useCurrentLocation}
-                      disabled={isGettingLocation}
-                      className="h-6 text-[10px] text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary/20 px-2"
-                      data-testid="button-use-current-location"
+                      variant="ghost"
+                      className="h-6 px-2 bg-red-500/80 hover:bg-red-600 text-white"
+                      onClick={() => respondToRequestMutation.mutate({ rideId: request.id, action: 'decline' })}
+                      disabled={respondToRequestMutation.isPending}
+                      data-testid={`button-decline-request-${request.id}`}
                     >
-                      {isGettingLocation ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <>
-                          <Crosshair className="h-3 w-3 mr-1" />
-                          <span>Current</span>
-                        </>
-                      )}
+                      <X className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-6 px-2 bg-green-500 hover:bg-green-600 text-white"
+                      onClick={() => respondToRequestMutation.mutate({ rideId: request.id, action: 'accept' })}
+                      disabled={respondToRequestMutation.isPending}
+                      data-testid={`button-accept-request-${request.id}`}
+                    >
+                      <Check className="h-3 w-3 mr-1" />
+                      Accept
                     </Button>
                   </div>
-                </CardHeader>
-                <form onSubmit={handlePublishRoute}>
-                  <CardContent className="space-y-4 px-4 py-4">
-                    <PostcodeSearch
-                      value={startLocation}
-                      onChange={handleStartChange}
-                      placeholder="Starting point"
-                      iconColor="text-primary"
-                      inputClassName="bg-white text-primary border-none"
-                      textClassName="text-primary-foreground/70"
-                      testId="input-start-location"
-                      isCurrentLocation={!!userLocation && startCoords?.lat === userLocation.lat && startCoords?.lon === userLocation.lng}
-                      compact
-                    />
-                    
-                    <PostcodeSearch
-                      value={endLocation}
-                      onChange={handleEndChange}
-                      placeholder="Destination"
-                      iconColor="text-primary"
-                      inputClassName="bg-white text-primary border-none"
-                      textClassName="text-primary-foreground/70"
-                      testId="input-end-location"
-                      compact
-                    />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <DateTimePicker
-                        value={departureTime}
-                        onChange={setDepartureTime}
-                        testId="input-departure-time"
-                        buttonClassName="bg-white text-primary border-none h-8"
-                        compact
-                      />
-                      <div className="relative">
-                        <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input 
-                          type="number" 
-                          placeholder="price/seat"
-                          min="1"
-                          max="100"
-                          step="1"
-                          className="pl-7 h-8 text-sm bg-white text-primary border-none"
-                          value={pricePerSeat}
-                          onChange={(e) => setPricePerSeat(e.target.value)}
-                          aria-label="Price per seat in pounds"
-                          data-testid="input-price-per-seat"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="col-span-2 flex gap-1">
-                        <Input 
-                          type="number" 
-                          placeholder="Detour"
-                          min="1"
-                          step="any"
-                          className="h-8 text-sm bg-white text-primary border-none flex-1"
-                          value={maxDetour}
-                          onChange={(e) => setMaxDetour(e.target.value)}
-                          aria-label="Maximum detour distance"
-                          data-testid="input-max-detour"
-                        />
-                        <Select value={detourUnit} onValueChange={(v) => setDetourUnit(v as DetourUnit)}>
-                          <SelectTrigger className="h-8 w-16 text-xs bg-white text-primary border-none" data-testid="select-detour-unit">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(Object.keys(UNIT_LABELS) as DetourUnit[]).map((unit) => (
-                              <SelectItem key={unit} value={unit}>{UNIT_LABELS[unit]}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Select value={availableSeats} onValueChange={setAvailableSeats}>
-                        <SelectTrigger className="h-8 text-sm bg-white text-primary border-none" data-testid="select-seats">
-                          <SelectValue placeholder="Seats" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[1, 2, 3, 4].map((num) => (
-                            <SelectItem key={num} value={String(num)}>{num} seat{num > 1 ? 's' : ''}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Button 
-                      type="submit"
-                      variant="secondary" 
-                      className="w-full h-10 text-sm font-semibold shadow-sm"
-                      disabled={createRouteMutation.isPending}
-                      data-testid="button-publish-route"
-                    >
-                      {createRouteMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Publishing...
-                        </>
-                      ) : (
-                        "Publish Route"
-                      )}
-                    </Button>
-                  </CardContent>
-                </form>
-              </Card>
+      <div className="fixed top-16 left-4 right-4 sm:right-auto sm:w-80 z-40 mt-2">
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-white/20">
+          <div 
+            className="flex items-center justify-between p-3 cursor-pointer"
+            onClick={() => setFormExpanded(!formExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              <Route className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-primary">Post Your Route</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); useCurrentLocation(); }}
+                disabled={isGettingLocation}
+                className="h-6 text-[10px] px-2"
+                data-testid="button-use-current-location"
+              >
+                {isGettingLocation ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <>
+                    <Crosshair className="h-3 w-3 mr-1" />
+                    <span>Current</span>
+                  </>
+                )}
+              </Button>
+              {formExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
             </div>
           </div>
 
-          {/* Right Panel: Map & Rider Offers */}
-          <div className="lg:col-span-8 space-y-4">
-            {/* Map showing driver's route */}
-            <div className="h-[200px] sm:h-[250px] rounded-lg overflow-hidden">
-              <RiderLocationMap
-                userLocation={startCoords ? { lat: startCoords.lat, lng: startCoords.lon } : userLocation}
-                destination={endCoords ? { lat: endCoords.lat, lng: endCoords.lon } : undefined}
-                nearbyDrivers={[]}
-                showRoute={!!startCoords && !!endCoords}
-              />
+          {!formExpanded && (startLocation || endLocation) && (
+            <div className="px-3 pb-3">
+              <div className="flex gap-2 text-xs">
+                <div className="flex-1 truncate bg-muted/50 rounded px-2 py-1">
+                  <span className="text-muted-foreground">From: </span>
+                  <span className="font-medium">{startLocation || 'Not set'}</span>
+                </div>
+                <div className="flex-1 truncate bg-muted/50 rounded px-2 py-1">
+                  <span className="text-muted-foreground">To: </span>
+                  <span className="font-medium">{endLocation || 'Not set'}</span>
+                </div>
+              </div>
             </div>
+          )}
 
-            <Tabs defaultValue="offers" className="w-full">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg sm:text-xl font-bold text-primary">Dashboard</h2>
-                <TabsList className="h-8">
-                  <TabsTrigger value="offers" className="text-xs px-2">Offers</TabsTrigger>
-                  <TabsTrigger value="active" className="text-xs px-2">Active ({activeRides.length})</TabsTrigger>
-                  <TabsTrigger value="history" className="text-xs px-2">History</TabsTrigger>
-                </TabsList>
+          {formExpanded && (
+            <form onSubmit={handlePublishRoute} className="px-3 pb-3 space-y-3">
+              <PostcodeSearch
+                value={startLocation}
+                onChange={handleStartChange}
+                placeholder="Starting point"
+                iconColor="text-primary"
+                inputClassName="bg-white dark:bg-slate-900 border-slate-200"
+                textClassName="text-muted-foreground"
+                testId="input-start-location"
+                isCurrentLocation={!!userLocation && startCoords?.lat === userLocation.lat && startCoords?.lon === userLocation.lng}
+                compact
+              />
+              
+              <PostcodeSearch
+                value={endLocation}
+                onChange={handleEndChange}
+                placeholder="Destination"
+                iconColor="text-primary"
+                inputClassName="bg-white dark:bg-slate-900 border-slate-200"
+                textClassName="text-muted-foreground"
+                testId="input-end-location"
+                compact
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <DateTimePicker
+                  value={departureTime}
+                  onChange={setDepartureTime}
+                  testId="input-departure-time"
+                  buttonClassName="bg-white dark:bg-slate-900 border-slate-200 h-8"
+                  compact
+                />
+                <div className="relative">
+                  <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input 
+                    type="number" 
+                    placeholder="£/seat"
+                    min="1"
+                    max="100"
+                    step="1"
+                    className="pl-7 h-8 text-sm bg-white dark:bg-slate-900 border-slate-200"
+                    value={pricePerSeat}
+                    onChange={(e) => setPricePerSeat(e.target.value)}
+                    aria-label="Price per seat in pounds"
+                    data-testid="input-price-per-seat"
+                  />
+                </div>
               </div>
 
-              <TabsContent value="offers" className="space-y-6">
-                {/* Nearby Offers Section - shows when start location is set */}
-                {startCoords && endCoords && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-4">
-                      <h3 className="text-xl font-bold text-accent flex items-center gap-2">
-                        <MapPin className="h-5 w-5" />
-                        Nearby Rider Offers
-                        {nearbyOffers.length > 0 && (
-                          <Badge className="bg-accent text-white">{nearbyOffers.length} found</Badge>
-                        )}
-                      </h3>
-                    </div>
-                    
-                    {nearbyOffers.length === 0 ? (
-                      <Card className="border-dashed border-accent/30 bg-accent/5 mb-6">
-                        <CardContent className="p-6 text-center">
-                          <MapPin className="h-10 w-10 text-accent/40 mx-auto mb-2" />
-                          <p className="text-muted-foreground">No rider offers near your route yet.</p>
-                          <p className="text-sm text-muted-foreground mt-1">Publish your route and riders will find you!</p>
-                        </CardContent>
-                      </Card>
-                    ) : (
-                      <div className="space-y-4 mb-6">
-                        {nearbyOffers.map((offer) => (
-                          <Card key={offer.id} className="overflow-hidden hover:shadow-lg transition-shadow border-accent/30 bg-accent/5" data-testid={`card-nearby-offer-${offer.id}`}>
-                            <div className="flex flex-col sm:flex-row">
-                              <div className="p-6 flex-1">
-                                <div className="flex justify-between items-start mb-4">
-                                  <div className="flex items-center gap-3">
-                                    <Avatar>
-                                      <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${offer.riderId}`} />
-                                      <AvatarFallback>R</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                      <p className="font-semibold text-primary">Nearby Rider</p>
-                                      <div className="flex items-center text-xs text-muted-foreground">
-                                        <span className="text-yellow-500">★</span> 4.8 • {formatDate(offer.requestedTime)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <Badge className="text-lg px-3 py-1 bg-accent text-white">
-                                    £{offer.offerPrice}
-                                  </Badge>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                  <div>
-                                    <span className="text-accent text-xs uppercase tracking-wider">Pickup</span>
-                                    <p className="font-medium truncate">{offer.pickupLocation}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-secondary text-xs uppercase tracking-wider">Dropoff</span>
-                                    <p className="font-medium truncate">{offer.dropoffLocation}</p>
-                                  </div>
-                                </div>
-                                {getOfferDistanceAndETA(offer) && (
-                                  <div className="flex items-center gap-2 mt-3">
-                                    <Badge variant="outline" className="text-xs">
-                                      <Navigation className="h-3 w-3 mr-1" />
-                                      {getOfferDistanceAndETA(offer)!.distance}
-                                    </Badge>
-                                    <Badge variant="outline" className="text-xs text-muted-foreground">
-                                      ~{getOfferDistanceAndETA(offer)!.eta} away
-                                    </Badge>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="bg-accent/10 p-4 sm:w-32 flex sm:flex-col gap-2 justify-center border-t sm:border-t-0 sm:border-l">
-                                <Button 
-                                  className="w-full bg-accent hover:bg-accent/90"
-                                  onClick={() => handleAcceptOffer(offer.id)}
-                                  disabled={acceptOfferMutation.isPending}
-                                  data-testid={`button-accept-nearby-${offer.id}`}
-                                >
-                                  <CheckCircle2 className="mr-1 h-4 w-4" /> Accept
-                                </Button>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* All Offers Section */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-primary">
-                      {startCoords && endCoords ? "All Rider Offers" : "Rider Offers"}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="future-dates-driver"
-                        checked={showFutureDates}
-                        onCheckedChange={setShowFutureDates}
-                        data-testid="switch-future-dates-driver"
-                      />
-                      <label htmlFor="future-dates-driver" className="text-sm flex items-center gap-1 cursor-pointer">
-                        <CalendarDays className="h-4 w-4" />
-                        Future dates
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-4">
-                    <Badge variant={!showFutureDates ? "default" : "outline"}>
-                      Next 24 hours
-                    </Badge>
-                    {showFutureDates && (
-                      <Badge variant="secondary">
-                        + Future dates
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="ml-auto">
-                      {filteredOffers.length} offers
-                    </Badge>
-                  </div>
-                  
-                  {offersLoading ? (
-                    <div className="space-y-4">
-                      {[1, 2, 3].map((i) => (
-                        <Card key={i} className="animate-pulse">
-                          <CardContent className="p-6">
-                            <div className="h-24 bg-muted rounded" />
-                          </CardContent>
-                        </Card>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="col-span-2 flex gap-1">
+                  <Input 
+                    type="number" 
+                    placeholder="Detour"
+                    min="1"
+                    step="any"
+                    className="h-8 text-sm bg-white dark:bg-slate-900 border-slate-200 flex-1"
+                    value={maxDetour}
+                    onChange={(e) => setMaxDetour(e.target.value)}
+                    aria-label="Maximum detour distance"
+                    data-testid="input-max-detour"
+                  />
+                  <Select value={detourUnit} onValueChange={(v) => setDetourUnit(v as DetourUnit)}>
+                    <SelectTrigger className="h-8 w-14 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-detour-unit">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(UNIT_LABELS) as DetourUnit[]).map((unit) => (
+                        <SelectItem key={unit} value={unit}>{UNIT_LABELS[unit]}</SelectItem>
                       ))}
-                    </div>
-                  ) : filteredOffers.length === 0 ? (
-                    <Card className="border-dashed">
-                      <CardContent className="p-12 text-center">
-                        <Calendar className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
-                        <p className="text-muted-foreground">
-                          {showFutureDates 
-                            ? "No rider offers available at the moment."
-                            : "No offers available in the next 24 hours."}
-                        </p>
-                        {!showFutureDates && (
-                          <Button 
-                            variant="link" 
-                            onClick={() => setShowFutureDates(true)}
-                            className="mt-2"
-                          >
-                            Future dates
-                          </Button>
-                        )}
-                        <p className="text-sm text-muted-foreground mt-2">Check back soon for new ride requests!</p>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <div className="space-y-4">
-                      {filteredOffers.map((offer) => (
-                    <Card key={offer.id} className="overflow-hidden hover:shadow-md transition-shadow" data-testid={`card-offer-${offer.id}`}>
-                      <div className="flex flex-col sm:flex-row">
-                        <div className="p-6 flex-1">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-3">
-                              <Avatar>
-                                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${offer.riderId}`} />
-                                <AvatarFallback>R</AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-semibold text-primary">Rider</p>
-                                <div className="flex items-center text-xs text-muted-foreground">
-                                  <span className="text-yellow-500">★</span> 4.8 • {formatDate(offer.requestedTime)}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <span className="block text-2xl font-bold text-primary" data-testid={`text-price-${offer.id}`}>£{offer.offerPrice}</span>
-                              <span className="text-xs text-muted-foreground">offered price</span>
-                            </div>
-                          </div>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Select value={availableSeats} onValueChange={setAvailableSeats}>
+                  <SelectTrigger className="h-8 text-sm bg-white dark:bg-slate-900 border-slate-200" data-testid="select-seats">
+                    <SelectValue placeholder="Seats" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4].map((num) => (
+                      <SelectItem key={num} value={String(num)}>{num} seat{num > 1 ? 's' : ''}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-muted-foreground text-xs uppercase tracking-wider">Pickup</span>
-                              <p className="font-medium truncate">{offer.pickupLocation}</p>
-                              <p className="text-xs text-muted-foreground">{formatTime(offer.requestedTime)}</p>
+              <Button 
+                type="submit"
+                className="w-full h-9 text-sm font-semibold"
+                disabled={createRouteMutation.isPending}
+                data-testid="button-publish-route"
+              >
+                {createRouteMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Publishing...
+                  </>
+                ) : (
+                  "Publish Route"
+                )}
+              </Button>
+            </form>
+          )}
+        </div>
+      </div>
+
+      <Button
+        onClick={handleRecenter}
+        size="icon"
+        className="fixed bottom-[280px] right-4 z-50 h-10 w-10 rounded-full bg-white dark:bg-slate-800 text-primary shadow-lg border border-slate-200 hover:bg-slate-100"
+        data-testid="button-recenter-map"
+      >
+        <Crosshair className="h-5 w-5" />
+      </Button>
+
+      <div className="fixed bottom-0 left-0 right-0 z-40 px-2 pb-2 space-y-2" style={{ maxHeight: '60vh' }}>
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-white/20 overflow-hidden">
+          <div
+            className="flex items-center justify-between p-3 cursor-pointer"
+            onClick={() => handleCardToggle('offers')}
+          >
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Rider Offers</span>
+              <Badge variant={!showFutureDates ? "default" : "outline"} className="text-[10px]">
+                {showFutureDates ? 'All' : '24h'}
+              </Badge>
+              {displayOffers.length > 0 && <Badge className="bg-primary text-white text-xs">{displayOffers.length}</Badge>}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <Switch
+                  id="future-dates-driver"
+                  checked={showFutureDates}
+                  onCheckedChange={setShowFutureDates}
+                  className="scale-75"
+                  data-testid="switch-future-dates-driver"
+                />
+                <label htmlFor="future-dates-driver" className="text-[10px] text-muted-foreground cursor-pointer">Future</label>
+              </div>
+              {offersCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+            </div>
+          </div>
+
+          {!offersCardOpen && displayOffers.length > 0 && (
+            <div className="px-3 pb-3">
+              <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg p-2">
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayOffers[0].riderId}`} />
+                  <AvatarFallback>R</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{displayOffers[0].pickupLocation}</p>
+                  <p className="text-muted-foreground truncate">→ {displayOffers[0].dropoffLocation}</p>
+                </div>
+                <Badge className="bg-primary text-white">£{displayOffers[0].offerPrice}</Badge>
+              </div>
+            </div>
+          )}
+
+          {!offersCardOpen && displayOffers.length === 0 && !offersLoading && (
+            <div className="px-3 pb-3">
+              <p className="text-xs text-muted-foreground text-center py-2">
+                {showFutureDates ? "No rider offers available" : "No offers in next 24h"}
+              </p>
+            </div>
+          )}
+
+          {offersCardOpen && (
+            <div className="px-3 pb-3 max-h-[50vh] overflow-y-auto space-y-2">
+              {offersLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : displayOffers.length === 0 ? (
+                <div className="text-center py-6">
+                  <MapPin className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    {showFutureDates 
+                      ? "No rider offers available at the moment."
+                      : "No offers available in the next 24 hours."}
+                  </p>
+                  {!showFutureDates && (
+                    <Button 
+                      variant="link" 
+                      onClick={() => setShowFutureDates(true)}
+                      className="mt-1 h-auto p-0 text-xs"
+                    >
+                      Show future dates
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">Post your route to attract riders!</p>
+                </div>
+              ) : (
+                <>
+                  {paginatedOffers.map((offer) => (
+                    <div key={offer.id} className="bg-muted/30 rounded-lg p-3" data-testid={`card-offer-${offer.id}`}>
+                      <div className="flex items-start gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${offer.riderId}`} />
+                          <AvatarFallback>R</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <span className="text-yellow-500">★</span> 4.8 • {formatDate(offer.requestedTime)}
                             </div>
-                            <div>
-                              <span className="text-muted-foreground text-xs uppercase tracking-wider">Dropoff</span>
-                              <p className="font-medium truncate">{offer.dropoffLocation}</p>
-                            </div>
+                            <span className="text-lg font-bold text-primary" data-testid={`text-price-${offer.id}`}>£{offer.offerPrice}</span>
                           </div>
-                          {getOfferDistanceAndETA(offer) && (
-                            <div className="flex items-center gap-2 mt-3">
-                              <Badge variant="outline" className="text-xs">
-                                <Navigation className="h-3 w-3 mr-1" />
+                          <p className="text-sm font-medium truncate">{offer.pickupLocation}</p>
+                          <p className="text-xs text-muted-foreground truncate">→ {offer.dropoffLocation}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            {getOfferDistanceAndETA(offer) && (
+                              <Badge variant="outline" className="text-[10px]">
+                                <Navigation className="h-2.5 w-2.5 mr-0.5" />
                                 {getOfferDistanceAndETA(offer)!.distance}
                               </Badge>
-                              <Badge variant="outline" className="text-xs text-muted-foreground">
-                                ~{getOfferDistanceAndETA(offer)!.eta} away
-                              </Badge>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="bg-muted/30 p-4 sm:w-32 flex sm:flex-col gap-2 justify-center border-t sm:border-t-0 sm:border-l">
-                          <Button 
-                            className="w-full bg-green-600 hover:bg-green-700"
-                            onClick={() => handleAcceptOffer(offer.id)}
-                            disabled={acceptOfferMutation.isPending}
-                            data-testid={`button-accept-${offer.id}`}
-                          >
-                            <CheckCircle2 className="mr-1 h-4 w-4" /> Accept
-                          </Button>
-                          <Dialog open={bidDialogOpen && selectedOffer?.id === offer.id} onOpenChange={(open) => {
-                            setBidDialogOpen(open);
-                            if (open) setSelectedOffer(offer);
-                          }}>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" className="w-full text-muted-foreground hover:text-primary" data-testid={`button-bid-${offer.id}`}>
-                                <MessageSquare className="mr-1 h-4 w-4" /> Bid
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Counter Offer</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4 pt-4">
-                                <p className="text-sm text-muted-foreground">
-                                  The rider offered <strong>£{offer.offerPrice}</strong>. Enter your counter-offer:
-                                </p>
-                                <div className="space-y-2">
-                                  <label className="text-sm font-medium">Your Price (£)</label>
-                                  <div className="relative">
-                                    <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            )}
+                            <div className="flex-1" />
+                            <Button 
+                              size="sm"
+                              className="h-7 text-xs bg-green-600 hover:bg-green-700"
+                              onClick={() => handleAcceptOffer(offer.id)}
+                              disabled={acceptOfferMutation.isPending}
+                              data-testid={`button-accept-${offer.id}`}
+                            >
+                              <CheckCircle2 className="mr-1 h-3 w-3" /> Accept
+                            </Button>
+                            <Dialog open={bidDialogOpen && selectedOffer?.id === offer.id} onOpenChange={(open) => {
+                              setBidDialogOpen(open);
+                              if (open) setSelectedOffer(offer);
+                            }}>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-7 text-xs" data-testid={`button-bid-${offer.id}`}>
+                                  <MessageSquare className="mr-1 h-3 w-3" /> Bid
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Counter Offer</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 pt-4">
+                                  <p className="text-sm text-muted-foreground">
+                                    The rider offered <strong>£{offer.offerPrice}</strong>. Enter your counter-offer:
+                                  </p>
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium">Your Price (£)</label>
+                                    <div className="relative">
+                                      <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                      <Input 
+                                        type="number"
+                                        placeholder="Enter your price"
+                                        className="pl-9"
+                                        value={bidPrice}
+                                        onChange={(e) => setBidPrice(e.target.value)}
+                                        data-testid="input-bid-price"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium">Message (Optional)</label>
                                     <Input 
-                                      type="number"
-                                      placeholder="Enter your price"
-                                      className="pl-9"
-                                      value={bidPrice}
-                                      onChange={(e) => setBidPrice(e.target.value)}
-                                      data-testid="input-bid-price"
+                                      placeholder="e.g., I can pick up 5 mins earlier"
+                                      value={bidMessage}
+                                      onChange={(e) => setBidMessage(e.target.value)}
+                                      data-testid="input-bid-message"
                                     />
                                   </div>
+                                  <Button 
+                                    onClick={handleBidSubmit}
+                                    className="w-full"
+                                    disabled={createBidMutation.isPending || !bidPrice}
+                                    data-testid="button-submit-bid"
+                                  >
+                                    {createBidMutation.isPending ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Sending...
+                                      </>
+                                    ) : (
+                                      "Send Counter Offer"
+                                    )}
+                                  </Button>
                                 </div>
-                                <div className="space-y-2">
-                                  <label className="text-sm font-medium">Message (Optional)</label>
-                                  <Input 
-                                    placeholder="e.g., I can pick up 5 mins earlier"
-                                    value={bidMessage}
-                                    onChange={(e) => setBidMessage(e.target.value)}
-                                    data-testid="input-bid-message"
-                                  />
-                                </div>
-                                <Button 
-                                  onClick={handleBidSubmit}
-                                  className="w-full"
-                                  disabled={createBidMutation.isPending || !bidPrice}
-                                  data-testid="button-submit-bid"
-                                >
-                                  {createBidMutation.isPending ? (
-                                    <>
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                      Sending...
-                                    </>
-                                  ) : (
-                                    "Send Counter Offer"
-                                  )}
-                                </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
                         </div>
                       </div>
-                    </Card>
-                      ))}
+                    </div>
+                  ))}
+                  {displayOffers.length > ITEMS_PER_PAGE && (
+                    <div className="flex items-center justify-center gap-2 pt-2">
+                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={offersPage === 0} onClick={() => setOffersPage(p => p - 1)}>Prev</Button>
+                      <span className="text-xs text-muted-foreground">
+                        {offersPage + 1} / {Math.ceil(displayOffers.length / ITEMS_PER_PAGE)}
+                      </span>
+                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={(offersPage + 1) * ITEMS_PER_PAGE >= displayOffers.length} onClick={() => setOffersPage(p => p + 1)}>Next</Button>
                     </div>
                   )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="active" className="space-y-4">
-                {activeRides.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                    <div className="bg-muted rounded-full p-4 mb-4">
-                      <Navigation className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-lg font-medium text-primary">No active rides</h3>
-                    <p>Accept an offer to start a ride.</p>
-                  </div>
-                ) : (
-                  activeRides.map((ride) => (
-                    <Card key={ride.id} className="overflow-hidden" data-testid={`card-ride-${ride.id}`}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <Badge className={ride.status === 'in_progress' ? 'bg-green-500' : 'bg-blue-500'}>
-                              {ride.status === 'in_progress' ? 'In Progress' : 'Scheduled'}
-                            </Badge>
-                            <p className="font-medium mt-2">{ride.pickupLocation} → {ride.dropoffLocation}</p>
-                            <p className="text-sm text-muted-foreground">{formatDate(ride.scheduledTime)} at {formatTime(ride.scheduledTime)}</p>
-                          </div>
-                          <span className="text-xl font-bold text-primary">£{ride.agreedPrice}</span>
-                        </div>
-                        <Button 
-                          onClick={() => navigate(`/ride/${ride.id}`)}
-                          className="w-full"
-                          data-testid={`button-track-${ride.id}`}
-                        >
-                          Track Ride
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </TabsContent>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
-              <TabsContent value="history" className="space-y-4">
-                {completedRides.length === 0 ? (
-                  <Card className="border-dashed">
-                    <CardContent className="p-12 text-center">
-                      <p className="text-muted-foreground">No completed rides yet.</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  completedRides.map((ride) => (
-                    <Card key={ride.id} className="opacity-75" data-testid={`card-history-${ride.id}`}>
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-medium">{ride.pickupLocation} → {ride.dropoffLocation}</p>
-                            <p className="text-sm text-muted-foreground">{formatDate(ride.scheduledTime)}</p>
-                          </div>
-                          <span className="text-lg font-bold text-primary">£{ride.agreedPrice}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                )}
-              </TabsContent>
-            </Tabs>
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-white/20 overflow-hidden">
+          <div
+            className="flex items-center justify-between p-3 cursor-pointer"
+            onClick={() => handleCardToggle('active')}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-semibold">Active Rides</span>
+              {activeRides.length > 0 && <Badge className="bg-green-600 text-white text-xs">{activeRides.length}</Badge>}
+            </div>
+            {activeRidesCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
           </div>
-          
+
+          {!activeRidesCardOpen && activeRides.length > 0 && (
+            <div className="px-3 pb-3">
+              <div className="flex items-center gap-2 text-xs bg-green-50 dark:bg-green-900/20 rounded-lg p-2">
+                <Badge className={activeRides[0].status === 'in_progress' ? 'bg-green-500' : 'bg-blue-500'}>
+                  {activeRides[0].status === 'in_progress' ? 'In Progress' : 'Scheduled'}
+                </Badge>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{activeRides[0].pickupLocation}</p>
+                </div>
+                <span className="font-bold text-primary">£{activeRides[0].agreedPrice}</span>
+              </div>
+            </div>
+          )}
+
+          {!activeRidesCardOpen && activeRides.length === 0 && (
+            <div className="px-3 pb-3">
+              <p className="text-xs text-muted-foreground text-center py-2">No active rides</p>
+            </div>
+          )}
+
+          {activeRidesCardOpen && (
+            <div className="px-3 pb-3 max-h-[50vh] overflow-y-auto space-y-2">
+              {activeRides.length === 0 ? (
+                <div className="text-center py-6">
+                  <Navigation className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No active rides</p>
+                  <p className="text-xs text-muted-foreground mt-1">Accept an offer to start a ride</p>
+                </div>
+              ) : (
+                activeRides.map((ride) => (
+                  <div key={ride.id} className="bg-muted/30 rounded-lg p-3" data-testid={`card-ride-${ride.id}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge className={ride.status === 'in_progress' ? 'bg-green-500' : 'bg-blue-500'}>
+                        {ride.status === 'in_progress' ? 'In Progress' : 'Scheduled'}
+                      </Badge>
+                      <span className="text-lg font-bold text-primary">£{ride.agreedPrice}</span>
+                    </div>
+                    <p className="text-sm font-medium">{ride.pickupLocation} → {ride.dropoffLocation}</p>
+                    <p className="text-xs text-muted-foreground mb-2">{formatDate(ride.scheduledTime)} at {formatTime(ride.scheduledTime)}</p>
+                    <Button 
+                      onClick={() => navigate(`/ride/${ride.id}`)}
+                      className="w-full h-8 text-xs"
+                      data-testid={`button-track-${ride.id}`}
+                    >
+                      Track Ride
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-white/20 overflow-hidden">
+          <div
+            className="flex items-center justify-between p-3 cursor-pointer"
+            onClick={() => handleCardToggle('history')}
+          >
+            <div className="flex items-center gap-2">
+              <History className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold">Ride History</span>
+              {completedRides.length > 0 && <Badge variant="outline" className="text-xs">{completedRides.length}</Badge>}
+            </div>
+            {historyCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+          </div>
+
+          {!historyCardOpen && completedRides.length > 0 && (
+            <div className="px-3 pb-3">
+              <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg p-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{completedRides[0].pickupLocation}</p>
+                  <p className="text-muted-foreground truncate">→ {completedRides[0].dropoffLocation}</p>
+                </div>
+                <span className="font-bold text-primary">£{completedRides[0].agreedPrice}</span>
+              </div>
+            </div>
+          )}
+
+          {!historyCardOpen && completedRides.length === 0 && (
+            <div className="px-3 pb-3">
+              <p className="text-xs text-muted-foreground text-center py-2">No completed rides yet</p>
+            </div>
+          )}
+
+          {historyCardOpen && (
+            <div className="px-3 pb-3 max-h-[50vh] overflow-y-auto space-y-2">
+              {completedRides.length === 0 ? (
+                <div className="text-center py-6">
+                  <History className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No completed rides yet</p>
+                </div>
+              ) : (
+                completedRides.map((ride) => (
+                  <div key={ride.id} className="bg-muted/30 rounded-lg p-3 opacity-75" data-testid={`card-history-${ride.id}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{ride.pickupLocation} → {ride.dropoffLocation}</p>
+                        <p className="text-xs text-muted-foreground">{formatDate(ride.scheduledTime)}</p>
+                      </div>
+                      <span className="text-lg font-bold text-primary">£{ride.agreedPrice}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
