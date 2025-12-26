@@ -1319,8 +1319,29 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.get('/api/bids/offer/:offerId', async (req, res) => {
     try {
       const offerId = parseInt(req.params.offerId);
-      const bids = await storage.getBidsByOfferId(offerId);
-      res.json(bids);
+      const bidsList = await storage.getBidsByOfferId(offerId);
+      
+      // Fetch driver info for each bid
+      const bidsWithDrivers = await Promise.all(
+        bidsList.map(async (bid) => {
+          const driver = await storage.getUser(bid.driverId);
+          return {
+            ...bid,
+            driver: driver ? {
+              id: driver.id,
+              firstName: driver.firstName,
+              lastName: driver.lastName,
+              profileImageUrl: driver.profileImageUrl,
+              driverRating: driver.driverRating,
+              totalRatingsAsDriver: driver.totalRatingsAsDriver,
+              vehicleMake: driver.vehicleMake,
+              vehicleModel: driver.vehicleModel,
+            } : null
+          };
+        })
+      );
+      
+      res.json(bidsWithDrivers);
     } catch (error) {
       console.error("Error fetching bids:", error);
       res.status(500).json({ message: "Failed to fetch bids" });

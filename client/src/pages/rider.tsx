@@ -66,6 +66,26 @@ interface RiderOffer {
   status: string;
 }
 
+interface Bid {
+  id: number;
+  riderOfferId: number;
+  driverId: string;
+  bidPrice: string;
+  message: string | null;
+  status: string;
+  createdAt: string;
+  driver?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    profileImageUrl: string | null;
+    driverRating: string | null;
+    totalRatingsAsDriver: number | null;
+    vehicleMake: string | null;
+    vehicleModel: string | null;
+  };
+}
+
 interface UserLocation {
   lat: number;
   lng: number;
@@ -122,6 +142,8 @@ export default function RiderPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<RiderOffer | null>(null);
   const [editPrice, setEditPrice] = useState("");
+  const [bidsDialogOpen, setBidsDialogOpen] = useState(false);
+  const [viewingBidsForOffer, setViewingBidsForOffer] = useState<RiderOffer | null>(null);
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
   const [requestingDriverId, setRequestingDriverId] = useState<string | null>(null);
   const [routesExpanded, setRoutesExpanded] = useState(false);
@@ -231,6 +253,46 @@ export default function RiderPage() {
     },
     enabled: !!pickupCoords,
     refetchInterval: 15000, // Refresh every 15 seconds
+  });
+
+  // Query for bids on a specific offer
+  const { data: offerBids = [], isLoading: bidsLoading, refetch: refetchBids } = useQuery<Bid[]>({
+    queryKey: ["/api/bids/offer", viewingBidsForOffer?.id],
+    queryFn: async () => {
+      if (!viewingBidsForOffer) return [];
+      const response = await fetch(`/api/bids/offer/${viewingBidsForOffer.id}`);
+      return response.json();
+    },
+    enabled: !!viewingBidsForOffer && bidsDialogOpen,
+  });
+
+  // Mutation to accept a bid
+  const acceptBidMutation = useMutation({
+    mutationFn: async (bidId: number) => {
+      const response = await apiRequest("PATCH", `/api/bids/${bidId}/accept`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Bid Accepted!",
+        description: "Your ride has been confirmed. Redirecting to ride details...",
+      });
+      setBidsDialogOpen(false);
+      setViewingBidsForOffer(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/rider-offers/mine"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rides"] });
+      // Navigate to the ride page after a short delay
+      setTimeout(() => {
+        navigate("/rider");
+      }, 1500);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to accept bid",
+        variant: "destructive",
+      });
+    },
   });
 
   // Calculate estimated cost based on driver's rate and trip distance
@@ -957,13 +1019,24 @@ export default function RiderPage() {
                         <Badge className="bg-primary text-white text-[10px] shrink-0">£{offer.offerPrice}</Badge>
                       </div>
                       <p className="text-[10px] text-muted-foreground mb-1">{formatDate(offer.requestedTime)}</p>
-                      <div className="flex gap-1">
-                        <Button variant="outline" size="sm" className="h-5 text-[10px] flex-1" onClick={() => { setSelectedOffer(offer); setEditPrice(offer.offerPrice); setEditDialogOpen(true); }}>
-                          <Edit2 className="h-2 w-2 mr-0.5" /> Edit
+                      <div className="flex flex-col gap-1">
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          className="h-6 text-[10px] w-full"
+                          onClick={() => { setViewingBidsForOffer(offer); setBidsDialogOpen(true); }}
+                          data-testid={`button-view-bids-${offer.id}`}
+                        >
+                          <Users className="h-2 w-2 mr-0.5" /> View Bids
                         </Button>
-                        <Button variant="outline" size="sm" className="h-5 text-[10px] text-red-500" onClick={() => cancelOfferMutation.mutate(offer.id)}>
-                          <X className="h-2 w-2" />
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button variant="outline" size="sm" className="h-5 text-[10px] flex-1" onClick={() => { setSelectedOffer(offer); setEditPrice(offer.offerPrice); setEditDialogOpen(true); }}>
+                            <Edit2 className="h-2 w-2 mr-0.5" /> Edit
+                          </Button>
+                          <Button variant="outline" size="sm" className="h-5 text-[10px] text-red-500" onClick={() => cancelOfferMutation.mutate(offer.id)}>
+                            <X className="h-2 w-2" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1014,6 +1087,98 @@ export default function RiderPage() {
                 "Update Price"
               )}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Bids Dialog */}
+      <Dialog open={bidsDialogOpen} onOpenChange={(open) => { setBidsDialogOpen(open); if (!open) setViewingBidsForOffer(null); }}>
+        <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Driver Offers
+            </DialogTitle>
+          </DialogHeader>
+          {viewingBidsForOffer && (
+            <div className="text-sm text-muted-foreground mb-2 p-2 bg-muted/50 rounded-lg">
+              <p className="truncate"><strong>From:</strong> {viewingBidsForOffer.pickupLocation}</p>
+              <p className="truncate"><strong>To:</strong> {viewingBidsForOffer.dropoffLocation}</p>
+              <p><strong>Your offer:</strong> £{viewingBidsForOffer.offerPrice}</p>
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto">
+            {bidsLoading ? (
+              <div className="text-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                <p className="text-sm text-muted-foreground mt-2">Loading offers...</p>
+              </div>
+            ) : offerBids.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                <p className="text-sm font-medium">No offers yet</p>
+                <p className="text-xs text-muted-foreground">Drivers will see your request and can submit their offers.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {offerBids.filter(bid => bid.status === 'pending').map((bid) => (
+                  <div key={bid.id} className="p-3 border rounded-lg bg-card" data-testid={`bid-card-${bid.id}`}>
+                    <div className="flex items-start gap-3">
+                      <Link href={`/driver/${bid.driverId}`}>
+                        <Avatar className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary">
+                          <AvatarImage src={bid.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bid.driverId}`} />
+                          <AvatarFallback>{bid.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                        </Avatar>
+                      </Link>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <Link href={`/driver/${bid.driverId}`} className="hover:underline">
+                            <p className="font-medium text-sm" data-testid={`bid-driver-name-${bid.id}`}>
+                              {bid.driver?.firstName || 'Driver'}
+                            </p>
+                          </Link>
+                          <Badge className="bg-green-600 text-white text-sm font-bold" data-testid={`bid-price-${bid.id}`}>
+                            £{bid.bidPrice}
+                          </Badge>
+                        </div>
+                        {bid.driver?.driverRating && (
+                          <div className="flex items-center text-xs text-muted-foreground mt-0.5">
+                            <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 mr-0.5" />
+                            {parseFloat(bid.driver.driverRating).toFixed(1)}
+                            {bid.driver.totalRatingsAsDriver && (
+                              <span className="ml-1">({bid.driver.totalRatingsAsDriver} rides)</span>
+                            )}
+                          </div>
+                        )}
+                        {bid.driver?.vehicleMake && (
+                          <div className="flex items-center text-xs text-muted-foreground mt-0.5">
+                            <Car className="h-3 w-3 mr-1" />
+                            {bid.driver.vehicleMake} {bid.driver.vehicleModel}
+                          </div>
+                        )}
+                        {bid.message && (
+                          <p className="text-xs text-muted-foreground mt-1 italic">"{bid.message}"</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <Button 
+                        className="flex-1 h-8"
+                        onClick={() => acceptBidMutation.mutate(bid.id)}
+                        disabled={acceptBidMutation.isPending}
+                        data-testid={`button-accept-bid-${bid.id}`}
+                      >
+                        {acceptBidMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Accept Offer"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
