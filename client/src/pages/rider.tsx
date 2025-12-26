@@ -456,7 +456,7 @@ export default function RiderPage() {
         title: "Success",
         description: "Your ride request has been posted!",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/rider-offers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rider-offers/mine"] });
       setDropoffLocation("");
       setDropoffCoords(null);
       setRequestedTime("");

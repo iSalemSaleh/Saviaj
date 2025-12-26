@@ -218,22 +218,22 @@ export function DateTimePicker({
               <span className="truncate">{getDisplayValue()}</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[340px] p-0" align="start">
-            <div className="p-5 space-y-4">
-              <div className="space-y-1">
+          <PopoverContent className="w-[300px] p-0" align="start">
+            <div className="p-4 space-y-3">
+              <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  <span className="text-base font-semibold">Select departure time</span>
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">Select departure time</span>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {showCalendar ? "Select a date and time" : "Pick any time within the next 24 hours"}
                 </p>
               </div>
 
-              <div className="flex items-center justify-between py-3 px-3 bg-muted/30 rounded-lg">
+              <div className="flex items-center justify-between py-2 px-2 bg-muted/30 rounded-lg">
                 <div className="flex items-center gap-2">
-                  <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-sm font-medium">Schedule future date</span>
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-xs font-medium">Schedule future date</span>
                 </div>
                 <Switch
                   checked={showCalendar}
@@ -243,28 +243,28 @@ export function DateTimePicker({
               </div>
 
               {showCalendar && (
-                <div className="p-2 bg-white dark:bg-slate-900 rounded-lg border">
+                <div className="bg-white dark:bg-slate-900 rounded-lg border">
                   <Calendar
                     mode="single"
                     selected={selectedDate}
                     onSelect={handleDateSelect}
                     disabled={(date) => isBefore(date, startOfToday())}
-                    className="w-full"
+                    className="w-full p-2"
                     classNames={{
-                      months: "flex flex-col space-y-4",
-                      month: "space-y-4",
-                      caption: "flex justify-center pt-1 relative items-center",
-                      caption_label: "text-base font-semibold",
+                      months: "flex flex-col",
+                      month: "space-y-2",
+                      caption: "flex justify-center pt-1 relative items-center h-8",
+                      caption_label: "text-sm font-semibold",
                       nav: "space-x-1 flex items-center",
-                      nav_button: "h-8 w-8 bg-transparent p-0 opacity-50 hover:opacity-100",
+                      nav_button: "h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100",
                       nav_button_previous: "absolute left-1",
                       nav_button_next: "absolute right-1",
-                      table: "w-full border-collapse space-y-1",
-                      head_row: "flex",
-                      head_cell: "text-muted-foreground rounded-md w-10 font-medium text-sm",
-                      row: "flex w-full mt-2",
-                      cell: "h-10 w-10 text-center text-sm p-0 relative",
-                      day: "h-10 w-10 p-0 font-normal aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground rounded-md",
+                      table: "w-full border-collapse",
+                      head_row: "flex justify-between",
+                      head_cell: "text-muted-foreground w-8 font-medium text-xs",
+                      row: "flex w-full justify-between mt-1",
+                      cell: "h-8 w-8 text-center text-xs p-0 relative",
+                      day: "h-8 w-8 p-0 text-xs font-normal aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground rounded-md flex items-center justify-center",
                       day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
                       day_today: "bg-accent text-accent-foreground",
                       day_outside: "text-muted-foreground opacity-50",
@@ -276,14 +276,14 @@ export function DateTimePicker({
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Time</label>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Time</label>
                 <Input
                   type="time"
                   value={timeInput}
                   onChange={handleTimeChange}
                   className={cn(
-                    "h-12 text-lg text-center font-mono bg-white dark:bg-slate-900",
+                    "h-10 text-base text-center font-mono bg-white dark:bg-slate-900",
                     timeError && "border-red-500 focus-visible:ring-red-500"
                   )}
                   data-testid={`${testId}-time-input`}
@@ -294,8 +294,8 @@ export function DateTimePicker({
               </div>
 
               {value && (
-                <div className="py-3 px-4 bg-primary/10 rounded-lg">
-                  <p className="text-sm text-center">
+                <div className="py-2 px-3 bg-primary/10 rounded-lg">
+                  <p className="text-xs text-center">
                     <span className="text-muted-foreground">Departing: </span>
                     <span className="font-semibold text-foreground">
                       {isToday(new Date(value)) 
@@ -310,7 +310,7 @@ export function DateTimePicker({
               )}
 
               <Button 
-                className="w-full h-11" 
+                className="w-full h-9 text-sm" 
                 onClick={() => setIsOpen(false)}
                 disabled={!value}
               >
