@@ -12,9 +12,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { format, addDays, isBefore, startOfDay, setHours, setMinutes, isToday, isTomorrow } from "date-fns";
-import { Clock } from "lucide-react";
+import { format, addDays, isBefore, startOfDay, setHours, setMinutes, isToday, isTomorrow, startOfToday } from "date-fns";
+import { Clock, CalendarDays } from "lucide-react";
 
 interface DateTimePickerProps {
   value: string;
@@ -42,6 +44,8 @@ export function DateTimePicker({
   const [timeError, setTimeError] = useState<string>("");
   const [pendingDateTime, setPendingDateTime] = useState<Date | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     if (value) {
@@ -50,11 +54,15 @@ export function DateTimePicker({
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
         setTimeInput(`${hours}:${minutes}`);
+        if (!isToday(date) && !isTomorrow(date)) {
+          setSelectedDate(date);
+          setShowCalendar(true);
+        }
       }
     }
   }, []);
 
-  const calculateDateTime = (time: string): Date | null => {
+  const calculateDateTime = (time: string, customDate?: Date): Date | null => {
     const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
     if (!timeMatch) return null;
     
@@ -63,21 +71,25 @@ export function DateTimePicker({
     
     if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
     
-    // Get fresh timestamps at validation time
     const currentNow = new Date();
+    
+    if (customDate) {
+      const dateTime = setMinutes(setHours(startOfDay(customDate), hours), minutes);
+      if (isBefore(dateTime, currentNow)) {
+        return null;
+      }
+      return dateTime;
+    }
+    
     const currentToday = startOfDay(currentNow);
     const currentTomorrow = startOfDay(addDays(currentNow, 1));
     
-    // Try today first
     let dateTime = setMinutes(setHours(currentToday, hours), minutes);
     
-    // If time is in the past, try tomorrow
     if (isBefore(dateTime, currentNow)) {
       dateTime = setMinutes(setHours(currentTomorrow, hours), minutes);
     }
     
-    // Always allow times within 24 hours - no strict cutoff needed
-    // since we already ensure it's either today (future) or tomorrow
     if (isBefore(dateTime, currentNow)) {
       return null;
     }
@@ -96,21 +108,53 @@ export function DateTimePicker({
       return;
     }
     
-    const dateTime = calculateDateTime(time);
+    const dateTime = calculateDateTime(time, showCalendar ? selectedDate : undefined);
     
     if (!dateTime) {
       setTimeError("Please enter a valid future time");
       return;
     }
     
-    // If the time is tomorrow, show confirmation
-    if (isTomorrow(dateTime)) {
+    if (!showCalendar && isTomorrow(dateTime)) {
       setPendingDateTime(dateTime);
       setShowConfirmDialog(true);
     } else {
-      // Today - apply directly
       const localISOString = format(dateTime, "yyyy-MM-dd'T'HH:mm");
       onChange(localISOString);
+    }
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (!date) return;
+    setSelectedDate(date);
+    
+    if (timeInput && timeInput.match(/^\d{1,2}:\d{2}$/)) {
+      const dateTime = calculateDateTime(timeInput, date);
+      if (dateTime) {
+        const localISOString = format(dateTime, "yyyy-MM-dd'T'HH:mm");
+        onChange(localISOString);
+      } else {
+        setTimeError("Please enter a valid future time for the selected date");
+      }
+    }
+  };
+
+  const handleCalendarToggle = (checked: boolean) => {
+    setShowCalendar(checked);
+    if (!checked) {
+      setSelectedDate(undefined);
+      if (timeInput && timeInput.match(/^\d{1,2}:\d{2}$/)) {
+        const dateTime = calculateDateTime(timeInput);
+        if (dateTime) {
+          if (isTomorrow(dateTime)) {
+            setPendingDateTime(dateTime);
+            setShowConfirmDialog(true);
+          } else {
+            const localISOString = format(dateTime, "yyyy-MM-dd'T'HH:mm");
+            onChange(localISOString);
+          }
+        }
+      }
     }
   };
 
@@ -182,9 +226,32 @@ export function DateTimePicker({
                   <span className="text-sm font-medium">Select departure time</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Pick any time within the next 24 hours
+                  {showCalendar ? "Select a date and time" : "Pick any time within the next 24 hours"}
                 </p>
               </div>
+
+              <div className="flex items-center justify-between py-2 border-y">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Schedule future date</span>
+                </div>
+                <Switch
+                  checked={showCalendar}
+                  onCheckedChange={handleCalendarToggle}
+                  data-testid={`${testId}-calendar-toggle`}
+                />
+              </div>
+
+              {showCalendar && (
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={handleDateSelect}
+                  disabled={(date) => isBefore(date, startOfToday())}
+                  className="rounded-md border"
+                  data-testid={`${testId}-calendar`}
+                />
+              )}
 
               <div className="space-y-2">
                 <Input

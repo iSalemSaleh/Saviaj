@@ -132,6 +132,9 @@ export default function RiderPage() {
   const [myRoutesCardOpen, setMyRoutesCardOpen] = useState(false);
   const [centerTrigger, setCenterTrigger] = useState(0); // Increment to recenter map
   const [formCollapsed, setFormCollapsed] = useState(false); // Collapsible form
+  const [driversPage, setDriversPage] = useState(0); // Pagination for drivers
+  const [routesPage, setRoutesPage] = useState(0); // Pagination for routes
+  const ITEMS_PER_PAGE = 10;
   const INITIAL_DISPLAY_COUNT = 5;
 
   useEffect(() => {
@@ -584,7 +587,7 @@ export default function RiderPage() {
       </div>
       
       {/* OVERLAY: Collapsible Request Form */}
-      <div className={`fixed top-14 left-0 right-0 z-40 backdrop-blur-sm bg-background/40 border-b border-white/10 transition-all duration-300 overflow-hidden ${formCollapsed ? 'max-h-10' : 'max-h-48'}`}>
+      <div className={`fixed top-14 left-0 right-0 z-40 backdrop-blur-sm bg-background/40 border-b border-white/10 transition-all duration-300 overflow-hidden ${formCollapsed ? 'max-h-10' : 'max-h-56'}`}>
         <button
           onClick={() => setFormCollapsed(!formCollapsed)}
           className="w-full px-3 py-2 flex items-center justify-between text-xs text-muted-foreground hover:bg-white/10"
@@ -595,42 +598,36 @@ export default function RiderPage() {
         </button>
         {!formCollapsed && (
           <form onSubmit={handleSubmit} className="px-3 pb-3 space-y-2">
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <PostcodeSearch
-                  value={pickupLocation}
-                  onChange={handlePickupChange}
-                  placeholder="Pickup"
-                  iconColor="text-muted-foreground"
-                  testId="input-pickup"
-                  isCurrentLocation={isCurrentLocationPickup}
-                  compact
-                />
-              </div>
-              <div className="flex-1">
-                <PostcodeSearch
-                  value={dropoffLocation}
-                  onChange={handleDropoffChange}
-                  placeholder="Destination"
-                  iconColor="text-secondary"
-                  testId="input-dropoff"
-                  compact
-                />
-              </div>
-            </div>
+            <PostcodeSearch
+              value={pickupLocation}
+              onChange={handlePickupChange}
+              placeholder="Pickup address"
+              iconColor="text-muted-foreground"
+              testId="input-pickup"
+              isCurrentLocation={isCurrentLocationPickup}
+              compact
+            />
+            <PostcodeSearch
+              value={dropoffLocation}
+              onChange={handleDropoffChange}
+              placeholder="Destination"
+              iconColor="text-secondary"
+              testId="input-dropoff"
+              compact
+            />
             <div className="flex gap-2">
               <DateTimePicker
                 value={requestedTime}
                 onChange={setRequestedTime}
                 testId="input-time"
-                className="flex-1"
+                className="w-1/2"
                 compact
               />
-              <div className="relative w-20">
+              <div className="relative w-1/4">
                 <PoundSterling className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
                 <Input 
                   type="number" 
-                  placeholder="£"
+                  placeholder="Offer"
                   min="1"
                   max="500"
                   step="1"
@@ -643,7 +640,7 @@ export default function RiderPage() {
               </div>
               <Button 
                 type="submit" 
-                className="h-8 px-3 text-xs"
+                className="h-8 w-1/4 text-xs"
                 disabled={createOfferMutation.isPending}
                 data-testid="button-post-request"
               >
@@ -668,13 +665,13 @@ export default function RiderPage() {
       <div className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 space-y-2">
         
         {/* Card 1: Nearby Pro Drivers */}
-        <div className={`backdrop-blur-md bg-background/70 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${driversCardOpen ? 'max-h-[45vh]' : 'h-11'}`}>
+        <div className={`backdrop-blur-md bg-background/70 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${driversCardOpen ? 'max-h-[50vh]' : ''}`}>
           <button
             onClick={() => {
               setDriversCardOpen(!driversCardOpen);
-              if (!driversCardOpen) { setRoutesCardOpen(false); setMyRoutesCardOpen(false); }
+              if (!driversCardOpen) { setRoutesCardOpen(false); setMyRoutesCardOpen(false); setDriversPage(0); }
             }}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/10 transition-colors"
+            className="w-full px-3 py-2 flex items-center justify-between hover:bg-white/10 transition-colors"
             data-testid="button-toggle-drivers-card"
           >
             <div className="flex items-center gap-2">
@@ -682,10 +679,46 @@ export default function RiderPage() {
               <span className="text-sm font-medium">Pro Drivers</span>
               {nearbyDrivers.length > 0 && <Badge className="bg-primary text-white text-xs">{nearbyDrivers.length}</Badge>}
             </div>
-            {driversCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+            {driversCardOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
+          
+          {/* Preview when collapsed - show nearest driver */}
+          {!driversCardOpen && nearbyDrivers.length > 0 && (
+            <div className="px-3 pb-2">
+              {(() => {
+                const driver = nearbyDrivers[0];
+                const estimatedCost = getEstimatedCost(driver);
+                return (
+                  <div className="flex items-center gap-3 p-2 bg-white/20 dark:bg-white/5 rounded-lg">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={driver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${driver.id}`} />
+                      <AvatarFallback className="text-xs">{driver.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">{driver.firstName || 'Driver'}</p>
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 mr-0.5" />
+                          {driver.driverRating ? parseFloat(driver.driverRating).toFixed(1) : 'New'}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">£{driver.ratePerMile}/mi • {driver.distanceFromPickup.toFixed(1)} mi away</p>
+                    </div>
+                    {estimatedCost && <Badge className="bg-primary text-white shrink-0">£{estimatedCost}</Badge>}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+          {!driversCardOpen && nearbyDrivers.length === 0 && !nearbyDriversLoading && (
+            <div className="px-3 pb-2">
+              <p className="text-xs text-muted-foreground text-center py-1">No Pro drivers nearby</p>
+            </div>
+          )}
+          
+          {/* Expanded content with pagination */}
           {driversCardOpen && (
-            <div className="px-3 pb-3 overflow-y-auto max-h-[32vh]">
+            <div className="px-3 pb-3 overflow-y-auto max-h-[38vh]">
               {nearbyDriversLoading ? (
                 <div className="text-center py-4">
                   <Loader2 className="h-5 w-5 text-primary mx-auto animate-spin" />
@@ -695,48 +728,67 @@ export default function RiderPage() {
                   <p className="text-xs text-muted-foreground">No Pro drivers nearby</p>
                 </div>
               ) : (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {nearbyDrivers.slice(0, 10).map((driver) => {
-                    const estimatedCost = getEstimatedCost(driver);
-                    return (
-                      <div key={driver.id} className="flex-shrink-0 w-36 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10" data-testid={`card-pro-driver-${driver.id}`}>
-                        <Link href={`/driver/${driver.id}`} className="block" data-testid={`link-pro-driver-${driver.id}`}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Avatar className="h-6 w-6">
-                              <AvatarImage src={driver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${driver.id}`} />
-                              <AvatarFallback className="text-xs">{driver.firstName?.charAt(0) || 'D'}</AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium truncate" data-testid={`text-pro-driver-name-${driver.id}`}>{driver.firstName || 'Driver'}</p>
-                              <div className="flex items-center text-[10px] text-muted-foreground">
-                                <Star className="h-2 w-2 text-yellow-500 fill-yellow-500 mr-0.5" />
-                                {driver.driverRating ? parseFloat(driver.driverRating).toFixed(1) : 'New'}
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {nearbyDrivers.slice(driversPage * ITEMS_PER_PAGE, (driversPage + 1) * ITEMS_PER_PAGE).map((driver) => {
+                      const estimatedCost = getEstimatedCost(driver);
+                      return (
+                        <div key={driver.id} className="p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10" data-testid={`card-pro-driver-${driver.id}`}>
+                          <Link href={`/driver/${driver.id}`} className="block" data-testid={`link-pro-driver-${driver.id}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={driver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${driver.id}`} />
+                                <AvatarFallback className="text-xs">{driver.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium truncate" data-testid={`text-pro-driver-name-${driver.id}`}>{driver.firstName || 'Driver'}</p>
+                                <div className="flex items-center text-[10px] text-muted-foreground">
+                                  <Star className="h-2 w-2 text-yellow-500 fill-yellow-500 mr-0.5" />
+                                  {driver.driverRating ? parseFloat(driver.driverRating).toFixed(1) : 'New'}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground">£{driver.ratePerMile}/mi • {driver.distanceFromPickup.toFixed(1)} mi</div>
-                          {estimatedCost && <p className="text-xs font-bold text-primary">Est. £{estimatedCost}</p>}
-                        </Link>
-                        <Button size="sm" className="w-full h-6 mt-1 text-[10px]" onClick={() => handleRequestProDriver(driver)} disabled={requestingDriverId === driver.id || !dropoffCoords} data-testid={`button-request-pro-driver-${driver.id}`}>
-                          {requestingDriverId === driver.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Request'}
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
+                            <p className="text-[10px] text-muted-foreground truncate mb-1">{driver.distanceFromPickup.toFixed(1)} mi away</p>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-muted-foreground">£{driver.ratePerMile}/mi</span>
+                              {estimatedCost && <Badge className="bg-primary text-white text-[10px] px-1">£{estimatedCost}</Badge>}
+                            </div>
+                          </Link>
+                          <Button size="sm" className="w-full h-6 mt-1 text-[10px]" onClick={() => handleRequestProDriver(driver)} disabled={requestingDriverId === driver.id || !dropoffCoords} data-testid={`button-request-pro-driver-${driver.id}`}>
+                            {requestingDriverId === driver.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Request'}
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Pagination controls */}
+                  {nearbyDrivers.length > ITEMS_PER_PAGE && (
+                    <div className="flex justify-center gap-2 mt-3">
+                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={driversPage === 0} onClick={() => setDriversPage(p => p - 1)}>
+                        Previous
+                      </Button>
+                      <span className="text-xs text-muted-foreground self-center">
+                        {driversPage + 1} / {Math.ceil(nearbyDrivers.length / ITEMS_PER_PAGE)}
+                      </span>
+                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={(driversPage + 1) * ITEMS_PER_PAGE >= nearbyDrivers.length} onClick={() => setDriversPage(p => p + 1)}>
+                        Next
+                      </Button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
         </div>
 
         {/* Card 2: Nearby Routes */}
-        <div className={`backdrop-blur-md bg-background/70 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${routesCardOpen ? 'max-h-[45vh]' : 'h-11'}`}>
+        <div className={`backdrop-blur-md bg-background/70 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${routesCardOpen ? 'max-h-[50vh]' : ''}`}>
           <button
             onClick={() => {
               setRoutesCardOpen(!routesCardOpen);
-              if (!routesCardOpen) { setDriversCardOpen(false); setMyRoutesCardOpen(false); }
+              if (!routesCardOpen) { setDriversCardOpen(false); setMyRoutesCardOpen(false); setRoutesPage(0); }
             }}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/10 transition-colors"
+            className="w-full px-3 py-2 flex items-center justify-between hover:bg-white/10 transition-colors"
             data-testid="button-toggle-routes-card"
           >
             <div className="flex items-center gap-2">
@@ -744,10 +796,45 @@ export default function RiderPage() {
               <span className="text-sm font-medium">Nearby Routes</span>
               {filteredAndSortedRoutes.length > 0 && <Badge variant="outline" className="text-xs">{filteredAndSortedRoutes.length}</Badge>}
             </div>
-            {routesCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+            {routesCardOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
+          
+          {/* Preview when collapsed - show nearest route */}
+          {!routesCardOpen && filteredAndSortedRoutes.length > 0 && (
+            <div className="px-3 pb-2">
+              {(() => {
+                const route = filteredAndSortedRoutes[0];
+                return (
+                  <div className="flex items-center gap-3 p-2 bg-white/20 dark:bg-white/5 rounded-lg">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
+                      <AvatarFallback className="text-xs">{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">{route.driver?.firstName || 'Driver'}</p>
+                        <Badge variant="outline" className="text-[10px] shrink-0">
+                          <Clock className="h-2 w-2 mr-0.5" />
+                          {getTimeUntilDeparture(route.departureTime)}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{route.startLocation} → {route.endLocation}</p>
+                    </div>
+                    {route.pricePerSeat && <Badge className="bg-primary text-white shrink-0">£{route.pricePerSeat}</Badge>}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+          {!routesCardOpen && filteredAndSortedRoutes.length === 0 && !routesLoading && (
+            <div className="px-3 pb-2">
+              <p className="text-xs text-muted-foreground text-center py-1">No routes available</p>
+            </div>
+          )}
+          
+          {/* Expanded content with pagination */}
           {routesCardOpen && (
-            <div className="px-3 pb-3 overflow-y-auto max-h-[32vh]">
+            <div className="px-3 pb-3 overflow-y-auto max-h-[38vh]">
               {routesLoading ? (
                 <div className="text-center py-4">
                   <Loader2 className="h-5 w-5 text-primary mx-auto animate-spin" />
@@ -757,63 +844,107 @@ export default function RiderPage() {
                   <p className="text-xs text-muted-foreground">No routes available</p>
                 </div>
               ) : (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {filteredAndSortedRoutes.slice(0, 10).map((route) => (
-                    <div key={route.id} className="flex-shrink-0 w-40 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10" data-testid={`card-route-${route.id}`}>
-                      <Link href={`/driver/${route.driverId}`} className="block" data-testid={`link-driver-profile-${route.id}`}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Avatar className="h-5 w-5">
-                            <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
-                            <AvatarFallback className="text-[10px]">{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs font-medium truncate" data-testid={`text-driver-name-route-${route.id}`}>{route.driver?.firstName || 'Driver'}</span>
-                          {route.pricePerSeat && <Badge className="bg-primary text-white text-[10px] px-1">£{route.pricePerSeat}</Badge>}
-                        </div>
-                        <div className="text-[10px] space-y-0.5 mb-1">
-                          <p className="truncate"><span className="text-primary">●</span> {route.startLocation}</p>
-                          <p className="truncate"><span className="text-secondary">●</span> {route.endLocation}</p>
-                        </div>
-                        <Badge variant="outline" className="text-[10px]">
-                          <Clock className="h-2 w-2 mr-0.5" />
-                          {getTimeUntilDeparture(route.departureTime)}
-                        </Badge>
-                      </Link>
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {filteredAndSortedRoutes.slice(routesPage * ITEMS_PER_PAGE, (routesPage + 1) * ITEMS_PER_PAGE).map((route) => (
+                      <div key={route.id} className="p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10" data-testid={`card-route-${route.id}`}>
+                        <Link href={`/driver/${route.driverId}`} className="block" data-testid={`link-driver-profile-${route.id}`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Avatar className="h-5 w-5">
+                              <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
+                              <AvatarFallback className="text-[10px]">{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs font-medium truncate flex-1" data-testid={`text-driver-name-route-${route.id}`}>{route.driver?.firstName || 'Driver'}</span>
+                            {route.pricePerSeat && <Badge className="bg-primary text-white text-[10px] px-1">£{route.pricePerSeat}</Badge>}
+                          </div>
+                          <div className="text-[10px] space-y-0.5 mb-1">
+                            <p className="truncate"><span className="text-primary">●</span> {route.startLocation}</p>
+                            <p className="truncate"><span className="text-secondary">●</span> {route.endLocation}</p>
+                          </div>
+                          <Badge variant="outline" className="text-[10px]">
+                            <Clock className="h-2 w-2 mr-0.5" />
+                            {getTimeUntilDeparture(route.departureTime)}
+                          </Badge>
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Pagination controls */}
+                  {filteredAndSortedRoutes.length > ITEMS_PER_PAGE && (
+                    <div className="flex justify-center gap-2 mt-3">
+                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={routesPage === 0} onClick={() => setRoutesPage(p => p - 1)}>
+                        Previous
+                      </Button>
+                      <span className="text-xs text-muted-foreground self-center">
+                        {routesPage + 1} / {Math.ceil(filteredAndSortedRoutes.length / ITEMS_PER_PAGE)}
+                      </span>
+                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={(routesPage + 1) * ITEMS_PER_PAGE >= filteredAndSortedRoutes.length} onClick={() => setRoutesPage(p => p + 1)}>
+                        Next
+                      </Button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </div>
           )}
         </div>
 
-        {/* Card 3: My Routes */}
-        <div className={`backdrop-blur-md bg-background/70 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${myRoutesCardOpen ? 'max-h-[45vh]' : 'h-11'}`}>
+        {/* Card 3: My Routes (max 10 routes, no pagination) */}
+        <div className={`backdrop-blur-md bg-background/70 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${myRoutesCardOpen ? 'max-h-[50vh]' : ''}`}>
           <button
             onClick={() => {
               setMyRoutesCardOpen(!myRoutesCardOpen);
               if (!myRoutesCardOpen) { setDriversCardOpen(false); setRoutesCardOpen(false); }
             }}
-            className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/10 transition-colors"
+            className="w-full px-3 py-2 flex items-center justify-between hover:bg-white/10 transition-colors"
             data-testid="button-toggle-my-routes-card"
           >
             <div className="flex items-center gap-2">
               <Route className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">My Routes</span>
-              {myPendingOffers.length > 0 && <Badge className="bg-primary text-white text-xs">{myPendingOffers.length}</Badge>}
+              {myPendingOffers.length > 0 && <Badge className="bg-primary text-white text-xs">{myPendingOffers.length}/10</Badge>}
             </div>
-            {myRoutesCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+            {myRoutesCardOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
+          
+          {/* Preview when collapsed - show most recent route */}
+          {!myRoutesCardOpen && myPendingOffers.length > 0 && (
+            <div className="px-3 pb-2">
+              {(() => {
+                const offer = myPendingOffers[0];
+                return (
+                  <div className="flex items-center gap-3 p-2 bg-white/20 dark:bg-white/5 rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{offer.pickupLocation}</p>
+                      <p className="text-xs text-muted-foreground truncate">→ {offer.dropoffLocation}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <Badge className="bg-primary text-white">£{offer.offerPrice}</Badge>
+                      <p className="text-[10px] text-muted-foreground mt-1">{formatDate(offer.requestedTime)}</p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+          {!myRoutesCardOpen && myPendingOffers.length === 0 && (
+            <div className="px-3 pb-2">
+              <p className="text-xs text-muted-foreground text-center py-1">No pending requests</p>
+            </div>
+          )}
+          
+          {/* Expanded content (max 10, no pagination) */}
           {myRoutesCardOpen && (
-            <div className="px-3 pb-3 overflow-y-auto max-h-[32vh]">
+            <div className="px-3 pb-3 overflow-y-auto max-h-[38vh]">
               {myPendingOffers.length === 0 ? (
                 <div className="text-center py-3">
                   <p className="text-xs text-muted-foreground">No pending requests</p>
                   <p className="text-[10px] text-muted-foreground mt-1">Post a request above to get started</p>
                 </div>
               ) : (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {myPendingOffers.map((offer) => (
-                    <div key={offer.id} className="flex-shrink-0 w-44 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10" data-testid={`my-route-${offer.id}`}>
+                <div className="grid grid-cols-2 gap-2">
+                  {myPendingOffers.slice(0, 10).map((offer) => (
+                    <div key={offer.id} className="p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10" data-testid={`my-route-${offer.id}`}>
                       <div className="flex items-start justify-between gap-1 mb-1">
                         <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-medium truncate">{offer.pickupLocation}</p>
