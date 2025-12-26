@@ -230,7 +230,7 @@ export function DateTimePicker({
               <div className="flex items-center justify-between py-2 px-2 bg-muted/30 rounded-lg">
                 <div className="flex items-center gap-2">
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-xs font-medium">Future date</span>
+                  <span className="text-xs font-medium">Future dates</span>
                 </div>
                 <Switch
                   checked={showCalendar}
