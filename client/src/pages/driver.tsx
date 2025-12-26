@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, Crosshair, Power, Radio, Bell, Check, X, ChevronDown, ChevronUp, Route, Users, History } from "lucide-react";
+import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, Crosshair, Power, Radio, Bell, Check, X, ChevronDown, ChevronUp, Route, Users, History, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -626,33 +626,8 @@ export default function DriverPage() {
         <Navbar />
       </div>
 
-      {user?.isCommercialDriver && (
-        <div className="fixed top-16 right-4 z-40">
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-full backdrop-blur-md shadow-lg border ${
-            isOnlineForHire 
-              ? 'bg-green-500/90 border-green-400 text-white' 
-              : 'bg-slate-800/90 border-slate-600 text-white'
-          }`}>
-            <Radio className={`h-4 w-4 ${isOnlineForHire ? 'animate-pulse' : 'opacity-60'}`} />
-            <span className="text-xs font-semibold">{isOnlineForHire ? 'ONLINE' : 'OFFLINE'}</span>
-            {isOnlineForHire && ratePerMile && (
-              <Badge variant="secondary" className="bg-white/20 text-white text-[10px] px-1.5">
-                £{ratePerMile}/mi
-              </Badge>
-            )}
-            <Switch
-              checked={isOnlineForHire}
-              onCheckedChange={handleToggleOnlineStatus}
-              disabled={isUpdatingOnlineStatus}
-              className="scale-75"
-              data-testid="switch-online-status"
-            />
-          </div>
-        </div>
-      )}
-
       {pendingRequests.length > 0 && (
-        <div className="fixed top-28 right-4 z-40 w-72">
+        <div className="fixed top-11 right-2 z-40 w-64 sm:w-72">
           <div className="bg-amber-500/95 backdrop-blur-md rounded-xl shadow-lg border border-amber-400 p-3">
             <div className="flex items-center gap-2 mb-2">
               <Bell className="h-4 w-4 animate-bounce text-white" />
@@ -699,47 +674,87 @@ export default function DriverPage() {
         </div>
       )}
 
-      <div className="fixed top-16 left-4 right-4 sm:right-auto sm:w-80 z-40 mt-2">
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-white/20">
+      <div className="fixed top-11 left-2 right-2 sm:right-auto sm:w-72 z-40">
+        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-lg shadow-lg border border-white/20">
           <div 
-            className="flex items-center justify-between p-3 cursor-pointer"
+            className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
             onClick={() => setFormExpanded(!formExpanded)}
           >
-            <div className="flex items-center gap-2">
-              <Route className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-primary">Post Your Route</span>
+            <div className="flex items-center gap-1.5">
+              <Route className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-semibold text-primary">Post Your Route</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={(e) => { e.stopPropagation(); useCurrentLocation(); }}
-                disabled={isGettingLocation}
-                className="h-6 text-[10px] px-2"
-                data-testid="button-use-current-location"
-              >
-                {isGettingLocation ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <>
-                    <Crosshair className="h-3 w-3 mr-1" />
-                    <span>Current</span>
-                  </>
-                )}
-              </Button>
-              {formExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            <div className="flex items-center gap-1">
+              {user?.isCommercialDriver && (
+                <>
+                  <div 
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                      isOnlineForHire ? 'bg-green-500 text-white' : 'bg-slate-300 text-slate-600'
+                    }`}
+                    onClick={(e) => { e.stopPropagation(); handleToggleOnlineStatus(); }}
+                  >
+                    <Radio className={`h-2.5 w-2.5 ${isOnlineForHire ? 'animate-pulse' : ''}`} />
+                    {isOnlineForHire ? 'ON' : 'OFF'}
+                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0"
+                        onClick={(e) => e.stopPropagation()}
+                        data-testid="button-pro-settings"
+                      >
+                        <Settings className="h-3 w-3 text-muted-foreground" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-xs">
+                      <DialogHeader>
+                        <DialogTitle className="text-sm">Pro Driver Settings</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-3 pt-2">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium">Rate per mile (£)</label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0.5"
+                            max="10"
+                            value={ratePerMile}
+                            onChange={(e) => setRatePerMile(e.target.value)}
+                            className="h-8 text-sm"
+                            placeholder="e.g. 1.50"
+                            data-testid="input-rate-per-mile"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium">Tagline</label>
+                          <Input
+                            value={driverTagline}
+                            onChange={(e) => setDriverTagline(e.target.value)}
+                            className="h-8 text-sm"
+                            placeholder="e.g. Safe & reliable driver"
+                            maxLength={50}
+                            data-testid="input-driver-tagline"
+                          />
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              )}
+              {formExpanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
             </div>
           </div>
 
           {!formExpanded && (startLocation || endLocation) && (
-            <div className="px-3 pb-3">
-              <div className="flex gap-2 text-xs">
-                <div className="flex-1 truncate bg-muted/50 rounded px-2 py-1">
+            <div className="px-2 pb-1.5">
+              <div className="flex gap-1 text-[10px]">
+                <div className="flex-1 truncate bg-muted/50 rounded px-1.5 py-0.5">
                   <span className="text-muted-foreground">From: </span>
                   <span className="font-medium">{startLocation || 'Not set'}</span>
                 </div>
-                <div className="flex-1 truncate bg-muted/50 rounded px-2 py-1">
+                <div className="flex-1 truncate bg-muted/50 rounded px-1.5 py-0.5">
                   <span className="text-muted-foreground">To: </span>
                   <span className="font-medium">{endLocation || 'Not set'}</span>
                 </div>
@@ -748,13 +763,13 @@ export default function DriverPage() {
           )}
 
           {formExpanded && (
-            <form onSubmit={handlePublishRoute} className="px-3 pb-3 space-y-3">
+            <form onSubmit={handlePublishRoute} className="px-2 pb-2 space-y-1.5">
               <PostcodeSearch
                 value={startLocation}
                 onChange={handleStartChange}
                 placeholder="Starting point"
                 iconColor="text-primary"
-                inputClassName="bg-white dark:bg-slate-900 border-slate-200"
+                inputClassName="bg-white dark:bg-slate-900 border-slate-200 h-7 text-xs"
                 textClassName="text-muted-foreground"
                 testId="input-start-location"
                 isCurrentLocation={!!userLocation && startCoords?.lat === userLocation.lat && startCoords?.lon === userLocation.lng}
@@ -766,63 +781,22 @@ export default function DriverPage() {
                 onChange={handleEndChange}
                 placeholder="Destination"
                 iconColor="text-primary"
-                inputClassName="bg-white dark:bg-slate-900 border-slate-200"
+                inputClassName="bg-white dark:bg-slate-900 border-slate-200 h-7 text-xs"
                 textClassName="text-muted-foreground"
                 testId="input-end-location"
                 compact
               />
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 <DateTimePicker
                   value={departureTime}
                   onChange={setDepartureTime}
                   testId="input-departure-time"
-                  buttonClassName="bg-white dark:bg-slate-900 border-slate-200 h-8"
+                  buttonClassName="bg-white dark:bg-slate-900 border-slate-200 h-7 text-xs"
                   compact
                 />
-                <div className="relative">
-                  <PoundSterling className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input 
-                    type="number" 
-                    placeholder="£/seat"
-                    min="1"
-                    max="100"
-                    step="1"
-                    className="pl-7 h-8 text-sm bg-white dark:bg-slate-900 border-slate-200"
-                    value={pricePerSeat}
-                    onChange={(e) => setPricePerSeat(e.target.value)}
-                    aria-label="Price per seat in pounds"
-                    data-testid="input-price-per-seat"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-2 flex gap-1">
-                  <Input 
-                    type="number" 
-                    placeholder="Detour"
-                    min="1"
-                    step="any"
-                    className="h-8 text-sm bg-white dark:bg-slate-900 border-slate-200 flex-1"
-                    value={maxDetour}
-                    onChange={(e) => setMaxDetour(e.target.value)}
-                    aria-label="Maximum detour distance"
-                    data-testid="input-max-detour"
-                  />
-                  <Select value={detourUnit} onValueChange={(v) => setDetourUnit(v as DetourUnit)}>
-                    <SelectTrigger className="h-8 w-14 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-detour-unit">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(UNIT_LABELS) as DetourUnit[]).map((unit) => (
-                        <SelectItem key={unit} value={unit}>{UNIT_LABELS[unit]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
                 <Select value={availableSeats} onValueChange={setAvailableSeats}>
-                  <SelectTrigger className="h-8 text-sm bg-white dark:bg-slate-900 border-slate-200" data-testid="select-seats">
+                  <SelectTrigger className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-seats">
                     <SelectValue placeholder="Seats" />
                   </SelectTrigger>
                   <SelectContent>
@@ -831,23 +805,58 @@ export default function DriverPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="relative">
+                  <PoundSterling className="absolute left-2 top-1.5 h-3 w-3 text-muted-foreground" />
+                  <Input 
+                    type="number" 
+                    placeholder="£/seat"
+                    min="1"
+                    max="100"
+                    step="1"
+                    className="pl-6 h-7 text-xs bg-white dark:bg-slate-900 border-slate-200"
+                    value={pricePerSeat}
+                    onChange={(e) => setPricePerSeat(e.target.value)}
+                    aria-label="Price per seat in pounds"
+                    data-testid="input-price-per-seat"
+                  />
+                </div>
               </div>
 
-              <Button 
-                type="submit"
-                className="w-full h-9 text-sm font-semibold"
-                disabled={createRouteMutation.isPending}
-                data-testid="button-publish-route"
-              >
-                {createRouteMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Publishing...
-                  </>
-                ) : (
-                  "Publish Route"
-                )}
-              </Button>
+              <div className="flex gap-1.5">
+                <Input 
+                  type="number" 
+                  placeholder="Detour"
+                  min="1"
+                  step="any"
+                  className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200 flex-1"
+                  value={maxDetour}
+                  onChange={(e) => setMaxDetour(e.target.value)}
+                  aria-label="Maximum detour distance"
+                  data-testid="input-max-detour"
+                />
+                <Select value={detourUnit} onValueChange={(v) => setDetourUnit(v as DetourUnit)}>
+                  <SelectTrigger className="h-7 w-12 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-detour-unit">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(UNIT_LABELS) as DetourUnit[]).map((unit) => (
+                      <SelectItem key={unit} value={unit}>{UNIT_LABELS[unit]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  type="submit"
+                  className="h-7 px-3 text-xs font-semibold"
+                  disabled={createRouteMutation.isPending}
+                  data-testid="button-publish-route"
+                >
+                  {createRouteMutation.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    "Publish"
+                  )}
+                </Button>
+              </div>
             </form>
           )}
         </div>
@@ -856,16 +865,17 @@ export default function DriverPage() {
       <Button
         onClick={handleRecenter}
         size="icon"
-        className="fixed bottom-[280px] right-4 z-50 h-10 w-10 rounded-full bg-white dark:bg-slate-800 text-primary shadow-lg border border-slate-200 hover:bg-slate-100"
+        className="fixed right-2 z-50 h-8 w-8 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-primary shadow-lg border border-slate-200 hover:bg-slate-100"
+        style={{ bottom: 'calc(45vh + 8px)' }}
         data-testid="button-recenter-map"
       >
-        <Crosshair className="h-5 w-5" />
+        <Crosshair className="h-4 w-4" />
       </Button>
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 px-2 pb-2 space-y-2" style={{ maxHeight: '60vh' }}>
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-white/20 overflow-hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 px-2 pb-2 space-y-1.5" style={{ maxHeight: '45vh' }}>
+        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-lg shadow-lg border border-white/20 overflow-hidden">
           <div
-            className="flex items-center justify-between p-3 cursor-pointer"
+            className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
             onClick={() => handleCardToggle('offers')}
           >
             <div className="flex items-center gap-2">
@@ -892,7 +902,7 @@ export default function DriverPage() {
           </div>
 
           {!offersCardOpen && displayOffers.length > 0 && (
-            <div className="px-3 pb-3">
+            <div className="px-2 pb-2">
               <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg p-2">
                 <Avatar className="h-6 w-6">
                   <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${displayOffers[0].riderId}`} />
@@ -908,7 +918,7 @@ export default function DriverPage() {
           )}
 
           {!offersCardOpen && displayOffers.length === 0 && !offersLoading && (
-            <div className="px-3 pb-3">
+            <div className="px-2 pb-2">
               <p className="text-xs text-muted-foreground text-center py-2">
                 {showFutureDates ? "No rider offers available" : "No offers in next 24h"}
               </p>
@@ -916,7 +926,7 @@ export default function DriverPage() {
           )}
 
           {offersCardOpen && (
-            <div className="px-3 pb-3 max-h-[50vh] overflow-y-auto space-y-2">
+            <div className="px-2 pb-2 max-h-[40vh] overflow-y-auto space-y-1.5">
               {offersLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -1053,9 +1063,9 @@ export default function DriverPage() {
           )}
         </div>
 
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-white/20 overflow-hidden">
+        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-lg shadow-lg border border-white/20 overflow-hidden">
           <div
-            className="flex items-center justify-between p-3 cursor-pointer"
+            className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
             onClick={() => handleCardToggle('active')}
           >
             <div className="flex items-center gap-2">
@@ -1067,7 +1077,7 @@ export default function DriverPage() {
           </div>
 
           {!activeRidesCardOpen && activeRides.length > 0 && (
-            <div className="px-3 pb-3">
+            <div className="px-2 pb-2">
               <div className="flex items-center gap-2 text-xs bg-green-50 dark:bg-green-900/20 rounded-lg p-2">
                 <Badge className={activeRides[0].status === 'in_progress' ? 'bg-green-500' : 'bg-blue-500'}>
                   {activeRides[0].status === 'in_progress' ? 'In Progress' : 'Scheduled'}
@@ -1081,13 +1091,13 @@ export default function DriverPage() {
           )}
 
           {!activeRidesCardOpen && activeRides.length === 0 && (
-            <div className="px-3 pb-3">
+            <div className="px-2 pb-2">
               <p className="text-xs text-muted-foreground text-center py-2">No active rides</p>
             </div>
           )}
 
           {activeRidesCardOpen && (
-            <div className="px-3 pb-3 max-h-[50vh] overflow-y-auto space-y-2">
+            <div className="px-2 pb-2 max-h-[40vh] overflow-y-auto space-y-1.5">
               {activeRides.length === 0 ? (
                 <div className="text-center py-6">
                   <Navigation className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
@@ -1119,9 +1129,9 @@ export default function DriverPage() {
           )}
         </div>
 
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-lg border border-white/20 overflow-hidden">
+        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-lg shadow-lg border border-white/20 overflow-hidden">
           <div
-            className="flex items-center justify-between p-3 cursor-pointer"
+            className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
             onClick={() => handleCardToggle('history')}
           >
             <div className="flex items-center gap-2">
@@ -1133,7 +1143,7 @@ export default function DriverPage() {
           </div>
 
           {!historyCardOpen && completedRides.length > 0 && (
-            <div className="px-3 pb-3">
+            <div className="px-2 pb-2">
               <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg p-2">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{completedRides[0].pickupLocation}</p>
@@ -1145,13 +1155,13 @@ export default function DriverPage() {
           )}
 
           {!historyCardOpen && completedRides.length === 0 && (
-            <div className="px-3 pb-3">
+            <div className="px-2 pb-2">
               <p className="text-xs text-muted-foreground text-center py-2">No completed rides yet</p>
             </div>
           )}
 
           {historyCardOpen && (
-            <div className="px-3 pb-3 max-h-[50vh] overflow-y-auto space-y-2">
+            <div className="px-2 pb-2 max-h-[40vh] overflow-y-auto space-y-1.5">
               {completedRides.length === 0 ? (
                 <div className="text-center py-6">
                   <History className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
