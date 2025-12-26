@@ -27,10 +27,10 @@ const UNIT_TO_MILES: Record<DetourUnit, number> = {
 };
 
 const UNIT_LABELS: Record<DetourUnit, string> = {
-  miles: "Mi",
-  km: "Km",
-  meters: "M",
-  yards: "Yd",
+  miles: "Miles",
+  km: "Kilometers",
+  meters: "Meters",
+  yards: "Yards",
 };
 
 interface RiderOffer {
@@ -684,17 +684,21 @@ export default function DriverPage() {
               <Route className="h-3.5 w-3.5 text-primary" />
               <span className="text-xs font-semibold text-primary">Post Your Route</span>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               {user?.isCommercialDriver && (
                 <>
-                  <div 
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
-                      isOnlineForHire ? 'bg-green-500 text-white' : 'bg-slate-300 text-slate-600'
-                    }`}
-                    onClick={(e) => { e.stopPropagation(); handleToggleOnlineStatus(); }}
-                  >
-                    <Radio className={`h-2.5 w-2.5 ${isOnlineForHire ? 'animate-pulse' : ''}`} />
-                    {isOnlineForHire ? 'ON' : 'OFF'}
+                  <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${
+                    isOnlineForHire ? 'bg-green-500/20 text-green-700' : 'bg-slate-200 text-slate-500'
+                  }`}>
+                    <Radio className={`h-2.5 w-2.5 ${isOnlineForHire ? 'text-green-500 animate-pulse' : 'text-slate-400'}`} />
+                    <span>{isOnlineForHire ? 'Online' : 'Offline'}</span>
+                    <Switch
+                      checked={isOnlineForHire}
+                      onCheckedChange={handleToggleOnlineStatus}
+                      disabled={isUpdatingOnlineStatus}
+                      className="scale-50 ml-0.5"
+                      data-testid="switch-online-status"
+                    />
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
@@ -702,7 +706,6 @@ export default function DriverPage() {
                         variant="ghost"
                         size="sm"
                         className="h-5 w-5 p-0"
-                        onClick={(e) => e.stopPropagation()}
                         data-testid="button-pro-settings"
                       >
                         <Settings className="h-3 w-3 text-muted-foreground" />
@@ -743,7 +746,9 @@ export default function DriverPage() {
                   </Dialog>
                 </>
               )}
-              {formExpanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+              <div onClick={() => setFormExpanded(!formExpanded)} className="cursor-pointer">
+                {formExpanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+              </div>
             </div>
           </div>
 
@@ -787,7 +792,7 @@ export default function DriverPage() {
                 compact
               />
 
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-2 gap-1.5">
                 <DateTimePicker
                   value={departureTime}
                   onChange={setDepartureTime}
@@ -795,47 +800,49 @@ export default function DriverPage() {
                   buttonClassName="bg-white dark:bg-slate-900 border-slate-200 h-7 text-xs"
                   compact
                 />
-                <Select value={availableSeats} onValueChange={setAvailableSeats}>
-                  <SelectTrigger className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-seats">
-                    <SelectValue placeholder="Seats" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4].map((num) => (
-                      <SelectItem key={num} value={String(num)}>{num} seat{num > 1 ? 's' : ''}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="relative">
-                  <PoundSterling className="absolute left-2 top-1.5 h-3 w-3 text-muted-foreground" />
-                  <Input 
-                    type="number" 
-                    placeholder="£/seat"
-                    min="1"
-                    max="100"
-                    step="1"
-                    className="pl-6 h-7 text-xs bg-white dark:bg-slate-900 border-slate-200"
-                    value={pricePerSeat}
-                    onChange={(e) => setPricePerSeat(e.target.value)}
-                    aria-label="Price per seat in pounds"
-                    data-testid="input-price-per-seat"
-                  />
+                <div className="grid grid-cols-2 gap-1">
+                  <Select value={availableSeats} onValueChange={setAvailableSeats}>
+                    <SelectTrigger className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-seats">
+                      <SelectValue placeholder="Seats" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4].map((num) => (
+                        <SelectItem key={num} value={String(num)}>{num} seat{num > 1 ? 's' : ''}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="relative">
+                    <PoundSterling className="absolute left-1.5 top-1.5 h-3 w-3 text-muted-foreground" />
+                    <Input 
+                      type="number" 
+                      placeholder="£/Seat"
+                      min="1"
+                      max="100"
+                      step="1"
+                      className="pl-5 h-7 text-xs bg-white dark:bg-slate-900 border-slate-200"
+                      value={pricePerSeat}
+                      onChange={(e) => setPricePerSeat(e.target.value)}
+                      aria-label="Price per Seat in pounds"
+                      data-testid="input-price-per-seat"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="flex gap-1.5">
+              <div className="grid grid-cols-3 gap-1.5">
                 <Input 
                   type="number" 
                   placeholder="Detour"
                   min="1"
                   step="any"
-                  className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200 flex-1"
+                  className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200"
                   value={maxDetour}
                   onChange={(e) => setMaxDetour(e.target.value)}
                   aria-label="Maximum detour distance"
                   data-testid="input-max-detour"
                 />
                 <Select value={detourUnit} onValueChange={(v) => setDetourUnit(v as DetourUnit)}>
-                  <SelectTrigger className="h-7 w-12 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-detour-unit">
+                  <SelectTrigger className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-detour-unit">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -846,7 +853,7 @@ export default function DriverPage() {
                 </Select>
                 <Button 
                   type="submit"
-                  className="h-7 px-3 text-xs font-semibold"
+                  className="h-7 px-2 text-xs font-semibold"
                   disabled={createRouteMutation.isPending}
                   data-testid="button-publish-route"
                 >
