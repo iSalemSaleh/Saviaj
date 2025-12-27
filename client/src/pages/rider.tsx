@@ -18,6 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 import PostcodeSearch from "@/components/PostcodeSearch";
 import { DateTimePicker } from "@/components/DateTimePicker";
 import { RiderLocationMap } from "@/components/map/RiderLocationMap";
+import defaultDriverIcon from "@assets/driver_icon_1766794300682.png";
 
 interface DriverInfo {
   id: string;
@@ -755,7 +756,7 @@ export default function RiderPage() {
                 return (
                   <div className="flex items-center gap-3 p-2 bg-white/20 dark:bg-white/5 rounded-lg">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={driver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${driver.id}`} />
+                      <AvatarImage src={driver.profileImageUrl || defaultDriverIcon} />
                       <AvatarFallback className="text-xs">{driver.firstName?.charAt(0) || 'D'}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
@@ -801,7 +802,7 @@ export default function RiderPage() {
                           <Link href={`/driver/${driver.id}`} className="block" data-testid={`link-pro-driver-${driver.id}`}>
                             <div className="flex items-center gap-2 mb-1">
                               <Avatar className="h-6 w-6">
-                                <AvatarImage src={driver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${driver.id}`} />
+                                <AvatarImage src={driver.profileImageUrl || defaultDriverIcon} />
                                 <AvatarFallback className="text-xs">{driver.firstName?.charAt(0) || 'D'}</AvatarFallback>
                               </Avatar>
                               <div className="min-w-0 flex-1">
@@ -871,7 +872,7 @@ export default function RiderPage() {
                 return (
                   <div className="flex items-center gap-3 p-2 bg-white/20 dark:bg-white/5 rounded-lg">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
+                      <AvatarImage src={route.driver?.profileImageUrl || defaultDriverIcon} />
                       <AvatarFallback className="text-xs">{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
@@ -915,7 +916,7 @@ export default function RiderPage() {
                         <Link href={`/driver/${route.driverId}`} className="block" data-testid={`link-driver-profile-${route.id}`}>
                           <div className="flex items-center gap-2 mb-1">
                             <Avatar className="h-5 w-5">
-                              <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
+                              <AvatarImage src={route.driver?.profileImageUrl || defaultDriverIcon} />
                               <AvatarFallback className="text-[10px]">{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
                             </Avatar>
                             <span className="text-xs font-medium truncate flex-1" data-testid={`text-driver-name-route-${route.id}`}>{route.driver?.firstName || 'Driver'}</span>
@@ -1125,7 +1126,7 @@ export default function RiderPage() {
                     <div className="flex items-start gap-3">
                       <Link href={`/driver/${bid.driverId}`}>
                         <Avatar className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary">
-                          <AvatarImage src={bid.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bid.driverId}`} />
+                          <AvatarImage src={bid.driver?.profileImageUrl || defaultDriverIcon} />
                           <AvatarFallback>{bid.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
                         </Avatar>
                       </Link>
