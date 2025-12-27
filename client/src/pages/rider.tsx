@@ -214,7 +214,7 @@ export default function RiderPage() {
   };
 
   const { data: driverRoutes = [], isLoading: routesLoading } = useQuery<DriverRoute[]>({
-    queryKey: ["/api/driver-routes", pickupCoords?.lat, pickupCoords?.lon],
+    queryKey: ["/api/driver-routes"],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (pickupCoords) {
@@ -225,7 +225,8 @@ export default function RiderPage() {
       const response = await fetch(url);
       return response.json();
     },
-    refetchInterval: 1000, // Refresh every 1 second for nearby routes
+    refetchInterval: 5000, // Refresh every 5 seconds for nearby routes (stable display)
+    staleTime: 4000, // Keep data fresh for 4 seconds
   });
 
   const { data: myOffers = [], isLoading: myOffersLoading } = useQuery<RiderOffer[]>({
