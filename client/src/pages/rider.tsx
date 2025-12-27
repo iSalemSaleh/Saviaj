@@ -740,7 +740,7 @@ export default function RiderPage() {
             data-testid="button-toggle-drivers-card"
           >
             <div className="flex items-center gap-2">
-              <Crown className="h-4 w-4 text-primary" />
+              <img src={defaultDriverIcon} alt="Driver" className="h-4 w-4" />
               <span className="text-sm font-medium">Nearby Drivers</span>
               {nearbyDrivers.length > 0 && <Badge className="bg-primary text-white text-xs">{nearbyDrivers.length}</Badge>}
             </div>
