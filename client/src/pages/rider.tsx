@@ -8,7 +8,10 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car, Radio, Crown, ChevronDown, ChevronUp, Crosshair, Route } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
@@ -154,9 +157,10 @@ export default function RiderPage() {
   const [myRoutesCardOpen, setMyRoutesCardOpen] = useState(false);
   const [centerTrigger, setCenterTrigger] = useState(0); // Increment to recenter map
   const [formCollapsed, setFormCollapsed] = useState(false); // Collapsible form
-  const [driversPage, setDriversPage] = useState(0); // Pagination for drivers
-  const [routesPage, setRoutesPage] = useState(0); // Pagination for routes
-  const ITEMS_PER_PAGE = 10;
+  const [seatRequestOpen, setSeatRequestOpen] = useState(false);
+  const [seatRequestRoute, setSeatRequestRoute] = useState<DriverRoute | null>(null);
+  const [seatCount, setSeatCount] = useState(1);
+  const [tripMessage, setTripMessage] = useState("");
   const INITIAL_DISPLAY_COUNT = 5;
 
   useEffect(() => {
@@ -418,6 +422,61 @@ export default function RiderPage() {
     }
     setRequestingDriverId(driver.id);
     requestProDriverMutation.mutate(driver);
+  };
+
+  // Seat request mutation for driver routes
+  const seatRequestMutation = useMutation({
+    mutationFn: async ({ routeId, seats, message }: { routeId: number; seats: number; message: string }) => {
+      const response = await apiRequest("POST", `/api/driver-routes/${routeId}/request-seat`, {
+        seatsRequested: seats,
+        tripMessage: message,
+      });
+      return response.json();
+    },
+    onSuccess: (ride) => {
+      toast({
+        title: "Seat Requested!",
+        description: "Your request has been sent to the driver. They will respond shortly.",
+      });
+      setSeatRequestOpen(false);
+      setSeatRequestRoute(null);
+      setSeatCount(1);
+      setTripMessage("");
+      queryClient.invalidateQueries({ queryKey: ["/api/rides"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/driver-routes"] });
+      navigate(`/ride/${ride.id}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Request Failed",
+        description: error.message || "Failed to request seat. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSeatRequest = (route: DriverRoute) => {
+    setSeatRequestRoute(route);
+    setSeatCount(1);
+    setTripMessage("");
+    setSeatRequestOpen(true);
+  };
+
+  const submitSeatRequest = () => {
+    if (!seatRequestRoute) return;
+    if (!tripMessage.trim()) {
+      toast({
+        title: "Message Required",
+        description: "Please describe your trip details so the driver can decide if it works for them.",
+        variant: "destructive",
+      });
+      return;
+    }
+    seatRequestMutation.mutate({
+      routeId: seatRequestRoute.id,
+      seats: seatCount,
+      message: tripMessage,
+    });
   };
 
   const handleRevisePrice = () => {
@@ -785,9 +844,9 @@ export default function RiderPage() {
             </div>
           )}
           
-          {/* Expanded content with pagination */}
+          {/* Expanded content with horizontal scroll */}
           {driversCardOpen && (
-            <div className="px-3 pb-3 overflow-y-auto max-h-[38vh]">
+            <div className="px-3 pb-3">
               {nearbyDriversLoading ? (
                 <div className="text-center py-4">
                   <Loader2 className="h-5 w-5 text-primary mx-auto animate-spin" />
@@ -797,54 +856,38 @@ export default function RiderPage() {
                   <p className="text-xs text-muted-foreground">No Pro drivers nearby</p>
                 </div>
               ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    {nearbyDrivers.slice(driversPage * ITEMS_PER_PAGE, (driversPage + 1) * ITEMS_PER_PAGE).map((driver) => {
-                      const estimatedCost = getEstimatedCost(driver);
-                      return (
-                        <div key={driver.id} className="p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10" data-testid={`card-pro-driver-${driver.id}`}>
-                          <Link href={`/driver/${driver.id}`} className="block" data-testid={`link-pro-driver-${driver.id}`}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage src={driver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${driver.id}`} />
-                                <AvatarFallback className="text-xs">{driver.firstName?.charAt(0) || 'D'}</AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs font-medium truncate" data-testid={`text-pro-driver-name-${driver.id}`}>{driver.firstName || 'Driver'}</p>
-                                <div className="flex items-center text-[10px] text-muted-foreground">
-                                  <Star className="h-2 w-2 text-yellow-500 fill-yellow-500 mr-0.5" />
-                                  {driver.driverRating ? parseFloat(driver.driverRating).toFixed(1) : 'New'}
-                                </div>
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-nearby-drivers">
+                  {nearbyDrivers.map((driver) => {
+                    const estimatedCost = getEstimatedCost(driver);
+                    return (
+                      <div key={driver.id} className="flex-shrink-0 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '140px', maxWidth: '180px' }} data-testid={`card-pro-driver-${driver.id}`}>
+                        <Link href={`/driver/${driver.id}`} className="block" data-testid={`link-pro-driver-${driver.id}`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage src={driver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${driver.id}`} />
+                              <AvatarFallback className="text-xs">{driver.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium truncate" data-testid={`text-pro-driver-name-${driver.id}`}>{driver.firstName || 'Driver'}</p>
+                              <div className="flex items-center text-[10px] text-muted-foreground">
+                                <Star className="h-2 w-2 text-yellow-500 fill-yellow-500 mr-0.5" />
+                                {driver.driverRating ? parseFloat(driver.driverRating).toFixed(1) : 'New'}
                               </div>
                             </div>
-                            <p className="text-[10px] text-muted-foreground truncate mb-1">{driver.distanceFromPickup.toFixed(1)} mi away</p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] text-muted-foreground">£{driver.ratePerMile}/mi</span>
-                              {estimatedCost && <Badge className="bg-primary text-white text-[10px] px-1">£{estimatedCost}</Badge>}
-                            </div>
-                          </Link>
-                          <Button size="sm" className="w-full h-6 mt-1 text-[10px]" onClick={() => handleRequestProDriver(driver)} disabled={requestingDriverId === driver.id || !dropoffCoords} data-testid={`button-request-pro-driver-${driver.id}`}>
-                            {requestingDriverId === driver.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Request'}
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {/* Pagination controls */}
-                  {nearbyDrivers.length > ITEMS_PER_PAGE && (
-                    <div className="flex justify-center gap-2 mt-3">
-                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={driversPage === 0} onClick={() => setDriversPage(p => p - 1)}>
-                        Previous
-                      </Button>
-                      <span className="text-xs text-muted-foreground self-center">
-                        {driversPage + 1} / {Math.ceil(nearbyDrivers.length / ITEMS_PER_PAGE)}
-                      </span>
-                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={(driversPage + 1) * ITEMS_PER_PAGE >= nearbyDrivers.length} onClick={() => setDriversPage(p => p + 1)}>
-                        Next
-                      </Button>
-                    </div>
-                  )}
-                </>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground truncate mb-1">{driver.distanceFromPickup.toFixed(1)} mi away</p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-muted-foreground">£{driver.ratePerMile}/mi</span>
+                            {estimatedCost && <Badge className="bg-primary text-white text-[10px] px-1">£{estimatedCost}</Badge>}
+                          </div>
+                        </Link>
+                        <Button size="sm" className="w-full h-6 mt-1 text-[10px]" onClick={() => handleRequestProDriver(driver)} disabled={requestingDriverId === driver.id || !dropoffCoords} data-testid={`button-request-pro-driver-${driver.id}`}>
+                          {requestingDriverId === driver.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Request'}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}
@@ -855,7 +898,7 @@ export default function RiderPage() {
           <button
             onClick={() => {
               setRoutesCardOpen(!routesCardOpen);
-              if (!routesCardOpen) { setDriversCardOpen(false); setMyRoutesCardOpen(false); setRoutesPage(0); }
+              if (!routesCardOpen) { setDriversCardOpen(false); setMyRoutesCardOpen(false); }
             }}
             className="w-full px-3 py-2 flex items-center justify-between hover:bg-white/10 transition-colors"
             data-testid="button-toggle-routes-card"
@@ -901,9 +944,9 @@ export default function RiderPage() {
             </div>
           )}
           
-          {/* Expanded content with pagination */}
+          {/* Expanded content with horizontal scroll */}
           {routesCardOpen && (
-            <div className="px-3 pb-3 overflow-y-auto max-h-[38vh]">
+            <div className="px-3 pb-3">
               {routesLoading ? (
                 <div className="text-center py-4">
                   <Loader2 className="h-5 w-5 text-primary mx-auto animate-spin" />
@@ -913,46 +956,44 @@ export default function RiderPage() {
                   <p className="text-xs text-muted-foreground">No routes available</p>
                 </div>
               ) : (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    {filteredAndSortedRoutes.slice(routesPage * ITEMS_PER_PAGE, (routesPage + 1) * ITEMS_PER_PAGE).map((route) => (
-                      <div key={route.id} className="p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10" data-testid={`card-route-${route.id}`}>
-                        <Link href={`/driver/${route.driverId}`} className="block" data-testid={`link-driver-profile-${route.id}`}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <Avatar className="h-5 w-5">
-                              <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
-                              <AvatarFallback className="text-[10px]">{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs font-medium truncate flex-1" data-testid={`text-driver-name-route-${route.id}`}>{route.driver?.firstName || 'Driver'}</span>
-                            {route.pricePerSeat && <Badge className="bg-primary text-white text-[10px] px-1">£{route.pricePerSeat}</Badge>}
-                          </div>
-                          <div className="text-[10px] space-y-0.5 mb-1">
-                            <p className="truncate"><span className="text-primary">●</span> {route.startLocation}</p>
-                            <p className="truncate"><span className="text-secondary">●</span> {route.endLocation}</p>
-                          </div>
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-nearby-routes">
+                  {filteredAndSortedRoutes.map((route) => (
+                    <div key={route.id} className="flex-shrink-0 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '140px', maxWidth: '180px' }} data-testid={`card-route-${route.id}`}>
+                      <Link href={`/driver/${route.driverId}`} className="block" data-testid={`link-driver-profile-${route.id}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={route.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${route.driverId}`} />
+                            <AvatarFallback className="text-[10px]">{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs font-medium truncate flex-1" data-testid={`text-driver-name-route-${route.id}`}>{route.driver?.firstName || 'Driver'}</span>
+                          {route.pricePerSeat && <Badge className="bg-primary text-white text-[10px] px-1">£{route.pricePerSeat}</Badge>}
+                        </div>
+                        <div className="text-[10px] space-y-0.5 mb-1">
+                          <p className="truncate"><span className="text-primary">●</span> {route.startLocation}</p>
+                          <p className="truncate"><span className="text-secondary">●</span> {route.endLocation}</p>
+                        </div>
+                        <div className="flex items-center justify-between">
                           <Badge variant="outline" className="text-[10px]">
                             <Clock className="h-2 w-2 mr-0.5" />
                             {getTimeUntilDeparture(route.departureTime)}
                           </Badge>
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Pagination controls */}
-                  {filteredAndSortedRoutes.length > ITEMS_PER_PAGE && (
-                    <div className="flex justify-center gap-2 mt-3">
-                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={routesPage === 0} onClick={() => setRoutesPage(p => p - 1)}>
-                        Previous
-                      </Button>
-                      <span className="text-xs text-muted-foreground self-center">
-                        {routesPage + 1} / {Math.ceil(filteredAndSortedRoutes.length / ITEMS_PER_PAGE)}
-                      </span>
-                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={(routesPage + 1) * ITEMS_PER_PAGE >= filteredAndSortedRoutes.length} onClick={() => setRoutesPage(p => p + 1)}>
-                        Next
+                          <Badge variant="outline" className="text-[10px]">
+                            <Users className="h-2 w-2 mr-0.5" />
+                            {route.availableSeats} seats
+                          </Badge>
+                        </div>
+                      </Link>
+                      <Button
+                        size="sm"
+                        className="w-full h-6 mt-1 text-[10px]"
+                        onClick={(e) => { e.stopPropagation(); handleSeatRequest(route); }}
+                        data-testid={`button-request-seat-${route.id}`}
+                      >
+                        Request Seat
                       </Button>
                     </div>
-                  )}
-                </>
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -1002,18 +1043,18 @@ export default function RiderPage() {
             </div>
           )}
           
-          {/* Expanded content (max 10, no pagination) */}
+          {/* Expanded content with horizontal scroll */}
           {myRoutesCardOpen && (
-            <div className="px-3 pb-3 overflow-y-auto max-h-[38vh]">
+            <div className="px-3 pb-3">
               {myPendingOffers.length === 0 ? (
                 <div className="text-center py-3">
                   <p className="text-xs text-muted-foreground">No pending requests</p>
                   <p className="text-[10px] text-muted-foreground mt-1">Post a request above to get started</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-my-routes">
                   {myPendingOffers.slice(0, 10).map((offer) => (
-                    <div key={offer.id} className="p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10" data-testid={`my-route-${offer.id}`}>
+                    <div key={offer.id} className="flex-shrink-0 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '140px', maxWidth: '180px' }} data-testid={`my-route-${offer.id}`}>
                       <div className="flex items-start justify-between gap-1 mb-1">
                         <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-medium truncate">{offer.pickupLocation}</p>
@@ -1184,6 +1225,77 @@ export default function RiderPage() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Seat Request Dialog */}
+      <Dialog open={seatRequestOpen} onOpenChange={(open) => { setSeatRequestOpen(open); if (!open) setSeatRequestRoute(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Request a Seat
+            </DialogTitle>
+            <DialogDescription>
+              Describe your trip so the driver can decide if it works for them
+            </DialogDescription>
+          </DialogHeader>
+          {seatRequestRoute && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                <p><strong>Route:</strong> {seatRequestRoute.startLocation} → {seatRequestRoute.endLocation}</p>
+                <p><strong>Departure:</strong> {new Date(seatRequestRoute.departureTime).toLocaleString()}</p>
+                <p><strong>Available seats:</strong> {seatRequestRoute.availableSeats}</p>
+                {seatRequestRoute.pricePerSeat && <p><strong>Price per seat:</strong> £{seatRequestRoute.pricePerSeat}</p>}
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="seat-count">Number of seats</Label>
+                <Select value={seatCount.toString()} onValueChange={(val) => setSeatCount(parseInt(val))}>
+                  <SelectTrigger id="seat-count" data-testid="select-seat-count">
+                    <SelectValue placeholder="Select seats" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: seatRequestRoute.availableSeats }, (_, i) => i + 1).map((num) => (
+                      <SelectItem key={num} value={num.toString()}>{num} {num === 1 ? 'seat' : 'seats'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="trip-message">Trip Details <span className="text-destructive">*</span></Label>
+                <Textarea
+                  id="trip-message"
+                  placeholder="E.g., 'I need to get from central Manchester to the airport around 2pm. I can meet near a bus stop on your route.'"
+                  value={tripMessage}
+                  onChange={(e) => setTripMessage(e.target.value)}
+                  className="min-h-[100px]"
+                  data-testid="textarea-trip-message"
+                />
+                <p className="text-xs text-muted-foreground">Include where you need pickup/dropoff and any timing preferences</p>
+              </div>
+              
+              {seatRequestRoute.pricePerSeat && (
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <p className="text-sm font-medium">Total: £{(parseFloat(seatRequestRoute.pricePerSeat) * seatCount).toFixed(2)}</p>
+                </div>
+              )}
+              
+              <Button
+                onClick={submitSeatRequest}
+                className="w-full"
+                disabled={seatRequestMutation.isPending || !tripMessage.trim()}
+                data-testid="button-submit-seat-request"
+              >
+                {seatRequestMutation.isPending ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending Request...</>
+                ) : (
+                  "Send Request"
+                )}
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

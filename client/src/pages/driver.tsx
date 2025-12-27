@@ -78,6 +78,9 @@ interface Ride {
   agreedPrice: string;
   scheduledTime: string;
   status: string;
+  seatsRequested?: number;
+  tripMessage?: string;
+  driverRouteId?: number;
 }
 
 interface UserLocation {
@@ -85,7 +88,6 @@ interface UserLocation {
   lng: number;
 }
 
-const ITEMS_PER_PAGE = 10;
 
 export default function DriverPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -111,7 +113,6 @@ export default function DriverPage() {
   const [offersCardOpen, setOffersCardOpen] = useState(false);
   const [activeRidesCardOpen, setActiveRidesCardOpen] = useState(false);
   const [historyCardOpen, setHistoryCardOpen] = useState(false);
-  const [offersPage, setOffersPage] = useState(0);
 
   const handleStartChange = (value: string, lat?: number, lon?: number) => {
     setStartLocation(value);
@@ -353,7 +354,6 @@ export default function DriverPage() {
   }) : [];
 
   const displayOffers = startCoords && endCoords ? nearbyOffers : filteredOffers;
-  const paginatedOffers = displayOffers.slice(offersPage * ITEMS_PER_PAGE, (offersPage + 1) * ITEMS_PER_PAGE);
 
   const { data: myRides = [], isLoading: ridesLoading } = useQuery<Ride[]>({
     queryKey: ["/api/rides"],
@@ -656,8 +656,18 @@ export default function DriverPage() {
                       <p className="font-medium truncate">{request.pickupLocation}</p>
                       <p className="text-white/70 truncate">→ {request.dropoffLocation}</p>
                     </div>
-                    <Badge className="bg-white text-amber-600 font-bold text-xs">£{request.agreedPrice}</Badge>
+                    <div className="flex flex-col items-end shrink-0">
+                      <Badge className="bg-white text-amber-600 font-bold text-xs">£{request.agreedPrice}</Badge>
+                      {request.seatsRequested && request.seatsRequested > 1 && (
+                        <span className="text-[10px] text-white/80 mt-0.5">{request.seatsRequested} seats</span>
+                      )}
+                    </div>
                   </div>
+                  {request.tripMessage && (
+                    <div className="bg-white/10 rounded p-1.5 mb-1">
+                      <p className="text-[10px] text-white/90 italic line-clamp-2">"{request.tripMessage}"</p>
+                    </div>
+                  )}
                   <div className="flex gap-1 justify-end">
                     <Button
                       size="sm"
@@ -944,7 +954,7 @@ export default function DriverPage() {
           )}
 
           {offersCardOpen && (
-            <div className="px-2 pb-2 max-h-[40vh] overflow-y-auto space-y-1.5">
+            <div className="px-2 pb-2">
               {offersLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -969,113 +979,96 @@ export default function DriverPage() {
                   <p className="text-xs text-muted-foreground mt-1">Post your route to attract riders!</p>
                 </div>
               ) : (
-                <>
-                  {paginatedOffers.map((offer) => (
-                    <div key={offer.id} className="bg-muted/30 rounded-lg p-3" data-testid={`card-offer-${offer.id}`}>
-                      <div className="flex items-start gap-3">
-                        <Avatar className="h-8 w-8">
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-rider-offers">
+                  {displayOffers.map((offer) => (
+                    <div key={offer.id} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '160px', maxWidth: '200px' }} data-testid={`card-offer-${offer.id}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Avatar className="h-6 w-6">
                           <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${offer.riderId}`} />
-                          <AvatarFallback>R</AvatarFallback>
+                          <AvatarFallback className="text-[10px]">R</AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <span className="text-yellow-500">★</span> 4.8 • {formatDate(offer.requestedTime)}
-                            </div>
-                            <span className="text-lg font-bold text-primary" data-testid={`text-price-${offer.id}`}>£{offer.offerPrice}</span>
-                          </div>
-                          <p className="text-sm font-medium truncate">{offer.pickupLocation}</p>
-                          <p className="text-xs text-muted-foreground truncate">→ {offer.dropoffLocation}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            {getOfferDistanceAndETA(offer) && (
-                              <Badge variant="outline" className="text-[10px]">
-                                <Navigation className="h-2.5 w-2.5 mr-0.5" />
-                                {getOfferDistanceAndETA(offer)!.distance}
-                              </Badge>
-                            )}
-                            <div className="flex-1" />
-                            <Button 
-                              size="sm"
-                              className="h-7 text-xs bg-green-600 hover:bg-green-700"
-                              onClick={() => handleAcceptOffer(offer.id)}
-                              disabled={acceptOfferMutation.isPending}
-                              data-testid={`button-accept-${offer.id}`}
-                            >
-                              <CheckCircle2 className="mr-1 h-3 w-3" /> Accept
-                            </Button>
-                            <Dialog open={bidDialogOpen && selectedOffer?.id === offer.id} onOpenChange={(open) => {
-                              setBidDialogOpen(open);
-                              if (open) setSelectedOffer(offer);
-                            }}>
-                              <DialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-7 text-xs" data-testid={`button-bid-${offer.id}`}>
-                                  <MessageSquare className="mr-1 h-3 w-3" /> Bid
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Counter Offer</DialogTitle>
-                                </DialogHeader>
-                                <div className="space-y-4 pt-4">
-                                  <p className="text-sm text-muted-foreground">
-                                    The rider offered <strong>£{offer.offerPrice}</strong>. Enter your counter-offer:
-                                  </p>
-                                  <div className="space-y-2">
-                                    <label className="text-sm font-medium">Your Price (£)</label>
-                                    <div className="relative">
-                                      <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                      <Input 
-                                        type="number"
-                                        placeholder="Enter your price"
-                                        className="pl-9"
-                                        value={bidPrice}
-                                        onChange={(e) => setBidPrice(e.target.value)}
-                                        data-testid="input-bid-price"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="space-y-2">
-                                    <label className="text-sm font-medium">Message (Optional)</label>
-                                    <Input 
-                                      placeholder="e.g., I can pick up 5 mins earlier"
-                                      value={bidMessage}
-                                      onChange={(e) => setBidMessage(e.target.value)}
-                                      data-testid="input-bid-message"
-                                    />
-                                  </div>
-                                  <Button 
-                                    onClick={handleBidSubmit}
-                                    className="w-full"
-                                    disabled={createBidMutation.isPending || !bidPrice}
-                                    data-testid="button-submit-bid"
-                                  >
-                                    {createBidMutation.isPending ? (
-                                      <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Sending...
-                                      </>
-                                    ) : (
-                                      "Send Counter Offer"
-                                    )}
-                                  </Button>
-                                </div>
-                              </DialogContent>
-                            </Dialog>
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <span className="text-yellow-500">★</span> 4.8
                           </div>
                         </div>
+                        <Badge className="bg-primary text-white text-[10px] px-1" data-testid={`text-price-${offer.id}`}>£{offer.offerPrice}</Badge>
+                      </div>
+                      <p className="text-[10px] font-medium truncate">{offer.pickupLocation}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">→ {offer.dropoffLocation}</p>
+                      <p className="text-[10px] text-muted-foreground mb-1">{formatDate(offer.requestedTime)}</p>
+                      <div className="flex gap-1">
+                        <Button 
+                          size="sm"
+                          className="h-6 text-[10px] flex-1 bg-green-600 hover:bg-green-700"
+                          onClick={() => handleAcceptOffer(offer.id)}
+                          disabled={acceptOfferMutation.isPending}
+                          data-testid={`button-accept-${offer.id}`}
+                        >
+                          Accept
+                        </Button>
+                        <Dialog open={bidDialogOpen && selectedOffer?.id === offer.id} onOpenChange={(open) => {
+                          setBidDialogOpen(open);
+                          if (open) setSelectedOffer(offer);
+                        }}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="h-6 text-[10px]" data-testid={`button-bid-${offer.id}`}>
+                              Bid
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>Counter Offer</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4 pt-4">
+                              <p className="text-sm text-muted-foreground">
+                                The rider offered <strong>£{offer.offerPrice}</strong>. Enter your counter-offer:
+                              </p>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Your Price (£)</label>
+                                <div className="relative">
+                                  <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                  <Input 
+                                    type="number"
+                                    placeholder="Enter your price"
+                                    className="pl-9"
+                                    value={bidPrice}
+                                    onChange={(e) => setBidPrice(e.target.value)}
+                                    data-testid="input-bid-price"
+                                  />
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Message (Optional)</label>
+                                <Input 
+                                  placeholder="e.g., I can pick up 5 mins earlier"
+                                  value={bidMessage}
+                                  onChange={(e) => setBidMessage(e.target.value)}
+                                  data-testid="input-bid-message"
+                                />
+                              </div>
+                              <Button 
+                                onClick={handleBidSubmit}
+                                className="w-full"
+                                disabled={createBidMutation.isPending || !bidPrice}
+                                data-testid="button-submit-bid"
+                              >
+                                {createBidMutation.isPending ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Sending...
+                                  </>
+                                ) : (
+                                  "Send Counter Offer"
+                                )}
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                       </div>
                     </div>
                   ))}
-                  {displayOffers.length > ITEMS_PER_PAGE && (
-                    <div className="flex items-center justify-center gap-2 pt-2">
-                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={offersPage === 0} onClick={() => setOffersPage(p => p - 1)}>Prev</Button>
-                      <span className="text-xs text-muted-foreground">
-                        {offersPage + 1} / {Math.ceil(displayOffers.length / ITEMS_PER_PAGE)}
-                      </span>
-                      <Button variant="outline" size="sm" className="h-7 text-xs" disabled={(offersPage + 1) * ITEMS_PER_PAGE >= displayOffers.length} onClick={() => setOffersPage(p => p + 1)}>Next</Button>
-                    </div>
-                  )}
-                </>
+                </div>
               )}
             </div>
           )}
@@ -1115,7 +1108,7 @@ export default function DriverPage() {
           )}
 
           {activeRidesCardOpen && (
-            <div className="px-2 pb-2 max-h-[40vh] overflow-y-auto space-y-1.5">
+            <div className="px-2 pb-2">
               {activeRides.length === 0 ? (
                 <div className="text-center py-6">
                   <Navigation className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
@@ -1123,25 +1116,28 @@ export default function DriverPage() {
                   <p className="text-xs text-muted-foreground mt-1">Accept an offer to start a ride</p>
                 </div>
               ) : (
-                activeRides.map((ride) => (
-                  <div key={ride.id} className="bg-muted/30 rounded-lg p-3" data-testid={`card-ride-${ride.id}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge className={ride.status === 'in_progress' ? 'bg-green-500' : 'bg-blue-500'}>
-                        {ride.status === 'in_progress' ? 'In Progress' : 'Scheduled'}
-                      </Badge>
-                      <span className="text-lg font-bold text-primary">£{ride.agreedPrice}</span>
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-active-rides">
+                  {activeRides.map((ride) => (
+                    <div key={ride.id} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '160px', maxWidth: '200px' }} data-testid={`card-ride-${ride.id}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge className={`text-[10px] ${ride.status === 'in_progress' ? 'bg-green-500' : 'bg-blue-500'}`}>
+                          {ride.status === 'in_progress' ? 'Active' : 'Scheduled'}
+                        </Badge>
+                        <Badge className="bg-primary text-white text-[10px] px-1">£{ride.agreedPrice}</Badge>
+                      </div>
+                      <p className="text-[10px] font-medium truncate">{ride.pickupLocation}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">→ {ride.dropoffLocation}</p>
+                      <p className="text-[10px] text-muted-foreground mb-1">{formatDate(ride.scheduledTime)}</p>
+                      <Button 
+                        onClick={() => navigate(`/ride/${ride.id}`)}
+                        className="w-full h-6 text-[10px]"
+                        data-testid={`button-track-${ride.id}`}
+                      >
+                        Track Ride
+                      </Button>
                     </div>
-                    <p className="text-sm font-medium">{ride.pickupLocation} → {ride.dropoffLocation}</p>
-                    <p className="text-xs text-muted-foreground mb-2">{formatDate(ride.scheduledTime)} at {formatTime(ride.scheduledTime)}</p>
-                    <Button 
-                      onClick={() => navigate(`/ride/${ride.id}`)}
-                      className="w-full h-8 text-xs"
-                      data-testid={`button-track-${ride.id}`}
-                    >
-                      Track Ride
-                    </Button>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -1179,24 +1175,26 @@ export default function DriverPage() {
           )}
 
           {historyCardOpen && (
-            <div className="px-2 pb-2 max-h-[40vh] overflow-y-auto space-y-1.5">
+            <div className="px-2 pb-2">
               {completedRides.length === 0 ? (
                 <div className="text-center py-6">
                   <History className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No completed rides yet</p>
                 </div>
               ) : (
-                completedRides.map((ride) => (
-                  <div key={ride.id} className="bg-muted/30 rounded-lg p-3 opacity-75" data-testid={`card-history-${ride.id}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{ride.pickupLocation} → {ride.dropoffLocation}</p>
-                        <p className="text-xs text-muted-foreground">{formatDate(ride.scheduledTime)}</p>
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-ride-history">
+                  {completedRides.map((ride) => (
+                    <div key={ride.id} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 opacity-75 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '140px', maxWidth: '180px' }} data-testid={`card-history-${ride.id}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge variant="outline" className="text-[10px]">Done</Badge>
+                        <Badge className="bg-primary text-white text-[10px] px-1">£{ride.agreedPrice}</Badge>
                       </div>
-                      <span className="text-lg font-bold text-primary">£{ride.agreedPrice}</span>
+                      <p className="text-[10px] font-medium truncate">{ride.pickupLocation}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">→ {ride.dropoffLocation}</p>
+                      <p className="text-[10px] text-muted-foreground">{formatDate(ride.scheduledTime)}</p>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           )}
