@@ -218,24 +218,27 @@ export default function Signup() {
     if (!file) return;
 
     setIsUploadingPhoto(true);
+    setError("");
     try {
       const uploadFormData = new FormData();
-      uploadFormData.append("license", file);
+      uploadFormData.append("profileImage", file);
 
-      const response = await fetch("/api/registration/upload-license", {
+      const response = await fetch("/api/registration/upload-profile", {
         method: "POST",
         body: uploadFormData,
         credentials: "include",
       });
 
       if (!response.ok) {
-        throw new Error("Upload failed");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Upload failed");
       }
 
       const data = await response.json();
       handleChange("profileImageUrl", data.url);
-    } catch (err) {
-      setError("Failed to upload profile photo. Please try again.");
+    } catch (err: any) {
+      console.error("Profile photo upload error:", err);
+      setError(err.message || "Failed to upload profile photo. Please try again.");
     } finally {
       setIsUploadingPhoto(false);
     }

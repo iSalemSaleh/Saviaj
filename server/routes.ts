@@ -1009,6 +1009,21 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Upload profile image during registration (no auth required)
+  app.post('/api/registration/upload-profile', profileImageUpload.single('profileImage'), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const profileImageUrl = `/uploads/profiles/${req.file.filename}`;
+      res.json({ url: profileImageUrl, filename: req.file.filename });
+    } catch (error) {
+      console.error("Error uploading profile image:", error);
+      res.status(500).json({ message: "Failed to upload profile image" });
+    }
+  });
+
   // Serve uploaded license files (protected - requires authentication)
   app.get('/api/uploads/licenses/:filename', isAuthenticated, async (req: any, res) => {
     try {
