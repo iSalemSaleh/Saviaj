@@ -216,13 +216,8 @@ export default function RiderPage() {
   const { data: driverRoutes = [], isLoading: routesLoading } = useQuery<DriverRoute[]>({
     queryKey: ["/api/driver-routes"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (pickupCoords) {
-        params.append('riderLat', pickupCoords.lat.toString());
-        params.append('riderLng', pickupCoords.lon.toString());
-      }
-      const url = `/api/driver-routes${params.toString() ? '?' + params.toString() : ''}`;
-      const response = await fetch(url);
+      // Fetch all routes without location filtering - frontend handles proximity filtering
+      const response = await fetch('/api/driver-routes');
       return response.json();
     },
     refetchInterval: 5000, // Refresh every 5 seconds for nearby routes (stable display)

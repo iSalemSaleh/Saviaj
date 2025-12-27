@@ -1242,9 +1242,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         driverId: userId,
       });
       
-      console.log(`[DEBUG] Creating driver route for user ${userId}:`, JSON.stringify(validatedData));
       const route = await storage.createDriverRoute(validatedData);
-      console.log(`[DEBUG] Created driver route with id ${route.id}`);
       res.status(201).json(route);
     } catch (error: any) {
       console.error("Error creating driver route:", error);
@@ -1257,9 +1255,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const status = req.query.status as string | undefined;
       const riderLat = req.query.riderLat ? parseFloat(req.query.riderLat as string) : undefined;
       const riderLng = req.query.riderLng ? parseFloat(req.query.riderLng as string) : undefined;
-      console.log(`[DEBUG] GET /api/driver-routes - riderLat: ${riderLat}, riderLng: ${riderLng}, status: ${status}`);
       const routes = await storage.getDriverRoutesWithDriverInfo(status, riderLat, riderLng);
-      console.log(`[DEBUG] GET /api/driver-routes - returned ${routes.length} routes`);
       res.json(routes);
     } catch (error) {
       console.error("Error fetching driver routes:", error);
