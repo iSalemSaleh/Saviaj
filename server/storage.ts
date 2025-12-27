@@ -882,39 +882,54 @@ export class DatabaseStorage implements IStorage {
       results = await query.orderBy(desc(driverRoutes.createdAt));
     }
     
-    // If rider location is provided, filter routes based on proximity
+    // If rider location is provided, calculate distance and filter routes based on proximity
     if (riderLat !== undefined && riderLng !== undefined) {
-      return results
-        .map(r => {
-          const routeStartLat = parseFloat(r.route.startLat?.toString() || "0");
-          const routeStartLng = parseFloat(r.route.startLng?.toString() || "0");
-          const routeEndLat = parseFloat(r.route.endLat?.toString() || "0");
-          const routeEndLng = parseFloat(r.route.endLng?.toString() || "0");
-          const maxDetour = parseFloat(r.route.maxDetourMiles?.toString() || "0");
-          
-          // Calculate distance from rider's pickup to the route
-          const distanceToRoute = distanceToRouteMiles(
-            riderLat, 
-            riderLng, 
-            routeStartLat, 
-            routeStartLng, 
-            routeEndLat, 
-            routeEndLng
-          );
-          
+      const routesWithDistance = results.map(r => {
+        const routeStartLat = parseFloat(r.route.startLat?.toString() || "0");
+        const routeStartLng = parseFloat(r.route.startLng?.toString() || "0");
+        const routeEndLat = parseFloat(r.route.endLat?.toString() || "0");
+        const routeEndLng = parseFloat(r.route.endLng?.toString() || "0");
+        const maxDetour = parseFloat(r.route.maxDetourMiles?.toString() || "5"); // Default 5 miles if not set
+        
+        // Skip distance calculation if route has invalid coordinates
+        if (routeStartLat === 0 && routeStartLng === 0) {
           return {
             ...r.route,
             driver: r.driver,
-            distanceToRider: Math.round(distanceToRoute * 10) / 10
+            distanceToRider: undefined
           };
-        })
-        // Filter: only show routes where rider is within driver's max detour radius
-        .filter(route => {
-          const maxDetour = parseFloat(route.maxDetourMiles?.toString() || "0");
-          return route.distanceToRider !== undefined && route.distanceToRider <= maxDetour;
-        })
-        // Sort by distance (closest first)
-        .sort((a, b) => (a.distanceToRider || 0) - (b.distanceToRider || 0));
+        }
+        
+        // Calculate distance from rider's pickup to the route (in miles)
+        const distanceToRoute = distanceToRouteMiles(
+          riderLat, 
+          riderLng, 
+          routeStartLat, 
+          routeStartLng, 
+          routeEndLat, 
+          routeEndLng
+        );
+        
+        // Log for debugging (remove in production)
+        console.log(`[PROXIMITY] Route ${r.route.id}: rider(${riderLat.toFixed(4)},${riderLng.toFixed(4)}) route(${routeStartLat.toFixed(4)},${routeStartLng.toFixed(4)}) dist=${distanceToRoute.toFixed(4)}mi maxDetour=${maxDetour.toFixed(4)}mi pass=${distanceToRoute <= maxDetour}`);
+        
+        return {
+          ...r.route,
+          driver: r.driver,
+          distanceToRider: Math.round(distanceToRoute * 1000) / 1000 // Keep 3 decimal places for better precision
+        };
+      });
+      
+      // Filter: only show routes where rider is within driver's max detour radius
+      const filteredRoutes = routesWithDistance.filter(route => {
+        // Include routes without valid coordinates (let frontend decide)
+        if (route.distanceToRider === undefined) return true;
+        const maxDetour = parseFloat(route.maxDetourMiles?.toString() || "5");
+        return route.distanceToRider <= maxDetour;
+      });
+      
+      // Sort by distance (closest first)
+      return filteredRoutes.sort((a, b) => (a.distanceToRider || 999) - (b.distanceToRider || 999));
     }
     
     return results.map(r => ({
