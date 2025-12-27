@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Star, Navigation, Car } from 'lucide-react';
-import driverIconImage from '@assets/driver_icon_1766794300682.png';
+import carIconImage from '../../assets/car-icon.png';
 
 // Convert vehicle color name to CSS hue-rotate value
 // The base car image has cyan/teal color (~180deg hue)
@@ -199,7 +199,7 @@ const createDriverIcon = (vehicleColor: string | null = null) => {
       filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
     ">
       <img 
-        src="${driverIconImage}" 
+        src="${carIconImage}" 
         alt="Driver" 
         style="
           width: 100%;
