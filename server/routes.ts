@@ -1242,7 +1242,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         driverId: userId,
       });
       
+      console.log(`[DEBUG] Creating driver route for user ${userId}:`, JSON.stringify(validatedData));
       const route = await storage.createDriverRoute(validatedData);
+      console.log(`[DEBUG] Created driver route with id ${route.id}`);
       res.status(201).json(route);
     } catch (error: any) {
       console.error("Error creating driver route:", error);
