@@ -1275,6 +1275,69 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Rider requests a seat on a driver's route
+  app.post('/api/driver-routes/:routeId/request-seat', isAuthenticated, isProfileComplete, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const routeId = parseInt(req.params.routeId);
+      const { seatsRequested, tripMessage } = req.body;
+      
+      // Validate seats requested
+      const seats = parseInt(seatsRequested) || 1;
+      if (seats < 1 || seats > 7) {
+        return res.status(400).json({ message: "Invalid number of seats requested" });
+      }
+      
+      // Get the driver route
+      const route = await storage.getDriverRouteById(routeId);
+      if (!route) {
+        return res.status(404).json({ message: "Route not found" });
+      }
+      
+      if (route.status !== 'active') {
+        return res.status(400).json({ message: "This route is no longer available" });
+      }
+      
+      if (route.availableSeats < seats) {
+        return res.status(400).json({ message: `Only ${route.availableSeats} seats available` });
+      }
+      
+      if (route.driverId === userId) {
+        return res.status(400).json({ message: "You cannot request a seat on your own route" });
+      }
+      
+      // Create a ride request with pending_driver_confirmation status
+      const ride = await storage.createRide({
+        riderId: userId,
+        driverId: route.driverId,
+        driverRouteId: routeId,
+        pickupLocation: `Route: ${route.startLocation}`,
+        dropoffLocation: `Route: ${route.endLocation}`,
+        agreedPrice: route.pricePerSeat ? (parseFloat(route.pricePerSeat) * seats).toString() : "0",
+        scheduledTime: route.departureTime,
+        status: 'pending_driver_confirmation',
+        seatsRequested: seats,
+        tripMessage: tripMessage || null,
+      });
+      
+      // Notify the driver
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'NEW_SEAT_REQUEST',
+        routeId: routeId,
+        rideId: ride.id,
+        seatsRequested: seats,
+      }, route.driverId);
+      
+      res.status(201).json(ride);
+    } catch (error: any) {
+      console.error("Error creating seat request:", error);
+      res.status(400).json({ message: error.message || "Failed to request seat" });
+    }
+  });
+
   // Driver daily activity (for showing limits)
   app.get('/api/driver/daily-activity', isAuthenticated, async (req: any, res) => {
     try {

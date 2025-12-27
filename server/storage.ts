@@ -1587,7 +1587,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPendingRideRequests(driverId: string): Promise<Ride[]> {
-    return db
+    // Get direct ride requests (Pro Driver requests)
+    const directRequests = await db
       .select()
       .from(rides)
       .where(
@@ -1597,6 +1598,30 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(rides.createdAt));
+    
+    // Get route seat requests (riders requesting seats on driver's routes)
+    const routeRequests = await db
+      .select({ ride: rides })
+      .from(rides)
+      .innerJoin(driverRoutes, eq(rides.driverRouteId, driverRoutes.id))
+      .where(
+        and(
+          eq(driverRoutes.driverId, driverId),
+          eq(rides.status, 'pending_driver_confirmation')
+        )
+      )
+      .orderBy(desc(rides.createdAt));
+    
+    // Combine and return unique rides (direct requests already have driverId set)
+    const routeRides = routeRequests.map(r => r.ride);
+    const allRequests = [...directRequests, ...routeRides];
+    
+    // Remove duplicates (in case a ride appears in both)
+    const uniqueRequests = allRequests.filter((ride, index, self) => 
+      index === self.findIndex(r => r.id === ride.id)
+    );
+    
+    return uniqueRequests;
   }
 
   // Settings and account management operations

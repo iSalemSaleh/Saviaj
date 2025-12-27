@@ -493,6 +493,8 @@ export const rides = pgTable("rides", {
   actualDropoffTime: timestamp("actual_dropoff_time"),
   riderOfferId: integer("rider_offer_id").references(() => riderOffers.id),
   driverRouteId: integer("driver_route_id").references(() => driverRoutes.id),
+  seatsRequested: integer("seats_requested").default(1),
+  tripMessage: text("trip_message"),
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
   updatedAt: timestamp("updated_at").defaultNow(),
