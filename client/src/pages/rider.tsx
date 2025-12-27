@@ -656,11 +656,14 @@ export default function RiderPage() {
       <div className={`fixed top-14 left-0 right-0 z-40 backdrop-blur-sm bg-background/40 border-b border-white/10 transition-all duration-300 overflow-hidden ${formCollapsed ? 'max-h-10' : 'max-h-56'}`}>
         <button
           onClick={() => setFormCollapsed(!formCollapsed)}
-          className="w-full px-3 py-2 flex items-center justify-between text-xs text-muted-foreground hover:bg-white/10"
+          className="w-full px-3 py-2 flex items-center justify-between text-xs hover:bg-white/10"
           data-testid="button-toggle-form"
         >
-          <span className="font-medium">{formCollapsed ? 'Tap to request a ride' : 'Request a Ride'}</span>
-          {formCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          <div className="flex items-center gap-1.5">
+            <Navigation className="h-3.5 w-3.5 text-primary" />
+            <span className="font-semibold text-primary">{formCollapsed ? 'Tap to request a ride' : 'Request a Ride'}</span>
+          </div>
+          {formCollapsed ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
         </button>
         {!formCollapsed && (
           <form onSubmit={handleSubmit} className="px-3 pb-3 space-y-2">
@@ -731,7 +734,7 @@ export default function RiderPage() {
       <div className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 space-y-2">
         
         {/* Card 1: Nearby Pro Drivers */}
-        <div className={`backdrop-blur-md bg-background/70 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${driversCardOpen ? 'max-h-[50vh]' : ''}`}>
+        <div className={`backdrop-blur-sm bg-background/40 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${driversCardOpen ? 'max-h-[50vh]' : ''}`}>
           <button
             onClick={() => {
               setDriversCardOpen(!driversCardOpen);
@@ -848,7 +851,7 @@ export default function RiderPage() {
         </div>
 
         {/* Card 2: Nearby Routes */}
-        <div className={`backdrop-blur-md bg-background/70 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${routesCardOpen ? 'max-h-[50vh]' : ''}`}>
+        <div className={`backdrop-blur-sm bg-background/40 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${routesCardOpen ? 'max-h-[50vh]' : ''}`}>
           <button
             onClick={() => {
               setRoutesCardOpen(!routesCardOpen);
@@ -956,7 +959,7 @@ export default function RiderPage() {
         </div>
 
         {/* Card 3: My Routes (max 10 routes, no pagination) */}
-        <div className={`backdrop-blur-md bg-background/70 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${myRoutesCardOpen ? 'max-h-[50vh]' : ''}`}>
+        <div className={`backdrop-blur-sm bg-background/40 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${myRoutesCardOpen ? 'max-h-[50vh]' : ''}`}>
           <button
             onClick={() => {
               setMyRoutesCardOpen(!myRoutesCardOpen);

@@ -688,7 +688,7 @@ export default function DriverPage() {
       )}
 
       <div className="fixed top-11 left-2 right-2 sm:right-auto sm:w-72 z-40">
-        <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-lg shadow-lg border border-white/20">
+        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20">
           <div 
             className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
             onClick={() => setFormExpanded(!formExpanded)}
@@ -883,7 +883,7 @@ export default function DriverPage() {
       <Button
         onClick={handleRecenter}
         size="icon"
-        className="fixed right-2 z-50 h-8 w-8 rounded-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-md text-primary shadow-lg border border-slate-200 hover:bg-slate-100"
+        className="fixed right-2 z-50 h-8 w-8 rounded-full backdrop-blur-sm bg-background/40 text-primary shadow-lg border border-white/20 hover:bg-white/20"
         style={{ bottom: 'calc(45vh + 8px)' }}
         data-testid="button-recenter-map"
       >
@@ -891,7 +891,7 @@ export default function DriverPage() {
       </Button>
 
       <div className="fixed bottom-0 left-0 right-0 z-40 px-2 pb-2 space-y-1.5" style={{ maxHeight: '45vh' }}>
-        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-lg shadow-lg border border-white/20 overflow-hidden">
+        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
           <div
             className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
             onClick={() => handleCardToggle('offers')}
@@ -1081,7 +1081,7 @@ export default function DriverPage() {
           )}
         </div>
 
-        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-lg shadow-lg border border-white/20 overflow-hidden">
+        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
           <div
             className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
             onClick={() => handleCardToggle('active')}
@@ -1147,7 +1147,7 @@ export default function DriverPage() {
           )}
         </div>
 
-        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-lg shadow-lg border border-white/20 overflow-hidden">
+        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
           <div
             className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
             onClick={() => handleCardToggle('history')}

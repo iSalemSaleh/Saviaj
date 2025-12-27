@@ -910,9 +910,6 @@ export class DatabaseStorage implements IStorage {
           routeEndLng
         );
         
-        // Log for debugging (remove in production)
-        console.log(`[PROXIMITY] Route ${r.route.id}: rider(${riderLat.toFixed(4)},${riderLng.toFixed(4)}) route(${routeStartLat.toFixed(4)},${routeStartLng.toFixed(4)}) dist=${distanceToRoute.toFixed(4)}mi maxDetour=${maxDetour.toFixed(4)}mi pass=${distanceToRoute <= maxDetour}`);
-        
         return {
           ...r.route,
           driver: r.driver,
