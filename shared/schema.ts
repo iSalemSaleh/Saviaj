@@ -482,8 +482,9 @@ export const rides = pgTable("rides", {
   dropoffLng: decimal("dropoff_lng", { precision: 10, scale: 7 }),
   agreedPrice: decimal("agreed_price", { precision: 10, scale: 2 }).notNull(),
   scheduledTime: timestamp("scheduled_time").notNull(),
-  status: varchar("status", { length: 50 }).default("pending_payment"), // pending_payment, matched, en_route_pickup, in_progress, completed, cancelled, expired
-  paymentStatus: varchar("payment_status", { length: 50 }).default("pending"), // pending, completed, refunded, failed
+  status: varchar("status", { length: 50 }).default("pending_payment"), // pending_payment, payment_pending, matched, en_route_pickup, in_progress, completed, cancelled, expired
+  paymentStatus: varchar("payment_status", { length: 50 }).default("pending"), // pending, authorized, paid, completed, refunded, failed
+  paymentIntentId: varchar("payment_intent_id", { length: 255 }), // Stripe PaymentIntent ID
   paymentDeadline: timestamp("payment_deadline"),
   stopOrder: integer("stop_order"),
   estimatedPickupTime: timestamp("estimated_pickup_time"),
