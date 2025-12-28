@@ -200,6 +200,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Setup WebSocket for real-time location tracking on the main server
   setupWebSocket(httpServer);
 
+  // Serve uploaded files statically (profile images need to be publicly accessible)
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  
+  // Import express for static file serving
+  const express = await import('express');
+  app.use('/uploads', express.default.static(uploadsDir));
+
   // Phone OTP verification endpoints (unauthenticated - for pre-registration)
   app.post('/api/auth/otp/request', async (req, res) => {
     try {
