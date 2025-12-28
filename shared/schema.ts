@@ -740,3 +740,23 @@ export const insertEmailVerificationSchema = createInsertSchema(emailVerificatio
 });
 export type InsertEmailVerification = z.infer<typeof insertEmailVerificationSchema>;
 export type EmailVerification = typeof emailVerifications.$inferSelect;
+
+// Password Reset Tokens - for forgot password flow
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  email: varchar("email", { length: 255 }).notNull(),
+  resetToken: text("reset_token").notNull(), // Entra continuation token or secure token
+  status: varchar("status", { length: 20 }).default("pending"), // pending, verified, used, expired
+  attempts: integer("attempts").default(0),
+  expiresAt: timestamp("expires_at").notNull(),
+  verifiedAt: timestamp("verified_at"),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
