@@ -745,13 +745,14 @@ export type EmailVerification = typeof emailVerifications.$inferSelect;
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   email: varchar("email", { length: 255 }).notNull(),
-  resetToken: text("reset_token").notNull(), // Entra continuation token or secure token
-  status: varchar("status", { length: 20 }).default("pending"), // pending, verified, used, expired
-  attempts: integer("attempts").default(0),
+  continuationToken: text("continuation_token").notNull(), // Entra continuation token for OTP verification
+  resetToken: text("reset_token"), // Secure token generated after OTP verification
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, verified, used, expired
+  attempts: integer("attempts").default(0).notNull(),
   expiresAt: timestamp("expires_at").notNull(),
   verifiedAt: timestamp("verified_at"),
   usedAt: timestamp("used_at"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({

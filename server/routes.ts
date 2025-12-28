@@ -637,6 +637,252 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Password Reset - Request OTP
+  app.post('/api/auth/password-reset/request', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        return res.status(400).json({ message: "Please enter a valid email address" });
+      }
+      
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      // Check if user exists with this email
+      const existingUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, normalizedEmail))
+        .limit(1);
+      
+      if (existingUser.length === 0) {
+        // Don't reveal if email exists - return success anyway for security
+        return res.json({ 
+          success: true, 
+          message: "If an account exists with this email, you will receive a verification code."
+        });
+      }
+      
+      // Rate limiting: check for recent requests
+      const { passwordResetTokens } = await import("@shared/schema");
+      const recentReset = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(eq(passwordResetTokens.email, normalizedEmail))
+        .orderBy(sql`${passwordResetTokens.createdAt} DESC`)
+        .limit(1);
+      
+      if (recentReset.length > 0) {
+        const lastRequest = recentReset[0];
+        const timeSinceLastRequest = Date.now() - new Date(lastRequest.createdAt!).getTime();
+        if (timeSinceLastRequest < 60000) {
+          return res.status(429).json({ 
+            message: "Please wait before requesting another code",
+            waitSeconds: Math.ceil((60000 - timeSinceLastRequest) / 1000)
+          });
+        }
+      }
+      
+      // Use Entra External ID for email OTP
+      try {
+        const { initiateEmailOtpSignUp } = await import("./entraEmailOtp");
+        const result = await initiateEmailOtpSignUp(normalizedEmail);
+        
+        if (result.success && result.continuationToken) {
+          const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+          
+          // Invalidate any existing pending resets
+          await db.update(passwordResetTokens)
+            .set({ status: "expired" })
+            .where(eq(passwordResetTokens.email, normalizedEmail));
+          
+          // Store the continuation token
+          await db.insert(passwordResetTokens).values({
+            email: normalizedEmail,
+            continuationToken: result.continuationToken,
+            status: "pending",
+            attempts: 0,
+            expiresAt,
+          });
+          
+          return res.json({ 
+            success: true, 
+            message: `Verification code sent to ${result.challengeTargetLabel || email}`,
+            codeLength: result.codeLength || 8,
+            continuationToken: result.continuationToken,
+          });
+        } else {
+          throw new Error(result.error || "Failed to send verification code");
+        }
+      } catch (entraError: any) {
+        console.error("Password reset OTP error:", entraError.message);
+        return res.status(500).json({ 
+          message: "Failed to send verification code. Please try again."
+        });
+      }
+    } catch (error) {
+      console.error("Password reset request error:", error);
+      res.status(500).json({ message: "Failed to send verification code" });
+    }
+  });
+
+  // Password Reset - Verify OTP
+  app.post('/api/auth/password-reset/verify', async (req, res) => {
+    try {
+      const { email, code, continuationToken } = req.body;
+      
+      if (!email || !code || !continuationToken) {
+        return res.status(400).json({ message: "Email, code, and token are required" });
+      }
+      
+      const normalizedEmail = email.toLowerCase().trim();
+      const { passwordResetTokens } = await import("@shared/schema");
+      
+      // Find the pending reset that matches BOTH email AND continuation token
+      const [resetRequest] = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.email, normalizedEmail),
+            eq(passwordResetTokens.continuationToken, continuationToken),
+            eq(passwordResetTokens.status, "pending")
+          )
+        )
+        .limit(1);
+      
+      if (!resetRequest) {
+        return res.status(400).json({ message: "Invalid or expired reset request. Please request a new code." });
+      }
+      
+      if (resetRequest.attempts >= 5) {
+        await db.update(passwordResetTokens)
+          .set({ status: "expired" })
+          .where(eq(passwordResetTokens.id, resetRequest.id));
+        return res.status(400).json({ message: "Too many attempts. Please request a new code." });
+      }
+      
+      if (new Date() > resetRequest.expiresAt) {
+        await db.update(passwordResetTokens)
+          .set({ status: "expired" })
+          .where(eq(passwordResetTokens.id, resetRequest.id));
+        return res.status(400).json({ message: "Code has expired. Please request a new code." });
+      }
+      
+      // Verify with Entra
+      try {
+        const { verifyEmailOtp } = await import("./entraEmailOtp");
+        const result = await verifyEmailOtp(continuationToken, code);
+        
+        if (result.verified) {
+          const crypto = await import("crypto");
+          const verifiedToken = crypto.randomBytes(32).toString("hex");
+          
+          await db.update(passwordResetTokens)
+            .set({ 
+              status: "verified",
+              resetToken: verifiedToken,
+              verifiedAt: new Date()
+            })
+            .where(eq(passwordResetTokens.id, resetRequest.id));
+          
+          return res.json({ 
+            success: true, 
+            resetToken: verifiedToken,
+            email: normalizedEmail
+          });
+        } else {
+          await db.update(passwordResetTokens)
+            .set({ attempts: resetRequest.attempts + 1 })
+            .where(eq(passwordResetTokens.id, resetRequest.id));
+          return res.status(400).json({ message: result.error || "Invalid code. Please try again." });
+        }
+      } catch (entraError: any) {
+        console.error("Password reset verification error:", entraError);
+        await db.update(passwordResetTokens)
+          .set({ attempts: resetRequest.attempts + 1 })
+          .where(eq(passwordResetTokens.id, resetRequest.id));
+        return res.status(400).json({ message: "Invalid code. Please try again." });
+      }
+    } catch (error) {
+      console.error("Password reset verification error:", error);
+      res.status(500).json({ message: "Failed to verify code" });
+    }
+  });
+
+  // Password Reset - Complete (set new password)
+  app.post('/api/auth/password-reset/complete', async (req, res) => {
+    try {
+      const { email, resetToken, newPassword } = req.body;
+      
+      if (!email || !resetToken || !newPassword) {
+        return res.status(400).json({ message: "Email, reset token, and new password are required" });
+      }
+      
+      // Validate password strength
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      
+      const normalizedEmail = email.toLowerCase().trim();
+      const { passwordResetTokens } = await import("@shared/schema");
+      
+      // Find and validate the reset token - must match ALL: email, resetToken, and verified status
+      const [resetRequest] = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.email, normalizedEmail),
+            eq(passwordResetTokens.resetToken, resetToken),
+            eq(passwordResetTokens.status, "verified")
+          )
+        )
+        .limit(1);
+      
+      if (!resetRequest) {
+        return res.status(400).json({ message: "Invalid or expired reset token. Please request a new code." });
+      }
+      
+      // Token is valid for 30 minutes after verification
+      const tokenValidUntil = new Date(resetRequest.verifiedAt!.getTime() + 30 * 60 * 1000);
+      if (new Date() > tokenValidUntil) {
+        await db.update(passwordResetTokens)
+          .set({ status: "expired" })
+          .where(eq(passwordResetTokens.id, resetRequest.id));
+        return res.status(400).json({ message: "Reset token has expired. Please request a new code." });
+      }
+      
+      // Hash the new password
+      const bcrypt = await import("bcrypt");
+      const passwordHash = await bcrypt.default.hash(newPassword, 10);
+      
+      // Use transaction to update password and mark token as used atomically
+      await db.transaction(async (tx) => {
+        await tx.update(users)
+          .set({ passwordHash })
+          .where(eq(users.email, normalizedEmail));
+        
+        await tx.update(passwordResetTokens)
+          .set({ status: "used", usedAt: new Date() })
+          .where(eq(passwordResetTokens.id, resetRequest.id));
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Password has been reset successfully. You can now log in."
+      });
+    } catch (error) {
+      console.error("Password reset complete error:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
   // Azure Maps endpoints (secure - key never exposed to frontend)
   app.get('/api/azure-maps/search', async (req, res) => {
     try {

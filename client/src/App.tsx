@@ -16,6 +16,7 @@ import OnboardingPage from "@/pages/onboarding";
 import RideTrackingPage from "@/pages/ride-tracking";
 import SignupPage from "@/pages/signup";
 import LoginPage from "@/pages/login";
+import ForgotPasswordPage from "@/pages/forgot-password";
 import BecomeDriverPage from "@/pages/become-driver";
 import SplashScreen from "@/components/SplashScreen";
 import HistoryPage from "@/pages/history";
@@ -140,6 +141,7 @@ function Router() {
       <Route path="/auth" component={AuthRoute} />
       <Route path="/signup" component={SignupPage} />
       <Route path="/login" component={LoginPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/onboarding" component={OnboardingRoute} />
       <Route path="/ride/:id">
         <ProtectedRoute component={RideTrackingPage} />
