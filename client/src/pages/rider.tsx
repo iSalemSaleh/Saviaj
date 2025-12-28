@@ -826,7 +826,7 @@ export default function RiderPage() {
                     </div>
                     <Badge className="bg-white text-green-600 font-bold text-xs shrink-0">£{ride.agreedPrice}</Badge>
                   </div>
-                  <Link href={`/ride-tracking/${ride.id}`}>
+                  <Link href={`/ride/${ride.id}`}>
                     <Button
                       size="sm"
                       className="w-full h-7 bg-white text-green-600 hover:bg-green-50 font-medium"

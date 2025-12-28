@@ -91,7 +91,7 @@ export default function Navbar() {
     
     if (notification.relatedRideId) {
       setNotificationsOpen(false);
-      setLocation(`/ride-tracking/${notification.relatedRideId}`);
+      setLocation(`/ride/${notification.relatedRideId}`);
     } else if (notification.relatedOfferId) {
       setNotificationsOpen(false);
       setLocation('/dashboard');
