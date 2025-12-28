@@ -9,7 +9,7 @@ import { setupLocalAuth } from "./localAuth";
 import { setupWebSocket } from "./websocket";
 import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema, users } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import { stripeService } from "./stripeService";
 
 // UK-specific validation functions
@@ -1568,7 +1568,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         tripMessage: tripMessage || null,
       });
       
-      // Notify the driver
+      // Notify the driver via WebSocket
       const { broadcast } = await import('./websocket');
       broadcast({
         type: 'NEW_SEAT_REQUEST',
@@ -1576,6 +1576,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         rideId: ride.id,
         seatsRequested: seats,
       }, route.driverId);
+      
+      // Also create a persistent notification in the database
+      const rider = await storage.getUser(userId);
+      await storage.createNotification({
+        userId: route.driverId,
+        type: 'seat_request',
+        title: 'New Seat Request',
+        message: `${rider?.firstName || 'A rider'} has requested ${seats} seat${seats > 1 ? 's' : ''} on your route from ${route.startLocation} to ${route.endLocation}.`,
+        relatedRideId: ride.id,
+        read: false,
+      });
       
       res.status(201).json(ride);
     } catch (error: any) {
@@ -2285,7 +2296,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         status: 'pending_driver_confirmation',
       });
       
-      // Send notification to driver (via WebSocket if connected)
+      // Send notification to driver via WebSocket
       const { broadcast } = await import('./websocket');
       broadcast({
         type: 'NEW_RIDE_REQUEST',
@@ -2296,6 +2307,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         estimatedPrice,
         scheduledTime,
       }, driverId);
+      
+      // Also create a persistent notification in the database
+      const rider = await storage.getUser(riderId);
+      await storage.createNotification({
+        userId: driverId,
+        type: 'ride_request',
+        title: 'New Ride Request',
+        message: `${rider?.firstName || 'A rider'} is requesting a ride from ${pickupLocation} to ${dropoffLocation} for £${estimatedPrice}.`,
+        relatedRideId: ride.id,
+        read: false,
+      });
       
       res.status(201).json(ride);
     } catch (error) {
@@ -2336,13 +2358,26 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       const updatedRide = await storage.updateRideStatus(rideId, newStatus);
       
-      // Notify rider
+      // Notify rider via WebSocket
       const { broadcast } = await import('./websocket');
       broadcast({
         type: action === 'accept' ? 'RIDE_REQUEST_ACCEPTED' : 'RIDE_REQUEST_DECLINED',
         rideId: ride.id,
         status: newStatus,
       }, ride.riderId);
+      
+      // Also create a persistent notification in the database
+      const driver = await storage.getUser(driverId);
+      await storage.createNotification({
+        userId: ride.riderId,
+        type: action === 'accept' ? 'ride_accepted' : 'ride_declined',
+        title: action === 'accept' ? 'Ride Request Accepted!' : 'Ride Request Declined',
+        message: action === 'accept' 
+          ? `${driver?.firstName || 'The driver'} has accepted your ride request. Please proceed to payment.`
+          : `${driver?.firstName || 'The driver'} has declined your ride request. You can try another driver.`,
+        relatedRideId: ride.id,
+        read: false,
+      });
       
       res.json(updatedRide);
     } catch (error) {

@@ -133,12 +133,17 @@ export function useLocationTracking({
   }, [rideId, userType, userId, enableTracking, onChatMessage]);
 
   useEffect(() => {
-    if (!enableTracking || !navigator.geolocation) {
-      setError('Geolocation not supported');
+    if (!enableTracking) {
+      return;
+    }
+    
+    if (!navigator.geolocation) {
+      setError('Location services unavailable. Please use a modern browser with HTTPS.');
       return;
     }
 
     const handlePosition = (position: GeolocationPosition) => {
+      setError(null);
       const newLocation: Location = {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
@@ -149,7 +154,21 @@ export function useLocationTracking({
     };
 
     const handleError = (err: GeolocationPositionError) => {
-      setError(err.message);
+      let errorMessage = 'Location error';
+      switch (err.code) {
+        case err.PERMISSION_DENIED:
+          errorMessage = 'Location access denied. Please enable location in your browser settings.';
+          break;
+        case err.POSITION_UNAVAILABLE:
+          errorMessage = 'Location unavailable. Please check your GPS or network connection.';
+          break;
+        case err.TIMEOUT:
+          errorMessage = 'Location request timed out. Please try again.';
+          break;
+        default:
+          errorMessage = err.message || 'Unable to get location';
+      }
+      setError(errorMessage);
     };
 
     watchIdRef.current = navigator.geolocation.watchPosition(
