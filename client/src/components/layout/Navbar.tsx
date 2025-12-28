@@ -185,8 +185,15 @@ export default function Navbar() {
             className="h-7 w-7 object-contain"
             style={{ mixBlendMode: 'multiply' }}
           />
-          AtlasRide
+          <span className="hidden sm:inline">AtlasRide</span>
         </Link>
+        
+        {/* Mobile Welcome Message */}
+        {user && (
+          <span className="md:hidden text-xs text-muted-foreground truncate max-w-[120px]" data-testid="text-welcome-mobile">
+            Welcome, {(user as any).firstName || 'User'}
+          </span>
+        )}
 
         {/* Desktop Nav */}
         <div className="hidden md:flex md:items-center md:gap-4">
