@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car, Radio, Crown, ChevronDown, ChevronUp, Crosshair, Route } from "lucide-react";
+import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car, Radio, Crown, ChevronDown, ChevronUp, Crosshair, Route, Bell, CreditCard } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -111,6 +111,17 @@ interface NearbyDriver {
   distanceFromPickup: number;
   currentLat: string | null;
   currentLng: string | null;
+}
+
+interface RiderRide {
+  id: number;
+  riderId: string;
+  driverId: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  agreedPrice: string;
+  status: string;
+  scheduledTime: string | null;
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -260,6 +271,22 @@ export default function RiderPage() {
     enabled: !!pickupCoords,
     refetchInterval: 1000, // Refresh every 1 second for nearby drivers
   });
+
+  // Query for rides that need action (pending payment, etc.)
+  const { data: myRides = [] } = useQuery<RiderRide[]>({
+    queryKey: ["/api/rides"],
+    queryFn: async () => {
+      const response = await fetch("/api/rides");
+      return response.json();
+    },
+    enabled: !!user,
+    refetchInterval: 2000,
+  });
+
+  // Filter for rides awaiting payment
+  const pendingPaymentRides = useMemo(() => {
+    return myRides.filter(ride => ride.status === 'pending_payment' && ride.riderId === user?.id);
+  }, [myRides, user]);
 
   // Query for bids on a specific offer - refreshes every 0.2 seconds when dialog is open
   const { data: offerBids = [], isLoading: bidsLoading, refetch: refetchBids } = useQuery<Bid[]>({
@@ -779,6 +806,43 @@ export default function RiderPage() {
         )}
       </div>
 
+      {/* FLOATING BANNER: Pending Payment Rides */}
+      {pendingPaymentRides.length > 0 && (
+        <div className="fixed top-11 right-2 z-40 w-72 sm:w-80">
+          <div className="bg-green-500/95 backdrop-blur-md rounded-xl shadow-lg border border-green-400 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <CreditCard className="h-4 w-4 animate-pulse text-white" />
+              <span className="text-sm font-semibold text-white">Ride Accepted!</span>
+              <Badge className="bg-white/20 text-white text-xs">{pendingPaymentRides.length}</Badge>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {pendingPaymentRides.slice(0, 3).map((ride) => (
+                <div key={ride.id} className="bg-white/10 rounded-lg p-2" data-testid={`pending-payment-ride-${ride.id}`}>
+                  <div className="flex items-start gap-2 text-xs text-white mb-2">
+                    <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{ride.pickupLocation}</p>
+                      <p className="text-white/70 truncate">→ {ride.dropoffLocation}</p>
+                    </div>
+                    <Badge className="bg-white text-green-600 font-bold text-xs shrink-0">£{ride.agreedPrice}</Badge>
+                  </div>
+                  <Link href={`/ride-tracking/${ride.id}`}>
+                    <Button
+                      size="sm"
+                      className="w-full h-7 bg-white text-green-600 hover:bg-green-50 font-medium"
+                      data-testid={`button-pay-ride-${ride.id}`}
+                    >
+                      <CreditCard className="h-3 w-3 mr-1" />
+                      Proceed to Payment
+                    </Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* OVERLAY: Target button to refocus map */}
       <button
         onClick={() => setCenterTrigger(prev => prev + 1)}
@@ -797,7 +861,7 @@ export default function RiderPage() {
           <button
             onClick={() => {
               setDriversCardOpen(!driversCardOpen);
-              if (!driversCardOpen) { setRoutesCardOpen(false); setMyRoutesCardOpen(false); setDriversPage(0); }
+              if (!driversCardOpen) { setRoutesCardOpen(false); setMyRoutesCardOpen(false); }
             }}
             className="w-full px-3 py-2 flex items-center justify-between hover:bg-white/10 transition-colors"
             data-testid="button-toggle-drivers-card"

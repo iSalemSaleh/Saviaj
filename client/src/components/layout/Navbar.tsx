@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Menu, Bell, Check, MessageSquare, History, Settings } from "lucide-react";
 import { useState, useCallback } from "react";
@@ -38,7 +38,7 @@ function formatTimeAgo(dateString: string) {
 }
 
 export default function Navbar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { user, isLoading } = useAuth();
@@ -83,6 +83,23 @@ export default function Navbar() {
 
   const unreadCount = unreadData?.count ?? 0;
   const unreadMessagesCount = unreadMessagesData?.count ?? 0;
+
+  const handleNotificationClick = useCallback((notification: Notification) => {
+    if (!notification.read) {
+      markReadMutation.mutate(notification.id);
+    }
+    
+    if (notification.relatedRideId) {
+      setNotificationsOpen(false);
+      setLocation(`/ride-tracking/${notification.relatedRideId}`);
+    } else if (notification.relatedOfferId) {
+      setNotificationsOpen(false);
+      setLocation('/dashboard');
+    } else if (notification.relatedBidId) {
+      setNotificationsOpen(false);
+      setLocation('/dashboard');
+    }
+  }, [setLocation, markReadMutation]);
 
   // Handle logout for both local auth and Replit auth
   const handleLogout = useCallback(async () => {
@@ -145,11 +162,7 @@ export default function Navbar() {
                   className={`p-4 hover:bg-muted/50 cursor-pointer transition-colors ${
                     !notification.read ? "bg-primary/5" : ""
                   }`}
-                  onClick={() => {
-                    if (!notification.read) {
-                      markReadMutation.mutate(notification.id);
-                    }
-                  }}
+                  onClick={() => handleNotificationClick(notification)}
                   data-testid={`notification-item-${notification.id}`}
                 >
                   <div className="flex items-start gap-3">
@@ -161,9 +174,14 @@ export default function Navbar() {
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                         {notification.message}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatTimeAgo(notification.createdAt)}
-                      </p>
+                      <div className="flex items-center justify-between mt-1">
+                        <p className="text-xs text-muted-foreground">
+                          {formatTimeAgo(notification.createdAt)}
+                        </p>
+                        {notification.relatedRideId && (
+                          <span className="text-xs text-primary font-medium">View Ride →</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
