@@ -302,9 +302,9 @@ export default function RideTrackingPage() {
       
       <div className="px-3 py-2 space-y-2 max-w-lg mx-auto">
         
-        {/* Compact Map */}
+        {/* Ultra Compact Map */}
         <div className="rounded-xl overflow-hidden shadow-lg border border-white/20">
-          <div className="h-[180px]">
+          <div className="h-[150px]">
             <RideMap
               pickupLocation={pickupLocation}
               dropoffLocation={dropoffLocation}
@@ -394,169 +394,89 @@ export default function RideTrackingPage() {
           />
         )}
 
-        {/* Pre-pickup Status for Rider - Compact */}
+        {/* Action Section - Integrated with status */}
+        {userType === 'driver' && (ride.status === 'scheduled' || ride.status === 'matched' || ride.status === 'en_route_pickup' || ride.status === 'in_progress') && (
+          <Button 
+            className={`w-full h-9 text-sm ${
+              ride.status === 'in_progress' ? 'bg-green-600 hover:bg-green-700' :
+              ride.status === 'en_route_pickup' ? 'bg-primary hover:bg-primary/90' :
+              'bg-amber-500 hover:bg-amber-600'
+            }`}
+            onClick={() => {
+              if (ride.status === 'scheduled' || ride.status === 'matched') startPickupMutation.mutate();
+              else if (ride.status === 'en_route_pickup') startTripMutation.mutate();
+              else if (ride.status === 'in_progress') completeTripMutation.mutate();
+            }}
+            disabled={startPickupMutation.isPending || startTripMutation.isPending || completeTripMutation.isPending}
+            data-testid="button-action"
+          >
+            {(startPickupMutation.isPending || startTripMutation.isPending || completeTripMutation.isPending) ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : ride.status === 'in_progress' ? (
+              <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+            ) : ride.status === 'en_route_pickup' ? (
+              <UserCheck className="mr-1.5 h-3.5 w-3.5" />
+            ) : (
+              <MapPinned className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            {ride.status === 'in_progress' ? 'Complete' : ride.status === 'en_route_pickup' ? 'Start Trip' : 'Go to Pickup'}
+          </Button>
+        )}
+        
+        {/* Pre-pickup rider alert - inline badge style */}
         {isPrePickup && userType === 'rider' && (
-          <div className="backdrop-blur-md bg-amber-50/80 dark:bg-amber-950/50 rounded-xl border border-amber-200 dark:border-amber-800 shadow-md p-3">
-            <div className="flex items-center gap-2">
-              {ride.status === 'en_route_pickup' ? (
-                <>
-                  <div className="h-8 w-8 rounded-full bg-amber-500 flex items-center justify-center">
-                    <Car className="h-4 w-4 text-white animate-pulse" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Driver is on the way!</p>
-                    <p className="text-xs text-amber-600 dark:text-amber-500">
-                      {eta ? `Arriving in ~${eta} min` : 'Calculating...'}
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
-                    <Clock className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-blue-700 dark:text-blue-400">Waiting for driver</p>
-                    <p className="text-xs text-blue-600 dark:text-blue-500">Your ride is confirmed</p>
-                  </div>
-                </>
-              )}
-            </div>
+          <div className="flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium">
+            <Car className="h-3.5 w-3.5 animate-pulse" />
+            {ride.status === 'en_route_pickup' ? `Driver arriving in ~${eta || '--'}m` : 'Waiting for driver'}
           </div>
         )}
 
-        {/* Action Buttons - Compact */}
-        {(ride.status === 'scheduled' || ride.status === 'matched') && userType === 'driver' && (
-          <Button 
-            className="w-full h-10 bg-amber-500 hover:bg-amber-600" 
-            onClick={() => startPickupMutation.mutate()}
-            disabled={startPickupMutation.isPending}
-            data-testid="button-start-pickup"
-          >
-            {startPickupMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <MapPinned className="mr-2 h-4 w-4" />
-            )}
-            Head to Pickup
-          </Button>
-        )}
-
-        {ride.status === 'en_route_pickup' && userType === 'driver' && (
-          <Button 
-            className="w-full h-10" 
-            onClick={() => startTripMutation.mutate()}
-            disabled={startTripMutation.isPending}
-            data-testid="button-start-trip"
-          >
-            {startTripMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <UserCheck className="mr-2 h-4 w-4" />
-            )}
-            Start Trip
-          </Button>
-        )}
-
-        {ride.status === 'in_progress' && userType === 'driver' && (
-          <Button 
-            className="w-full h-10 bg-green-600 hover:bg-green-700" 
-            onClick={() => completeTripMutation.mutate()}
-            disabled={completeTripMutation.isPending}
-            data-testid="button-complete-ride"
-          >
-            {completeTripMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle className="mr-2 h-4 w-4" />
-            )}
-            Complete Ride
-          </Button>
-        )}
-
-        {/* Rating UI - Compact */}
+        {/* Rating UI - Ultra Compact */}
         {(showRating || (ride.status === 'completed' && !hasRated?.hasRated)) && (
-          <div className="backdrop-blur-md bg-white/60 dark:bg-slate-800/60 rounded-xl border border-white/20 shadow-md p-3">
-            <p className="text-sm font-medium mb-2 flex items-center gap-1">
-              <Star className="h-4 w-4 text-yellow-500" />
-              Rate Your {userType === 'rider' ? 'Driver' : 'Rider'}
-            </p>
-            <div className="flex justify-center gap-1 mb-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setRating(star)}
-                  className="p-0.5 transition-transform hover:scale-110"
-                  data-testid={`star-${star}`}
-                >
-                  <Star
-                    className={`h-6 w-6 ${
-                      star <= rating
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-gray-300'
-                    }`}
-                  />
-                </button>
-              ))}
+          <div className="backdrop-blur-md bg-white/60 dark:bg-slate-800/60 rounded-xl border border-white/20 shadow-md p-2.5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium flex items-center gap-1">
+                <Star className="h-3.5 w-3.5 text-yellow-500" />
+                Rate {userType === 'rider' ? 'Driver' : 'Rider'}
+              </p>
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button key={star} onClick={() => setRating(star)} data-testid={`star-${star}`}>
+                    <Star className={`h-5 w-5 ${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                  </button>
+                ))}
+              </div>
+              <Button size="sm" className="h-7 text-xs px-3" onClick={() => submitRatingMutation.mutate()} disabled={submitRatingMutation.isPending} data-testid="button-submit-rating">
+                {submitRatingMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Submit'}
+              </Button>
             </div>
-            <Textarea
-              placeholder="Add a comment (optional)"
-              value={ratingComment}
-              onChange={(e) => setRatingComment(e.target.value)}
-              className="resize-none text-sm h-16 mb-2"
-              data-testid="input-rating-comment"
-            />
-            <Button 
-              className="w-full h-8 text-sm" 
-              onClick={() => submitRatingMutation.mutate()}
-              disabled={submitRatingMutation.isPending}
-              data-testid="button-submit-rating"
-            >
-              {submitRatingMutation.isPending ? (
-                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-              ) : null}
-              Submit Rating
-            </Button>
           </div>
         )}
 
-        {/* Payment Section for Riders - Compact */}
+        {/* Payment Section for Riders - Inline */}
         {(ride.status === 'pending_payment' || ride.status === 'completed' || ride.status === 'in_progress') && userType === 'rider' && !paymentSuccess && (
-          <div className="backdrop-blur-md bg-white/60 dark:bg-slate-800/60 rounded-xl border border-white/20 shadow-md p-3">
-            <p className="text-sm font-medium mb-2 flex items-center gap-1">
-              <CreditCard className="h-4 w-4" />
-              Pay for Ride
-            </p>
+          <div className="backdrop-blur-md bg-white/60 dark:bg-slate-800/60 rounded-xl border border-white/20 shadow-md p-2">
+            <div className="flex items-center gap-2 mb-1.5">
+              <CreditCard className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-medium">Pay £{ride.agreedPrice}</span>
+              <span className="text-[9px] text-muted-foreground ml-auto">Powered by Stripe</span>
+            </div>
             <PaymentButton
               amount={parseFloat(ride.agreedPrice)}
               rideId={ride.id}
               onSuccess={() => {
                 setPaymentSuccess(true);
-                toast({
-                  title: "Payment Successful",
-                  description: "Your ride has been paid. Thank you!",
-                });
+                toast({ title: "Payment Successful", description: "Your ride has been paid." });
               }}
-              onError={(error) => {
-                toast({
-                  title: "Payment Failed",
-                  description: error,
-                  variant: "destructive",
-                });
-              }}
+              onError={(error) => toast({ title: "Payment Failed", description: error, variant: "destructive" })}
             />
-            <p className="text-[10px] text-center text-muted-foreground mt-2">
-              Secure payment powered by Stripe
-            </p>
           </div>
         )}
 
         {paymentSuccess && (
-          <div className="backdrop-blur-md bg-green-50/80 dark:bg-green-950/50 rounded-xl border border-green-200 shadow-md p-3">
-            <div className="flex items-center gap-2 text-green-600">
-              <CheckCircle className="h-4 w-4" />
-              <p className="text-sm font-medium">Payment Complete</p>
-            </div>
+          <div className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-green-100/80 text-green-700 text-xs font-medium">
+            <CheckCircle className="h-3.5 w-3.5" />
+            Payment Complete
           </div>
         )}
 
