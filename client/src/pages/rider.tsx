@@ -826,16 +826,15 @@ export default function RiderPage() {
                     </div>
                     <Badge className="bg-white text-green-600 font-bold text-xs shrink-0">£{ride.agreedPrice}</Badge>
                   </div>
-                  <Link href={`/ride/${ride.id}`}>
-                    <Button
-                      size="sm"
-                      className="w-full h-7 bg-white text-green-600 hover:bg-green-50 font-medium"
-                      data-testid={`button-pay-ride-${ride.id}`}
-                    >
-                      <CreditCard className="h-3 w-3 mr-1" />
-                      Proceed to Payment
-                    </Button>
-                  </Link>
+                  <Button
+                    size="sm"
+                    className="w-full h-7 bg-white text-green-600 hover:bg-green-50 font-medium"
+                    data-testid={`button-pay-ride-${ride.id}`}
+                    onClick={() => navigate(`/ride/${ride.id}`)}
+                  >
+                    <CreditCard className="h-3 w-3 mr-1" />
+                    Proceed to Payment
+                  </Button>
                 </div>
               ))}
             </div>
