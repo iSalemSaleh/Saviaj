@@ -50,6 +50,8 @@ function useSystemDarkMode(): boolean {
 interface Location {
   lat: number;
   lng: number;
+  heading?: number;
+  speed?: number;
 }
 
 interface RideMapProps {
@@ -57,6 +59,7 @@ interface RideMapProps {
   dropoffLocation: Location;
   driverLocation?: Location | null;
   riderLocation?: Location | null;
+  driverHeading?: number | null; // Heading in degrees (0-360)
   driverVehicleColor?: string | null;
   showRoute?: boolean;
   onEtaUpdate?: (eta: number) => void;
@@ -139,8 +142,11 @@ const createIcon = (type: 'rider' | 'pickup' | 'dropoff') => {
   });
 };
 
-const createDriverCarIcon = (vehicleColor: string | null = null) => {
+const createDriverCarIcon = (vehicleColor: string | null = null, heading: number | null = null) => {
   const colorFilter = getColorFilter(vehicleColor);
+  // Heading: 0 = North, 90 = East, 180 = South, 270 = West
+  // Car icon points up by default (North), so we rotate by heading degrees
+  const rotation = heading !== null ? heading : 0;
   return L.divIcon({
     className: 'custom-car-marker',
     html: `<div style="
@@ -150,6 +156,8 @@ const createDriverCarIcon = (vehicleColor: string | null = null) => {
       align-items: center;
       justify-content: center;
       filter: drop-shadow(0 3px 8px rgba(0,0,0,0.5));
+      transform: rotate(${rotation}deg);
+      transition: transform 0.5s ease-out;
     ">
       <img 
         src="${carIconImage}" 
@@ -204,6 +212,7 @@ export function RideMap({
   dropoffLocation,
   driverLocation,
   riderLocation,
+  driverHeading,
   driverVehicleColor,
   showRoute = true,
   onEtaUpdate,
@@ -214,7 +223,9 @@ export function RideMap({
 
   const pickupIcon = useMemo(() => createIcon('pickup'), []);
   const dropoffIcon = useMemo(() => createIcon('dropoff'), []);
-  const driverIcon = useMemo(() => createDriverCarIcon(driverVehicleColor), [driverVehicleColor]);
+  // Use heading from driverLocation if available, otherwise from prop
+  const heading = driverLocation?.heading ?? driverHeading ?? null;
+  const driverIcon = useMemo(() => createDriverCarIcon(driverVehicleColor, heading), [driverVehicleColor, heading]);
   const riderIcon = useMemo(() => createIcon('rider'), []);
 
   const fetchRoute = useCallback(async () => {

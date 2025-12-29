@@ -2579,10 +2579,68 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (ride.driverId !== userId) return res.status(403).json({ message: "Unauthorized" });
       
       const updatedRide = await storage.updateRideStatus(id, 'en_route_pickup');
+      
+      // Notify rider that driver is on the way
+      await storage.createNotification({
+        userId: ride.riderId,
+        type: 'driver_en_route',
+        title: 'Driver On The Way!',
+        message: `Your driver is heading to your pickup location.`,
+        relatedRideId: id,
+        read: false,
+      });
+      
+      // Broadcast via WebSocket
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'RIDE_STATUS_UPDATE',
+        rideId: id,
+        status: 'en_route_pickup',
+        message: 'Driver is on the way to pickup'
+      }, ride.riderId);
+      
       res.json(updatedRide);
     } catch (error) {
       console.error("Error starting pickup:", error);
       res.status(500).json({ message: "Failed to start pickup" });
+    }
+  });
+
+  app.patch('/api/rides/:id/arrived-pickup', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const ride = await storage.getRideById(id);
+      if (!ride) return res.status(404).json({ message: "Ride not found" });
+      if (ride.driverId !== userId) return res.status(403).json({ message: "Unauthorized" });
+      
+      const updatedRide = await storage.updateRideStatus(id, 'arrived_pickup');
+      
+      // Notify rider that driver has arrived
+      await storage.createNotification({
+        userId: ride.riderId,
+        type: 'driver_arrived',
+        title: 'Driver Has Arrived!',
+        message: `Your driver is waiting at the pickup location.`,
+        relatedRideId: id,
+        read: false,
+      });
+      
+      // Broadcast via WebSocket
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'RIDE_STATUS_UPDATE',
+        rideId: id,
+        status: 'arrived_pickup',
+        message: 'Driver has arrived at pickup'
+      }, ride.riderId);
+      
+      res.json(updatedRide);
+    } catch (error) {
+      console.error("Error marking arrived at pickup:", error);
+      res.status(500).json({ message: "Failed to update ride status" });
     }
   });
 
@@ -2597,6 +2655,26 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (ride.driverId !== userId) return res.status(403).json({ message: "Unauthorized" });
       
       const updatedRide = await storage.updateRideStatus(id, 'in_progress');
+      
+      // Notify rider that trip has started
+      await storage.createNotification({
+        userId: ride.riderId,
+        type: 'trip_started',
+        title: 'Trip Started!',
+        message: `You're on your way to ${ride.dropoffLocation}.`,
+        relatedRideId: id,
+        read: false,
+      });
+      
+      // Broadcast via WebSocket
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'RIDE_STATUS_UPDATE',
+        rideId: id,
+        status: 'in_progress',
+        message: 'Trip has started'
+      }, ride.riderId);
+      
       res.json(updatedRide);
     } catch (error) {
       console.error("Error starting trip:", error);
@@ -2620,6 +2698,25 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       await storage.updateUserAvailability(ride.riderId, null, false);
       await storage.updateUserAvailability(ride.driverId, null, false);
       
+      // Notify rider that trip is complete
+      await storage.createNotification({
+        userId: ride.riderId,
+        type: 'trip_completed',
+        title: 'Trip Complete!',
+        message: `You've arrived at ${ride.dropoffLocation}. Thank you for riding with AtlasRide!`,
+        relatedRideId: id,
+        read: false,
+      });
+      
+      // Broadcast via WebSocket
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'RIDE_STATUS_UPDATE',
+        rideId: id,
+        status: 'completed',
+        message: 'Trip completed'
+      }, ride.riderId);
+      
       res.json(updatedRide);
     } catch (error) {
       console.error("Error completing trip:", error);
@@ -2640,15 +2737,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(403).json({ message: "Unauthorized" });
       }
       
-      // Cannot cancel rides that are already in progress or completed
-      if (ride.status === 'in_progress') {
-        return res.status(400).json({ message: "Cannot cancel a ride that is in progress" });
-      }
-      if (ride.status === 'completed') {
-        return res.status(400).json({ message: "Cannot cancel a completed ride" });
-      }
-      if (ride.status === 'cancelled') {
-        return res.status(400).json({ message: "Ride is already cancelled" });
+      // Cannot cancel rides once driver has arrived or trip is in progress
+      const nonCancellableStatuses = ['arrived_pickup', 'in_progress', 'arrived_dropoff', 'completed', 'cancelled', 'cancelled_by_rider', 'cancelled_by_driver'];
+      if (ride.status && nonCancellableStatuses.includes(ride.status)) {
+        return res.status(400).json({ message: "Cannot cancel at this stage of the ride" });
       }
       
       // Determine who cancelled

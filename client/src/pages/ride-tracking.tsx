@@ -145,6 +145,20 @@ export default function RideTrackingPage() {
     },
   });
 
+  const arrivedPickupMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("PATCH", `/api/rides/${rideId}/arrived-pickup`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/rides/${rideId}`] });
+      toast({ title: "You've Arrived!", description: "Waiting for passenger..." });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const startTripMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("PATCH", `/api/rides/${rideId}/start-trip`, {});
@@ -278,9 +292,11 @@ export default function RideTrackingPage() {
       case 'scheduled': return 'bg-blue-500';
       case 'matched': return 'bg-blue-600';
       case 'en_route_pickup': return 'bg-amber-500';
-      case 'in_progress': return 'bg-green-500';
+      case 'arrived_pickup': return 'bg-green-500';
+      case 'in_progress': return 'bg-green-600';
+      case 'arrived_dropoff': return 'bg-green-700';
       case 'completed': return 'bg-gray-500';
-      case 'cancelled': return 'bg-red-500';
+      case 'cancelled': case 'cancelled_by_rider': case 'cancelled_by_driver': return 'bg-red-500';
       default: return 'bg-gray-400';
     }
   };
@@ -290,15 +306,17 @@ export default function RideTrackingPage() {
       case 'pending_payment': return 'Awaiting Payment';
       case 'scheduled': return 'Scheduled';
       case 'matched': return 'Matched';
-      case 'en_route_pickup': return 'Driver En Route';
-      case 'in_progress': return 'In Progress';
+      case 'en_route_pickup': return 'Driver Coming';
+      case 'arrived_pickup': return 'Driver Arrived';
+      case 'in_progress': return 'On Trip';
+      case 'arrived_dropoff': return 'Arrived';
       case 'completed': return 'Completed';
-      case 'cancelled': return 'Cancelled';
+      case 'cancelled': case 'cancelled_by_rider': case 'cancelled_by_driver': return 'Cancelled';
       default: return status;
     }
   };
 
-  const isPrePickup = ride?.status === 'scheduled' || ride?.status === 'matched' || ride?.status === 'en_route_pickup';
+  const isPrePickup = ride?.status === 'scheduled' || ride?.status === 'matched' || ride?.status === 'en_route_pickup' || ride?.status === 'arrived_pickup';
 
   if (rideLoading) {
     return (
@@ -449,39 +467,54 @@ export default function RideTrackingPage() {
         )}
 
         {/* Action Section - Integrated with status */}
-        {userType === 'driver' && (ride.status === 'scheduled' || ride.status === 'matched' || ride.status === 'en_route_pickup' || ride.status === 'in_progress') && (
+        {userType === 'driver' && (ride.status === 'scheduled' || ride.status === 'matched' || ride.status === 'en_route_pickup' || ride.status === 'arrived_pickup' || ride.status === 'in_progress') && (
           <Button 
             className={`w-full h-9 text-sm ${
               ride.status === 'in_progress' ? 'bg-green-600 hover:bg-green-700' :
+              ride.status === 'arrived_pickup' ? 'bg-green-500 hover:bg-green-600' :
               ride.status === 'en_route_pickup' ? 'bg-primary hover:bg-primary/90' :
               'bg-amber-500 hover:bg-amber-600'
             }`}
             onClick={() => {
               if (ride.status === 'scheduled' || ride.status === 'matched') startPickupMutation.mutate();
-              else if (ride.status === 'en_route_pickup') startTripMutation.mutate();
+              else if (ride.status === 'en_route_pickup') arrivedPickupMutation.mutate();
+              else if (ride.status === 'arrived_pickup') startTripMutation.mutate();
               else if (ride.status === 'in_progress') completeTripMutation.mutate();
             }}
-            disabled={startPickupMutation.isPending || startTripMutation.isPending || completeTripMutation.isPending}
+            disabled={startPickupMutation.isPending || arrivedPickupMutation.isPending || startTripMutation.isPending || completeTripMutation.isPending}
             data-testid="button-action"
           >
-            {(startPickupMutation.isPending || startTripMutation.isPending || completeTripMutation.isPending) ? (
+            {(startPickupMutation.isPending || arrivedPickupMutation.isPending || startTripMutation.isPending || completeTripMutation.isPending) ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
             ) : ride.status === 'in_progress' ? (
               <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-            ) : ride.status === 'en_route_pickup' ? (
+            ) : ride.status === 'arrived_pickup' ? (
               <UserCheck className="mr-1.5 h-3.5 w-3.5" />
+            ) : ride.status === 'en_route_pickup' ? (
+              <MapPin className="mr-1.5 h-3.5 w-3.5" />
             ) : (
               <MapPinned className="mr-1.5 h-3.5 w-3.5" />
             )}
-            {ride.status === 'in_progress' ? 'Complete' : ride.status === 'en_route_pickup' ? 'Start Trip' : 'Go to Pickup'}
+            {ride.status === 'in_progress' ? 'Complete Trip' : 
+             ride.status === 'arrived_pickup' ? 'Start Trip' : 
+             ride.status === 'en_route_pickup' ? 'I\'ve Arrived' : 
+             'Go to Pickup'}
           </Button>
         )}
         
         {/* Pre-pickup rider alert - inline badge style */}
         {isPrePickup && userType === 'rider' && (
-          <div className="flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium">
-            <Car className="h-3.5 w-3.5 animate-pulse" />
-            {ride.status === 'en_route_pickup' ? `Driver arriving in ~${eta || '--'}m` : 'Waiting for driver'}
+          <div className={`flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-medium ${
+            ride.status === 'arrived_pickup' 
+              ? 'bg-green-100/80 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+              : 'bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+          }`}>
+            <Car className={`h-3.5 w-3.5 ${ride.status === 'arrived_pickup' ? '' : 'animate-pulse'}`} />
+            {ride.status === 'arrived_pickup' 
+              ? 'Driver has arrived! Head to pickup point' 
+              : ride.status === 'en_route_pickup' 
+                ? `Driver arriving in ~${eta || '--'}m` 
+                : 'Waiting for driver'}
           </div>
         )}
 

@@ -5,6 +5,8 @@ import { storage } from './storage';
 interface Location {
   lat: number;
   lng: number;
+  heading?: number; // Direction in degrees (0-360, 0 = North)
+  speed?: number; // Speed in m/s
   timestamp: number;
 }
 
