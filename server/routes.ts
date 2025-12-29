@@ -1649,6 +1649,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     try {
       const userId = req.session?.userId || req.user?.claims?.sub;
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      // Prevent self-dealing: driver cannot bid on their own ride request
+      const offer = await storage.getRiderOfferById(req.body.riderOfferId);
+      if (!offer) {
+        return res.status(404).json({ message: "Ride offer not found" });
+      }
+      if (offer.riderId === userId) {
+        return res.status(400).json({ message: "You cannot bid on your own ride request" });
+      }
+      
       const validatedData = insertBidSchema.parse({
         ...req.body,
         driverId: userId,
@@ -1715,6 +1725,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // Check if user is the offer owner
       if (offer.riderId !== userId) {
         return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // Prevent self-dealing: rider cannot accept their own bid (if they're also the driver)
+      if (existingBid.driverId === userId) {
+        return res.status(400).json({ message: "You cannot accept your own bid" });
       }
       
       // Check if offer is still pending
