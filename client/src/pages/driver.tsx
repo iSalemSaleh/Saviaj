@@ -569,10 +569,10 @@ export default function DriverPage() {
     }
 
     const price = parseFloat(bidPrice);
-    if (isNaN(price) || price < 1 || price > 500) {
+    if (isNaN(price) || price < 0.01 || price > 500) {
       toast({
         title: "Invalid Price",
-        description: "Please enter a price between £1 and £500",
+        description: "Please enter a price between £0.01 and £500",
         variant: "destructive",
       });
       return;
@@ -600,8 +600,16 @@ export default function DriverPage() {
     });
   };
 
-  const activeRides = myRides.filter(r => r.status === "scheduled" || r.status === "in_progress");
-  const completedRides = myRides.filter(r => r.status === "completed");
+  const now = new Date();
+  const activeRides = myRides.filter(r => {
+    if (r.status !== "scheduled" && r.status !== "in_progress") return false;
+    const scheduledTime = new Date(r.scheduledTime);
+    return scheduledTime >= now || r.status === "in_progress";
+  });
+  const completedRides = myRides.filter(r => 
+    r.status === "completed" || r.status === "cancelled" || 
+    r.status === "cancelled_by_rider" || r.status === "cancelled_by_driver"
+  );
 
   const handleRecenter = () => {
     setCenterTrigger(prev => prev + 1);

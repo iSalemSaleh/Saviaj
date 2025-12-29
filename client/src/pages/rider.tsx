@@ -1215,7 +1215,7 @@ export default function RiderPage() {
                 <Input 
                   type="number"
                   placeholder="Enter new price"
-                  min="1"
+                  min="0.01"
                   max="500"
                   className="pl-9"
                   value={editPrice}

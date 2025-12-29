@@ -46,6 +46,10 @@ const getStatusBadge = (status: string) => {
       return <Badge className="bg-green-500"><CheckCircle2 className="h-3 w-3 mr-1" /> Completed</Badge>;
     case "cancelled":
       return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> Cancelled</Badge>;
+    case "cancelled_by_rider":
+      return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> Cancelled by Rider</Badge>;
+    case "cancelled_by_driver":
+      return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" /> Cancelled by Driver</Badge>;
     case "expired":
       return <Badge variant="secondary"><AlertCircle className="h-3 w-3 mr-1" /> Expired</Badge>;
     case "pending":
@@ -99,7 +103,8 @@ export default function HistoryPage() {
 
   const completedRides = useMemo(() => {
     return myRides.filter(ride => 
-      ride.status === "completed" || ride.status === "cancelled"
+      ride.status === "completed" || ride.status === "cancelled" ||
+      ride.status === "cancelled_by_rider" || ride.status === "cancelled_by_driver"
     ).sort((a, b) => new Date(b.scheduledTime).getTime() - new Date(a.scheduledTime).getTime());
   }, [myRides]);
 

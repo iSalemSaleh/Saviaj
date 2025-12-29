@@ -31,7 +31,8 @@ import {
   MapPinned,
   UserCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  XCircle
 } from "lucide-react";
 
 interface Ride {
@@ -167,6 +168,24 @@ export default function RideTrackingPage() {
       queryClient.invalidateQueries({ queryKey: [`/api/rides/${rideId}`] });
       toast({ title: "Trip Complete!", description: "Thank you for riding with AtlasRide." });
       setShowRating(true);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const cancelRideMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("PATCH", `/api/rides/${rideId}/cancel`, { reason: "Cancelled by user" });
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/rides/${rideId}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rides"] });
+      const message = data.refundProcessed 
+        ? "The ride has been cancelled. A refund has been processed."
+        : "The ride has been cancelled.";
+      toast({ title: "Ride Cancelled", description: message });
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -441,6 +460,24 @@ export default function RideTrackingPage() {
           </Button>
         )}
         
+        {/* Cancel Button - available for both rider and driver before ride starts */}
+        {(ride.status === 'pending_payment' || ride.status === 'scheduled' || ride.status === 'matched' || ride.status === 'en_route_pickup') && (
+          <Button 
+            variant="outline"
+            className="w-full h-8 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+            onClick={() => cancelRideMutation.mutate()}
+            disabled={cancelRideMutation.isPending}
+            data-testid="button-cancel-ride"
+          >
+            {cancelRideMutation.isPending ? (
+              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+            ) : (
+              <XCircle className="mr-1.5 h-3 w-3" />
+            )}
+            Cancel Ride {ride.paymentStatus === 'paid' && '(Refund will be processed)'}
+          </Button>
+        )}
+
         {/* Pre-pickup rider alert - inline badge style */}
         {isPrePickup && userType === 'rider' && (
           <div className="flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium">

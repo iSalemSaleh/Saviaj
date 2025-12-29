@@ -56,6 +56,20 @@ export class StripeService {
     }
   }
 
+  async createRefund(paymentIntentId: string, reason?: string) {
+    const stripe = await getUncachableStripeClient();
+    try {
+      return await stripe.refunds.create({
+        payment_intent: paymentIntentId,
+        reason: 'requested_by_customer',
+        metadata: { cancellation_reason: reason || 'Ride cancelled' },
+      });
+    } catch (error) {
+      console.error("Error creating refund:", error);
+      throw error;
+    }
+  }
+
   async getProduct(productId: string) {
     const result = await db.execute(
       sql`SELECT * FROM stripe.products WHERE id = ${productId}`

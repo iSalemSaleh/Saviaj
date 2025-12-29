@@ -2632,6 +2632,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const id = parseInt(req.params.id);
       const userId = req.session?.userId || req.user?.claims?.sub;
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      const { reason } = req.body;
       
       const ride = await storage.getRideById(id);
       if (!ride) return res.status(404).json({ message: "Ride not found" });
@@ -2639,11 +2640,47 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(403).json({ message: "Unauthorized" });
       }
       
-      const updatedRide = await storage.updateRideStatus(id, 'cancelled');
+      // Cannot cancel rides that are already in progress or completed
+      if (ride.status === 'in_progress') {
+        return res.status(400).json({ message: "Cannot cancel a ride that is in progress" });
+      }
+      if (ride.status === 'completed') {
+        return res.status(400).json({ message: "Cannot cancel a completed ride" });
+      }
+      if (ride.status === 'cancelled') {
+        return res.status(400).json({ message: "Ride is already cancelled" });
+      }
+      
+      // Determine who cancelled
+      const cancelledByRider = ride.riderId === userId;
+      const cancelStatus = cancelledByRider ? 'cancelled_by_rider' : 'cancelled_by_driver';
+      
+      // If payment was made, process refund
+      let refundProcessed = false;
+      if (ride.paymentStatus === 'paid' && ride.paymentIntentId) {
+        try {
+          await stripeService.createRefund(ride.paymentIntentId, reason || 'Ride cancelled');
+          refundProcessed = true;
+          console.log(`Refund processed for ride ${id}`);
+        } catch (refundError) {
+          console.error(`Failed to process refund for ride ${id}:`, refundError);
+          return res.status(500).json({ message: "Failed to process refund. Please contact support." });
+        }
+      }
+      
+      const updatedRide = await storage.updateRide(id, { 
+        status: cancelStatus,
+        paymentStatus: refundProcessed ? 'refunded' : (ride.paymentStatus || undefined)
+      });
       
       // If there was a route, restore the seat
       if (ride.driverRouteId) {
         await storage.incrementRouteSeats(ride.driverRouteId);
+      }
+      
+      // Reset the associated rider offer if exists
+      if (ride.riderOfferId) {
+        await storage.updateRiderOfferStatus(ride.riderOfferId, 'cancelled');
       }
       
       // Set both users back to available for matching
@@ -2652,7 +2689,28 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         await storage.updateUserAvailability(ride.driverId, 'driver', true);
       }
       
-      res.json(updatedRide);
+      // Notify the other party
+      const otherUserId = cancelledByRider ? ride.driverId : ride.riderId;
+      const cancellerName = cancelledByRider ? 'Rider' : 'Driver';
+      await storage.createNotification({
+        userId: otherUserId,
+        type: 'ride_cancelled',
+        title: 'Ride Cancelled',
+        message: `${cancellerName} has cancelled the ride from ${ride.pickupLocation} to ${ride.dropoffLocation}.${refundProcessed ? ' A refund has been processed.' : ''}`,
+        relatedRideId: id,
+        read: false,
+      });
+      
+      // Broadcast cancellation via WebSocket
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'RIDE_CANCELLED',
+        rideId: id,
+        cancelledBy: cancelledByRider ? 'rider' : 'driver',
+        refundProcessed
+      }, otherUserId);
+      
+      res.json({ ...updatedRide, refundProcessed });
     } catch (error) {
       console.error("Error cancelling ride:", error);
       res.status(500).json({ message: "Failed to cancel ride" });
