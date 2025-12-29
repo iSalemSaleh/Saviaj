@@ -65,34 +65,77 @@ interface RideMapProps {
 }
 
 const createIcon = (type: 'rider' | 'pickup' | 'dropoff') => {
-  const colors: Record<string, string> = {
-    rider: '#0891b2',
-    pickup: '#22c55e',
-    dropoff: '#ef4444',
-  };
+  if (type === 'pickup') {
+    // Blue dot for pickup - simple solid circle
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="
+        width: 16px;
+        height: 16px;
+        background-color: #0ea5e9;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      "></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+    });
+  }
   
-  const icons: Record<string, string> = {
-    rider: '👤',
-    pickup: '📍',
-    dropoff: '🏁',
-  };
-
+  if (type === 'dropoff') {
+    // Location pin for dropoff - peacock blue pin shape
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="
+        width: 32px;
+        height: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      ">
+        <div style="
+          width: 24px;
+          height: 24px;
+          background: linear-gradient(135deg, #0891b2, #0e7490);
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 2px solid white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        ">
+          <div style="
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            transform: rotate(45deg);
+          "></div>
+        </div>
+      </div>`,
+      iconSize: [32, 40],
+      iconAnchor: [16, 40],
+    });
+  }
+  
+  // Rider icon - cyan circle with user icon
   return L.divIcon({
     className: 'custom-marker',
     html: `<div style="
-      width: 40px;
-      height: 40px;
-      background-color: ${colors[type]};
+      width: 32px;
+      height: 32px;
+      background-color: #0891b2;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
-      border: 3px solid white;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    ">${icons[type]}</div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
+      font-size: 16px;
+      border: 2px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    ">👤</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
   });
 };
 

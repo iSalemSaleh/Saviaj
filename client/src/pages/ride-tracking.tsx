@@ -71,6 +71,23 @@ export default function RideTrackingPage() {
 
   const [pendingPaymentSecret, setPendingPaymentSecret] = useState<string | null>(null);
 
+  // Reset local state when rideId changes to prevent stale data
+  useEffect(() => {
+    setEta(null);
+    setDistance(null);
+    setPaymentSuccess(false);
+    setShowRating(false);
+    setRating(5);
+    setRatingComment("");
+    setShowChat(false);
+    setPendingMessages([]);
+    setShowDetails(false);
+    setPendingPaymentSecret(null);
+    
+    // Force refetch fresh data
+    queryClient.invalidateQueries({ queryKey: [`/api/rides/${rideId}`] });
+  }, [rideId, queryClient]);
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('payment') === 'success') {
