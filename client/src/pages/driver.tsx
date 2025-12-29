@@ -166,11 +166,13 @@ export default function DriverPage() {
             if (data.address) {
               setStartLocation(data.address);
             } else {
-              setStartLocation("Your current location");
+              // Fallback to coordinates if address resolution fails
+              setStartLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
             }
           } catch (error) {
             console.log("Reverse geocode error:", error);
-            setStartLocation("Your current location");
+            // Fallback to coordinates on error
+            setStartLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
           }
         },
         (error) => {

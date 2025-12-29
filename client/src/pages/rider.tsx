@@ -203,11 +203,13 @@ export default function RiderPage() {
             if (data.address) {
               setPickupLocation(data.address);
             } else {
-              setPickupLocation("Your current location");
+              // Fallback to coordinates if address resolution fails
+              setPickupLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
             }
           } catch (error) {
             console.log("Reverse geocode error:", error);
-            setPickupLocation("Your current location");
+            // Fallback to coordinates on error
+            setPickupLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
           }
         },
         (error) => {
@@ -635,10 +637,12 @@ export default function RiderPage() {
           if (data.address) {
             setPickupLocation(data.address);
           } else {
-            setPickupLocation("Your current location");
+            // Fallback to coordinates if address resolution fails
+            setPickupLocation(`${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`);
           }
         } catch {
-          setPickupLocation("Your current location");
+          // Fallback to coordinates on error
+          setPickupLocation(`${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`);
         }
       } else {
         setPickupLocation("");
