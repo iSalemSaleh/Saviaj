@@ -1426,8 +1426,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const { offerPrice } = req.body;
       
-      if (!offerPrice || offerPrice < 1 || offerPrice > 500) {
-        return res.status(400).json({ message: "Price must be between £1 and £500" });
+      if (!offerPrice || offerPrice < 0.01 || offerPrice > 500) {
+        return res.status(400).json({ message: "Price must be between £0.01 and £500" });
       }
       
       const existingOffer = await storage.getRiderOfferById(id);
