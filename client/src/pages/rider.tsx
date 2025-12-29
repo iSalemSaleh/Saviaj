@@ -823,7 +823,7 @@ export default function RiderPage() {
         <div className="fixed top-12 right-2 z-40">
           {paymentBannerOpen ? (
             <div 
-              className="w-64 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-xl shadow-lg border border-cyan-300 dark:border-cyan-700 overflow-hidden"
+              className="w-64 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-xl shadow-lg border border-primary/30 dark:border-primary/50 overflow-hidden"
               onMouseEnter={() => setBannerHovered(true)}
               onMouseLeave={() => setBannerHovered(false)}
               onTouchStart={() => setBannerHovered(true)}
@@ -831,32 +831,32 @@ export default function RiderPage() {
             >
               <button
                 onClick={() => setPaymentBannerOpen(false)}
-                className="w-full px-3 py-2 flex items-center justify-between hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-colors"
+                className="w-full px-3 py-2 flex items-center justify-between hover:bg-primary/10 transition-colors"
                 data-testid="button-collapse-payment-banner"
               >
                 <div className="flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-full bg-cyan-600 flex items-center justify-center">
+                  <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
                     <CreditCard className="h-3 w-3 text-white" />
                   </div>
-                  <span className="text-xs font-semibold text-cyan-700 dark:text-cyan-400">Ride Accepted!</span>
-                  <Badge className="bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300 text-[10px]">{pendingPaymentRides.length}</Badge>
+                  <span className="text-xs font-semibold text-primary">Ride Accepted!</span>
+                  <Badge className="bg-primary/20 text-primary text-[10px]">{pendingPaymentRides.length}</Badge>
                 </div>
-                <ChevronUp className="h-4 w-4 text-cyan-600" />
+                <ChevronUp className="h-4 w-4 text-primary" />
               </button>
               <div className="px-3 pb-2 space-y-2 max-h-40 overflow-y-auto">
                 {pendingPaymentRides.slice(0, 3).map((ride) => (
-                  <div key={ride.id} className="bg-cyan-50 dark:bg-cyan-900/30 rounded-lg p-2" data-testid={`pending-payment-ride-${ride.id}`}>
+                  <div key={ride.id} className="bg-primary/10 rounded-lg p-2" data-testid={`pending-payment-ride-${ride.id}`}>
                     <div className="flex items-start gap-2 text-xs mb-1.5">
-                      <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0 text-cyan-600" />
+                      <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary" />
                       <div className="flex-1 min-w-0">
                         <p className="font-medium truncate text-slate-700 dark:text-slate-200">{ride.pickupLocation}</p>
                         <p className="text-slate-500 truncate text-[10px]">→ {ride.dropoffLocation}</p>
                       </div>
-                      <span className="text-cyan-600 font-bold text-xs shrink-0">£{ride.agreedPrice}</span>
+                      <span className="text-primary font-bold text-xs shrink-0">£{ride.agreedPrice}</span>
                     </div>
                     <Button
                       size="sm"
-                      className="w-full h-6 text-[10px] bg-cyan-600 hover:bg-cyan-700 text-white"
+                      className="w-full h-6 text-[10px]"
                       data-testid={`button-pay-ride-${ride.id}`}
                       onClick={() => navigate(`/ride/${ride.id}`)}
                     >
@@ -870,14 +870,14 @@ export default function RiderPage() {
           ) : (
             <button
               onClick={() => setPaymentBannerOpen(true)}
-              className="flex items-center gap-2 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-full shadow-lg border border-cyan-300 dark:border-cyan-700 px-3 py-1.5 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 transition-colors"
+              className="flex items-center gap-2 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-full shadow-lg border border-primary/30 dark:border-primary/50 px-3 py-1.5 hover:bg-primary/10 transition-colors"
               data-testid="button-expand-payment-banner"
             >
-              <div className="h-5 w-5 rounded-full bg-cyan-600 flex items-center justify-center animate-pulse">
+              <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center animate-pulse">
                 <CreditCard className="h-2.5 w-2.5 text-white" />
               </div>
-              <span className="text-xs font-medium text-cyan-700 dark:text-cyan-400">{pendingPaymentRides.length} pending</span>
-              <ChevronDown className="h-3 w-3 text-cyan-600" />
+              <span className="text-xs font-medium text-primary">{pendingPaymentRides.length} pending</span>
+              <ChevronDown className="h-3 w-3 text-primary" />
             </button>
           )}
         </div>

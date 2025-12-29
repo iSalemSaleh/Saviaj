@@ -414,6 +414,23 @@ export default function RideTrackingPage() {
               >
                 <MessageSquare className="h-3.5 w-3.5" />
               </Button>
+              {/* Cancel button - solid red */}
+              {(ride.status === 'pending_payment' || ride.status === 'scheduled' || ride.status === 'matched' || ride.status === 'en_route_pickup') && (
+                <Button 
+                  size="sm"
+                  className="h-7 px-3 bg-red-600 hover:bg-red-700 text-white text-xs"
+                  onClick={() => cancelRideMutation.mutate()}
+                  disabled={cancelRideMutation.isPending}
+                  data-testid="button-cancel-ride"
+                >
+                  {cancelRideMutation.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <XCircle className="h-3 w-3 mr-1" />
+                  )}
+                  Cancel
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -460,24 +477,6 @@ export default function RideTrackingPage() {
           </Button>
         )}
         
-        {/* Cancel Button - available for both rider and driver before ride starts */}
-        {(ride.status === 'pending_payment' || ride.status === 'scheduled' || ride.status === 'matched' || ride.status === 'en_route_pickup') && (
-          <Button 
-            variant="outline"
-            className="w-full h-8 text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-            onClick={() => cancelRideMutation.mutate()}
-            disabled={cancelRideMutation.isPending}
-            data-testid="button-cancel-ride"
-          >
-            {cancelRideMutation.isPending ? (
-              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-            ) : (
-              <XCircle className="mr-1.5 h-3 w-3" />
-            )}
-            Cancel Ride {ride.paymentStatus === 'paid' && '(Refund will be processed)'}
-          </Button>
-        )}
-
         {/* Pre-pickup rider alert - inline badge style */}
         {isPrePickup && userType === 'rider' && (
           <div className="flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium">
@@ -516,15 +515,32 @@ export default function RideTrackingPage() {
               <span className="text-xs font-medium">Pay £{ride.agreedPrice}</span>
               <span className="text-[9px] text-muted-foreground ml-auto">Powered by Stripe</span>
             </div>
-            <PaymentButton
-              amount={parseFloat(ride.agreedPrice)}
-              rideId={ride.id}
-              onSuccess={() => {
-                setPaymentSuccess(true);
-                toast({ title: "Payment Successful", description: "Your ride has been paid." });
-              }}
-              onError={(error) => toast({ title: "Payment Failed", description: error, variant: "destructive" })}
-            />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <PaymentButton
+                  amount={parseFloat(ride.agreedPrice)}
+                  rideId={ride.id}
+                  onSuccess={() => {
+                    setPaymentSuccess(true);
+                    toast({ title: "Payment Successful", description: "Your ride has been paid." });
+                  }}
+                  onError={(error) => toast({ title: "Payment Failed", description: error, variant: "destructive" })}
+                />
+              </div>
+              <Button 
+                className="h-9 px-4 bg-red-600 hover:bg-red-700 text-white text-xs"
+                onClick={() => cancelRideMutation.mutate()}
+                disabled={cancelRideMutation.isPending}
+                data-testid="button-cancel-payment"
+              >
+                {cancelRideMutation.isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <XCircle className="h-3 w-3 mr-1" />
+                )}
+                Cancel
+              </Button>
+            </div>
           </div>
         )}
 
