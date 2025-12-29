@@ -515,32 +515,15 @@ export default function RideTrackingPage() {
               <span className="text-xs font-medium">Pay £{ride.agreedPrice}</span>
               <span className="text-[9px] text-muted-foreground ml-auto">Powered by Stripe</span>
             </div>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <PaymentButton
-                  amount={parseFloat(ride.agreedPrice)}
-                  rideId={ride.id}
-                  onSuccess={() => {
-                    setPaymentSuccess(true);
-                    toast({ title: "Payment Successful", description: "Your ride has been paid." });
-                  }}
-                  onError={(error) => toast({ title: "Payment Failed", description: error, variant: "destructive" })}
-                />
-              </div>
-              <Button 
-                className="h-9 px-4 text-white text-xs hover:opacity-90"
-                style={{ backgroundColor: '#D93B24' }}
-                onClick={() => cancelRideMutation.mutate()}
-                disabled={cancelRideMutation.isPending}
-                data-testid="button-cancel-payment"
-              >
-                {cancelRideMutation.isPending ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  'Cancel'
-                )}
-              </Button>
-            </div>
+            <PaymentButton
+              amount={parseFloat(ride.agreedPrice)}
+              rideId={ride.id}
+              onSuccess={() => {
+                setPaymentSuccess(true);
+                toast({ title: "Payment Successful", description: "Your ride has been paid." });
+              }}
+              onError={(error) => toast({ title: "Payment Failed", description: error, variant: "destructive" })}
+            />
           </div>
         )}
 
