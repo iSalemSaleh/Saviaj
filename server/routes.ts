@@ -1965,8 +1965,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(403).json({ message: "Unauthorized" });
       }
 
-      // Verify payment status is payment_pending
-      if (ride.status !== 'payment_pending') {
+      // Verify payment status is pending_payment
+      if (ride.status !== 'pending_payment') {
         return res.status(400).json({ message: "Ride is not awaiting payment" });
       }
 
@@ -2017,11 +2017,38 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         });
       }
 
-      // Update ride status to confirmed
+      // Update ride status to scheduled (ready for driver to start)
       const updatedRide = await storage.updateRide(rideId, {
-        status: 'confirmed',
+        status: 'scheduled',
         paymentStatus: paymentIntent.status === 'succeeded' ? 'paid' : 'authorized'
       });
+
+      // If this ride came from a rider offer, update the offer status
+      if (ride.riderOfferId) {
+        await storage.updateRiderOfferStatus(ride.riderOfferId, 'accepted', ride.driverId);
+      }
+
+      // Notify driver via WebSocket
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'PAYMENT_CONFIRMED',
+        rideId: rideId,
+        status: 'scheduled',
+        message: 'Payment confirmed - ready to start'
+      }, ride.driverId);
+
+      // Create persistent notification for driver
+      const rider = await storage.getUser(ride.riderId);
+      await storage.createNotification({
+        userId: ride.driverId,
+        type: 'payment_confirmed',
+        title: 'Payment Received!',
+        message: `${rider?.firstName || 'Rider'} has paid £${ride.agreedPrice} for the ride from ${ride.pickupLocation} to ${ride.dropoffLocation}. You can now start the trip!`,
+        relatedRideId: rideId,
+        read: false,
+      });
+
+      console.log(`Payment confirmed for ride ${rideId}, driver ${ride.driverId} notified`);
 
       res.json({ 
         message: "Payment confirmed", 

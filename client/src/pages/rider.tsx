@@ -165,6 +165,7 @@ export default function RiderPage() {
   const [allRoutesExpanded, setAllRoutesExpanded] = useState(false);
   const [driversCardOpen, setDriversCardOpen] = useState(false);
   const [paymentBannerOpen, setPaymentBannerOpen] = useState(true);
+  const [bannerHovered, setBannerHovered] = useState(false);
   const [routesCardOpen, setRoutesCardOpen] = useState(false);
   const [myRoutesCardOpen, setMyRoutesCardOpen] = useState(false);
   const [centerTrigger, setCenterTrigger] = useState(0); // Increment to recenter map
@@ -174,6 +175,16 @@ export default function RiderPage() {
   const [seatCount, setSeatCount] = useState(1);
   const [tripMessage, setTripMessage] = useState("");
   const INITIAL_DISPLAY_COUNT = 5;
+
+  // Auto-minimize payment banner after 3 seconds if not hovered
+  useEffect(() => {
+    if (paymentBannerOpen && !bannerHovered) {
+      const timer = setTimeout(() => {
+        setPaymentBannerOpen(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [paymentBannerOpen, bannerHovered]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -811,7 +822,13 @@ export default function RiderPage() {
       {pendingPaymentRides.length > 0 && (
         <div className="fixed top-12 right-2 z-40">
           {paymentBannerOpen ? (
-            <div className="w-64 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-xl shadow-lg border border-green-300 dark:border-green-700 overflow-hidden">
+            <div 
+              className="w-64 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-xl shadow-lg border border-green-300 dark:border-green-700 overflow-hidden"
+              onMouseEnter={() => setBannerHovered(true)}
+              onMouseLeave={() => setBannerHovered(false)}
+              onTouchStart={() => setBannerHovered(true)}
+              onTouchEnd={() => setBannerHovered(false)}
+            >
               <button
                 onClick={() => setPaymentBannerOpen(false)}
                 className="w-full px-3 py-2 flex items-center justify-between hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
