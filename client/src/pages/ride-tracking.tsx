@@ -361,12 +361,12 @@ export default function RideTrackingPage() {
             </span>
           </div>
           
-          {/* Route row - blue dot for pickup, peacock pin for dropoff */}
+          {/* Route row - blue dot for pickup, red pin for dropoff */}
           <div className="flex items-center gap-1.5 text-[10px] mb-2 px-0.5">
             <div className="h-2.5 w-2.5 rounded-full bg-sky-500 border border-white shrink-0" />
             <p className="truncate flex-1" data-testid="text-pickup">{ride.pickupLocation}</p>
             <span className="text-muted-foreground">→</span>
-            <div className="h-2.5 w-2.5 rounded-full bg-primary border border-white shrink-0" style={{clipPath: 'polygon(50% 100%, 0% 30%, 100% 30%)'}} />
+            <div className="h-2.5 w-2.5 rounded-full bg-red-500 border border-white shrink-0" style={{clipPath: 'polygon(50% 100%, 0% 30%, 100% 30%)'}} />
             <p className="truncate flex-1" data-testid="text-dropoff">{ride.dropoffLocation}</p>
           </div>
 

@@ -83,7 +83,7 @@ const createIcon = (type: 'rider' | 'pickup' | 'dropoff') => {
   }
   
   if (type === 'dropoff') {
-    // Location pin for dropoff - peacock blue pin shape
+    // Location pin for dropoff - red pin shape
     return L.divIcon({
       className: 'custom-marker',
       html: `<div style="
@@ -96,7 +96,7 @@ const createIcon = (type: 'rider' | 'pickup' | 'dropoff') => {
         <div style="
           width: 24px;
           height: 24px;
-          background: linear-gradient(135deg, #0891b2, #0e7490);
+          background: linear-gradient(135deg, #ef4444, #dc2626);
           border-radius: 50% 50% 50% 0;
           transform: rotate(-45deg);
           display: flex;

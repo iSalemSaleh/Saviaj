@@ -8,6 +8,10 @@ AtlasRide is a two-way transportation marketplace similar to Uber, but completel
 
 Preferred communication style: Simple, everyday language.
 
+### Design Preferences
+- **Map Icons**: Blue dot for pickup location, red location pin for dropoff/destination (always use red for destination pins)
+- **Self-dealing Prevention**: Users cannot bid on their own ride requests or accept bids where they are both rider and driver
+
 ### Database Design Principles
 - **Scalability First**: Design all new fields and tables assuming millions of records
 - **Indexing Strategy**: Add indexes on foreign keys, frequently queried columns, and columns used in WHERE/ORDER BY clauses
