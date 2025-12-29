@@ -418,7 +418,8 @@ export default function RideTrackingPage() {
               {(ride.status === 'pending_payment' || ride.status === 'scheduled' || ride.status === 'matched' || ride.status === 'en_route_pickup') && (
                 <Button 
                   size="sm"
-                  className="h-7 px-3 bg-red-600 hover:bg-red-700 text-white text-xs"
+                  className="h-7 px-3 text-white text-xs hover:opacity-90"
+                  style={{ backgroundColor: '#D93B24' }}
                   onClick={() => cancelRideMutation.mutate()}
                   disabled={cancelRideMutation.isPending}
                   data-testid="button-cancel-ride"
@@ -426,9 +427,8 @@ export default function RideTrackingPage() {
                   {cancelRideMutation.isPending ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   ) : (
-                    <XCircle className="h-3 w-3 mr-1" />
+                    'Cancel'
                   )}
-                  Cancel
                 </Button>
               )}
             </div>
@@ -528,7 +528,8 @@ export default function RideTrackingPage() {
                 />
               </div>
               <Button 
-                className="h-9 px-4 bg-red-600 hover:bg-red-700 text-white text-xs"
+                className="h-9 px-4 text-white text-xs hover:opacity-90"
+                style={{ backgroundColor: '#D93B24' }}
                 onClick={() => cancelRideMutation.mutate()}
                 disabled={cancelRideMutation.isPending}
                 data-testid="button-cancel-payment"
@@ -536,9 +537,8 @@ export default function RideTrackingPage() {
                 {cancelRideMutation.isPending ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <XCircle className="h-3 w-3 mr-1" />
+                  'Cancel'
                 )}
-                Cancel
               </Button>
             </div>
           </div>

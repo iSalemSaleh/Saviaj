@@ -854,15 +854,34 @@ export default function RiderPage() {
                       </div>
                       <span className="text-primary font-bold text-xs shrink-0">£{ride.agreedPrice}</span>
                     </div>
-                    <Button
-                      size="sm"
-                      className="w-full h-6 text-[10px]"
-                      data-testid={`button-pay-ride-${ride.id}`}
-                      onClick={() => navigate(`/ride/${ride.id}`)}
-                    >
-                      <CreditCard className="h-3 w-3 mr-1" />
-                      Pay Now
-                    </Button>
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        className="flex-1 h-6 text-[10px]"
+                        data-testid={`button-pay-ride-${ride.id}`}
+                        onClick={() => navigate(`/ride/${ride.id}`)}
+                      >
+                        <CreditCard className="h-3 w-3 mr-1" />
+                        Pay Now
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-6 px-2 text-[10px] text-white hover:opacity-90"
+                        style={{ backgroundColor: '#D93B24' }}
+                        data-testid={`button-cancel-ride-${ride.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fetch(`/api/rides/${ride.id}/cancel`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reason: 'Cancelled from notification' }),
+                            credentials: 'include'
+                          }).then(() => window.location.reload());
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
