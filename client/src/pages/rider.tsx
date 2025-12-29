@@ -164,6 +164,7 @@ export default function RiderPage() {
   const [driversExpanded, setDriversExpanded] = useState(false);
   const [allRoutesExpanded, setAllRoutesExpanded] = useState(false);
   const [driversCardOpen, setDriversCardOpen] = useState(false);
+  const [paymentBannerOpen, setPaymentBannerOpen] = useState(true);
   const [routesCardOpen, setRoutesCardOpen] = useState(false);
   const [myRoutesCardOpen, setMyRoutesCardOpen] = useState(false);
   const [centerTrigger, setCenterTrigger] = useState(0); // Increment to recenter map
@@ -806,39 +807,62 @@ export default function RiderPage() {
         )}
       </div>
 
-      {/* FLOATING BANNER: Pending Payment Rides */}
+      {/* FLOATING BANNER: Pending Payment Rides - Collapsible */}
       {pendingPaymentRides.length > 0 && (
-        <div className="fixed top-11 right-2 z-40 w-72 sm:w-80">
-          <div className="bg-green-500/95 backdrop-blur-md rounded-xl shadow-lg border border-green-400 p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <CreditCard className="h-4 w-4 animate-pulse text-white" />
-              <span className="text-sm font-semibold text-white">Ride Accepted!</span>
-              <Badge className="bg-white/20 text-white text-xs">{pendingPaymentRides.length}</Badge>
-            </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {pendingPaymentRides.slice(0, 3).map((ride) => (
-                <div key={ride.id} className="bg-white/10 rounded-lg p-2" data-testid={`pending-payment-ride-${ride.id}`}>
-                  <div className="flex items-start gap-2 text-xs text-white mb-2">
-                    <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{ride.pickupLocation}</p>
-                      <p className="text-white/70 truncate">→ {ride.dropoffLocation}</p>
-                    </div>
-                    <Badge className="bg-white text-green-600 font-bold text-xs shrink-0">£{ride.agreedPrice}</Badge>
+        <div className="fixed top-12 right-2 z-40">
+          {paymentBannerOpen ? (
+            <div className="w-64 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-xl shadow-lg border border-green-300 dark:border-green-700 overflow-hidden">
+              <button
+                onClick={() => setPaymentBannerOpen(false)}
+                className="w-full px-3 py-2 flex items-center justify-between hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                data-testid="button-collapse-payment-banner"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-green-500 flex items-center justify-center">
+                    <CreditCard className="h-3 w-3 text-white" />
                   </div>
-                  <Button
-                    size="sm"
-                    className="w-full h-7 bg-white text-green-600 hover:bg-green-50 font-medium"
-                    data-testid={`button-pay-ride-${ride.id}`}
-                    onClick={() => navigate(`/ride/${ride.id}`)}
-                  >
-                    <CreditCard className="h-3 w-3 mr-1" />
-                    Proceed to Payment
-                  </Button>
+                  <span className="text-xs font-semibold text-green-700 dark:text-green-400">Ride Accepted!</span>
+                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-[10px]">{pendingPaymentRides.length}</Badge>
                 </div>
-              ))}
+                <ChevronUp className="h-4 w-4 text-green-600" />
+              </button>
+              <div className="px-3 pb-2 space-y-2 max-h-40 overflow-y-auto">
+                {pendingPaymentRides.slice(0, 3).map((ride) => (
+                  <div key={ride.id} className="bg-green-50 dark:bg-green-900/30 rounded-lg p-2" data-testid={`pending-payment-ride-${ride.id}`}>
+                    <div className="flex items-start gap-2 text-xs mb-1.5">
+                      <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0 text-green-600" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate text-slate-700 dark:text-slate-200">{ride.pickupLocation}</p>
+                        <p className="text-slate-500 truncate text-[10px]">→ {ride.dropoffLocation}</p>
+                      </div>
+                      <span className="text-green-600 font-bold text-xs shrink-0">£{ride.agreedPrice}</span>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full h-6 text-[10px] bg-green-600 hover:bg-green-700 text-white"
+                      data-testid={`button-pay-ride-${ride.id}`}
+                      onClick={() => navigate(`/ride/${ride.id}`)}
+                    >
+                      <CreditCard className="h-3 w-3 mr-1" />
+                      Pay Now
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <button
+              onClick={() => setPaymentBannerOpen(true)}
+              className="flex items-center gap-2 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-full shadow-lg border border-green-300 dark:border-green-700 px-3 py-1.5 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+              data-testid="button-expand-payment-banner"
+            >
+              <div className="h-5 w-5 rounded-full bg-green-500 flex items-center justify-center animate-pulse">
+                <CreditCard className="h-2.5 w-2.5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-green-700 dark:text-green-400">{pendingPaymentRides.length} pending</span>
+              <ChevronDown className="h-3 w-3 text-green-600" />
+            </button>
+          )}
         </div>
       )}
 
