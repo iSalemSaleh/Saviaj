@@ -259,7 +259,7 @@ export function RideMap({
       center={center}
       zoom={12}
       className={`w-full h-full ${className}`}
-      style={{ minHeight: '400px' }}
+      style={{ minHeight: '100px' }}
       data-testid="ride-map"
     >
       <TileLayer

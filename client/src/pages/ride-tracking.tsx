@@ -314,28 +314,29 @@ export default function RideTrackingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+    <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <Navbar />
       
-      <div className="px-3 py-2 space-y-2 max-w-lg mx-auto">
+      <div className="flex-1 flex flex-col px-3 pt-2 pb-3 max-w-lg mx-auto w-full min-h-0 overflow-y-auto">
         
-        {/* Ultra Compact Map */}
-        <div className="rounded-xl overflow-hidden shadow-lg border border-white/20">
-          <div className="h-[150px]">
-            <RideMap
-              pickupLocation={pickupLocation}
-              dropoffLocation={dropoffLocation}
-              driverLocation={driverLocation}
-              riderLocation={riderLocation}
-              driverVehicleColor={driverInfo?.vehicleColor || null}
-              showRoute={true}
-              onEtaUpdate={setEta}
-              onDistanceUpdate={setDistance}
-              className="w-full h-full"
-            />
-          </div>
+        {/* Dynamic Map - takes remaining space */}
+        <div className="flex-1 rounded-xl overflow-hidden shadow-lg border border-white/20 min-h-[120px] mb-2">
+          <RideMap
+            pickupLocation={pickupLocation}
+            dropoffLocation={dropoffLocation}
+            driverLocation={driverLocation}
+            riderLocation={riderLocation}
+            driverVehicleColor={driverInfo?.vehicleColor || null}
+            showRoute={true}
+            onEtaUpdate={setEta}
+            onDistanceUpdate={setDistance}
+            className="w-full h-full"
+          />
         </div>
 
+        {/* Bottom Cards - anchored, don't shrink */}
+        <div className="shrink-0 space-y-2">
+        
         {/* Combined Status + Route + Driver Card */}
         <div className="backdrop-blur-md bg-white/60 dark:bg-slate-800/60 rounded-xl border border-white/20 shadow-md p-2.5">
           {/* Top row: Status + ETA + Price */}
@@ -360,12 +361,12 @@ export default function RideTrackingPage() {
             </span>
           </div>
           
-          {/* Route row */}
+          {/* Route row - blue dot for pickup, peacock pin for dropoff */}
           <div className="flex items-center gap-1.5 text-[10px] mb-2 px-0.5">
-            <div className="h-2 w-2 rounded-full bg-green-500 shrink-0" />
+            <div className="h-2.5 w-2.5 rounded-full bg-sky-500 border border-white shrink-0" />
             <p className="truncate flex-1" data-testid="text-pickup">{ride.pickupLocation}</p>
             <span className="text-muted-foreground">→</span>
-            <div className="h-2 w-2 rounded-full bg-red-500 shrink-0" />
+            <div className="h-2.5 w-2.5 rounded-full bg-primary border border-white shrink-0" style={{clipPath: 'polygon(50% 100%, 0% 30%, 100% 30%)'}} />
             <p className="truncate flex-1" data-testid="text-dropoff">{ride.dropoffLocation}</p>
           </div>
 
@@ -505,6 +506,7 @@ export default function RideTrackingPage() {
             </div>
           </div>
         )}
+        </div>{/* End of shrink-0 bottom cards wrapper */}
       </div>
     </div>
   );
