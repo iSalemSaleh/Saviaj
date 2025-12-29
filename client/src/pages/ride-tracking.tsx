@@ -585,7 +585,7 @@ export default function RideTrackingPage() {
             )}
 
             {/* Payment Section for Riders */}
-            {(ride.status === 'completed' || ride.status === 'in_progress') && userType === 'rider' && !paymentSuccess && (
+            {(ride.status === 'pending_payment' || ride.status === 'completed' || ride.status === 'in_progress') && userType === 'rider' && !paymentSuccess && (
               <Card className="border-none shadow-lg">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
