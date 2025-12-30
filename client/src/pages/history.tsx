@@ -102,9 +102,15 @@ export default function HistoryPage() {
   }, [myRoutes]);
 
   const completedRides = useMemo(() => {
+    return myRides.filter(ride => ride.status === "completed")
+      .sort((a, b) => new Date(b.scheduledTime).getTime() - new Date(a.scheduledTime).getTime());
+  }, [myRides]);
+
+  const cancelledRides = useMemo(() => {
     return myRides.filter(ride => 
-      ride.status === "completed" || ride.status === "cancelled" ||
-      ride.status === "cancelled_by_rider" || ride.status === "cancelled_by_driver"
+      ride.status === "cancelled" ||
+      ride.status === "cancelled_by_rider" || 
+      ride.status === "cancelled_by_driver"
     ).sort((a, b) => new Date(b.scheduledTime).getTime() - new Date(a.scheduledTime).getTime());
   }, [myRides]);
 
@@ -120,19 +126,23 @@ export default function HistoryPage() {
         </div>
 
         <Tabs defaultValue="rides" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="rides" data-testid="tab-rides">
               <CheckCircle2 className="h-4 w-4 mr-2" />
-              Completed Rides
+              Completed
+            </TabsTrigger>
+            <TabsTrigger value="cancelled" data-testid="tab-cancelled">
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancelled
             </TabsTrigger>
             <TabsTrigger value="requests" data-testid="tab-requests">
               <MapPin className="h-4 w-4 mr-2" />
-              Past Requests
+              Requests
             </TabsTrigger>
             {isDriver && (
               <TabsTrigger value="routes" data-testid="tab-routes">
                 <Users className="h-4 w-4 mr-2" />
-                Past Routes
+                Routes
               </TabsTrigger>
             )}
           </TabsList>
@@ -159,17 +169,17 @@ export default function HistoryPage() {
                     {completedRides.map(ride => (
                       <div 
                         key={ride.id} 
-                        className="flex items-center justify-between p-4 border rounded-lg"
+                        className="p-4 border rounded-lg"
                         data-testid={`history-ride-${ride.id}`}
                       >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4 text-primary" />
-                            <span className="font-medium">{ride.pickupLocation}</span>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                            <span className="font-medium truncate">{ride.pickupLocation}</span>
                             <span className="text-muted-foreground">→</span>
-                            <span className="font-medium">{ride.dropoffLocation}</span>
+                            <span className="font-medium truncate">{ride.dropoffLocation}</span>
                           </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
                               {format(new Date(ride.scheduledTime), "d MMM yyyy, HH:mm")}
@@ -178,9 +188,61 @@ export default function HistoryPage() {
                               <PoundSterling className="h-3 w-3" />
                               £{ride.agreedPrice}
                             </span>
+                            <Badge className="bg-green-500"><CheckCircle2 className="h-3 w-3 mr-1" /> Completed</Badge>
                           </div>
                         </div>
-                        {getStatusBadge(ride.status)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="cancelled">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">Cancelled Rides</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {ridesLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="h-20 bg-muted animate-pulse rounded" />
+                    ))}
+                  </div>
+                ) : cancelledRides.length === 0 ? (
+                  <div className="text-center py-12">
+                    <XCircle className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+                    <p className="text-muted-foreground">No cancelled rides</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {cancelledRides.map(ride => (
+                      <div 
+                        key={ride.id} 
+                        className="p-4 border rounded-lg"
+                        data-testid={`history-cancelled-${ride.id}`}
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                            <span className="font-medium truncate">{ride.pickupLocation}</span>
+                            <span className="text-muted-foreground">→</span>
+                            <span className="font-medium truncate">{ride.dropoffLocation}</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {format(new Date(ride.scheduledTime), "d MMM yyyy, HH:mm")}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <PoundSterling className="h-3 w-3" />
+                              £{ride.agreedPrice}
+                            </span>
+                            {getStatusBadge(ride.status)}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>

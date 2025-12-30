@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, Crosshair, Power, Radio, Bell, Check, X, ChevronDown, ChevronUp, Route, Users, History, Settings } from "lucide-react";
+import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, Crosshair, Power, Radio, Bell, Check, X, ChevronDown, ChevronUp, Route, Users, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -112,7 +112,6 @@ export default function DriverPage() {
   const [formExpanded, setFormExpanded] = useState(true);
   const [offersCardOpen, setOffersCardOpen] = useState(false);
   const [activeRidesCardOpen, setActiveRidesCardOpen] = useState(false);
-  const [historyCardOpen, setHistoryCardOpen] = useState(false);
 
   const handleStartChange = (value: string, lat?: number, lon?: number) => {
     setStartLocation(value);
@@ -613,28 +612,17 @@ export default function DriverPage() {
     const scheduledTime = new Date(r.scheduledTime);
     return scheduledTime >= now;
   });
-  const completedRides = myRides.filter(r => 
-    r.status === "completed" || r.status === "cancelled" || 
-    r.status === "cancelled_by_rider" || r.status === "cancelled_by_driver"
-  );
-
   const handleRecenter = () => {
     setCenterTrigger(prev => prev + 1);
   };
 
-  const handleCardToggle = (card: 'offers' | 'active' | 'history') => {
+  const handleCardToggle = (card: 'offers' | 'active') => {
     if (card === 'offers') {
       setOffersCardOpen(!offersCardOpen);
       setActiveRidesCardOpen(false);
-      setHistoryCardOpen(false);
-    } else if (card === 'active') {
+    } else {
       setActiveRidesCardOpen(!activeRidesCardOpen);
       setOffersCardOpen(false);
-      setHistoryCardOpen(false);
-    } else {
-      setHistoryCardOpen(!historyCardOpen);
-      setOffersCardOpen(false);
-      setActiveRidesCardOpen(false);
     }
   };
 
@@ -1170,63 +1158,6 @@ export default function DriverPage() {
                       >
                         Track Ride
                       </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
-          <div
-            className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
-            onClick={() => handleCardToggle('history')}
-          >
-            <div className="flex items-center gap-2">
-              <History className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">Ride History</span>
-              {completedRides.length > 0 && <Badge variant="outline" className="text-xs">{completedRides.length}</Badge>}
-            </div>
-            {historyCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-          </div>
-
-          {!historyCardOpen && completedRides.length > 0 && (
-            <div className="px-2 pb-2">
-              <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg p-2">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{completedRides[0].pickupLocation}</p>
-                  <p className="text-muted-foreground truncate">→ {completedRides[0].dropoffLocation}</p>
-                </div>
-                <span className="font-bold text-primary">£{completedRides[0].agreedPrice}</span>
-              </div>
-            </div>
-          )}
-
-          {!historyCardOpen && completedRides.length === 0 && (
-            <div className="px-2 pb-2">
-              <p className="text-xs text-muted-foreground text-center py-2">No completed rides yet</p>
-            </div>
-          )}
-
-          {historyCardOpen && (
-            <div className="px-2 pb-2">
-              {completedRides.length === 0 ? (
-                <div className="text-center py-6">
-                  <History className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No completed rides yet</p>
-                </div>
-              ) : (
-                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-ride-history">
-                  {completedRides.map((ride) => (
-                    <div key={ride.id} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 opacity-75 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '140px', maxWidth: '180px' }} data-testid={`card-history-${ride.id}`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <Badge variant="outline" className="text-[10px]">Done</Badge>
-                        <Badge className="bg-primary text-white text-[10px] px-1">£{ride.agreedPrice}</Badge>
-                      </div>
-                      <p className="text-[10px] font-medium truncate">{ride.pickupLocation}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">→ {ride.dropoffLocation}</p>
-                      <p className="text-[10px] text-muted-foreground">{formatDate(ride.scheduledTime)}</p>
                     </div>
                   ))}
                 </div>
