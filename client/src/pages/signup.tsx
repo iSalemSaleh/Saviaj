@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCircle, Camera, Briefcase, Shield, Mail } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
+import atlasRideLogo from "@assets/AtlasRideLogo_1767128702037.png";
 import { EmailVerificationModal } from "@/components/EmailVerificationModal";
 import { CountryPhoneInput } from "@/components/CountryPhoneInput";
 

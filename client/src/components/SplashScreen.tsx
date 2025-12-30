@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
+import atlasRideLogo from "@assets/AtlasRideLogo_1767128702037.png";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -42,8 +42,7 @@ export default function SplashScreen({ onComplete, duration = 2500 }: SplashScre
           <img 
             src={atlasRideLogo} 
             alt="AtlasRide" 
-            className="relative z-10 h-24 w-24 object-contain animate-fade-in"
-            style={{ mixBlendMode: 'multiply' }}
+            className="relative z-10 h-24 w-24 object-contain animate-fade-in rounded-lg"
           />
         </div>
         <h1 className="mt-6 text-3xl font-bold text-primary animate-fade-in animation-delay-300">

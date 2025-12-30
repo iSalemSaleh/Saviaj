@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import atlasRideLogo from "@assets/AtlasRide_Logo_Design_1765317206292.png";
+import atlasRideLogo from "@assets/AtlasRideLogo_1767128702037.png";
 
 const GoogleIcon = () => (
   <svg className="h-5 w-5" viewBox="0 0 24 24">
