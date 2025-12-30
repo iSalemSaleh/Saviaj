@@ -523,10 +523,10 @@ export default function RiderPage() {
   const handleRevisePrice = () => {
     if (!selectedOffer || !editPrice) return;
     const price = parseFloat(editPrice);
-    if (isNaN(price) || price < 1 || price > 500) {
+    if (isNaN(price) || price <= 0 || price > 500) {
       toast({
         title: "Invalid Price",
-        description: "Please enter a price between £1 and £500",
+        description: "Please enter a price between £0.01 and £500",
         variant: "destructive",
       });
       return;
@@ -677,10 +677,10 @@ export default function RiderPage() {
     }
 
     const price = parseFloat(offerPrice);
-    if (isNaN(price) || price < 1 || price > 500) {
+    if (isNaN(price) || price <= 0 || price > 500) {
       toast({
         title: "Invalid Price",
-        description: "Please enter a price between £1 and £500",
+        description: "Please enter a price between £0.01 and £500",
         variant: "destructive",
       });
       return;
