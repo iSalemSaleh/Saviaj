@@ -2018,9 +2018,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
 
       // Update ride status to scheduled (ready for driver to start)
+      // IMPORTANT: Save paymentIntentId so we can process refunds if cancelled
       const updatedRide = await storage.updateRide(rideId, {
         status: 'scheduled',
-        paymentStatus: paymentIntent.status === 'succeeded' ? 'paid' : 'authorized'
+        paymentStatus: paymentIntent.status === 'succeeded' ? 'paid' : 'authorized',
+        paymentIntentId: paymentIntentId
       });
 
       // If this ride came from a rider offer, update the offer status

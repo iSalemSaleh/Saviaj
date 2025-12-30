@@ -414,7 +414,7 @@ export interface IStorage {
   getRidesByUserId(userId: string): Promise<Ride[]>;
   getRideById(id: number): Promise<Ride | undefined>;
   updateRideStatus(id: number, status: string): Promise<Ride>;
-  updateRide(id: number, updates: Partial<{ status: string; paymentStatus: string }>): Promise<Ride>;
+  updateRide(id: number, updates: Partial<{ status: string; paymentStatus: string; paymentIntentId: string }>): Promise<Ride>;
   
   // Bid operations
   createBid(bid: InsertBid): Promise<Bid>;
@@ -995,7 +995,7 @@ export class DatabaseStorage implements IStorage {
     return ride;
   }
 
-  async updateRide(id: number, updates: Partial<{ status: string; paymentStatus: string }>): Promise<Ride> {
+  async updateRide(id: number, updates: Partial<{ status: string; paymentStatus: string; paymentIntentId: string }>): Promise<Ride> {
     const [ride] = await db
       .update(rides)
       .set({
