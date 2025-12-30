@@ -28,7 +28,7 @@ import {
   Palette,
   Hash
 } from "lucide-react";
-import atlasRideLogo from "@assets/AtlasRideLogo_1767128702037.png";
+import atlasRideLogo from "@assets/AtlasRideLogo_1767134626458.png";
 
 export default function OnboardingPage() {
   const [, navigate] = useLocation();

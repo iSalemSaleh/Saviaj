@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Car, Users, Shield, Loader2, UserPlus, Mail, Phone } from "lucide-react";
-import atlasRideLogo from "@assets/AtlasRideLogo_1767128702037.png";
+import atlasRideLogo from "@assets/AtlasRideLogo_1767134626458.png";
 import { PhoneVerificationModal } from "@/components/PhoneVerificationModal";
 
 const GoogleIcon = () => (

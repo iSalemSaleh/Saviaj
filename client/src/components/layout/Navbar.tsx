@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import atlasRideLogo from "@assets/AtlasRideLogo_1767128702037.png";
+import atlasRideLogo from "@assets/AtlasRideLogo_1767134626458.png";
 
 interface Notification {
   id: number;
@@ -277,7 +277,7 @@ export default function Navbar() {
           <img 
             src={atlasRideLogo} 
             alt="AtlasRide Logo" 
-            className="h-7 w-7 object-contain rounded"
+            className="h-7 w-7 object-contain drop-shadow-sm"
           />
           <span className="hidden sm:inline">AtlasRide</span>
         </Link>
