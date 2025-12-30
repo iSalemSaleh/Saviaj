@@ -216,6 +216,7 @@ export default function Navbar() {
               size="sm" 
               onClick={() => markAllReadMutation.mutate()}
               className="text-xs"
+              data-testid="button-mark-all-read-mobile"
             >
               <Check className="h-3 w-3 mr-1" />
               Mark all read
