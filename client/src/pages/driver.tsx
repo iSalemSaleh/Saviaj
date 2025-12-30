@@ -603,10 +603,15 @@ export default function DriverPage() {
   };
 
   const now = new Date();
+  // Include all active ride statuses: pending_payment (waiting for rider to pay), scheduled (paid, ready to start), 
+  // matched, en_route_pickup, arrived_pickup, and in_progress
+  const activeStatuses = ["pending_payment", "scheduled", "matched", "en_route_pickup", "arrived_pickup", "in_progress"];
   const activeRides = myRides.filter(r => {
-    if (r.status !== "scheduled" && r.status !== "in_progress") return false;
+    if (!activeStatuses.includes(r.status)) return false;
+    // For in_progress rides, always show; for others, check if not in the past
+    if (r.status === "in_progress" || r.status === "en_route_pickup" || r.status === "arrived_pickup") return true;
     const scheduledTime = new Date(r.scheduledTime);
-    return scheduledTime >= now || r.status === "in_progress";
+    return scheduledTime >= now;
   });
   const completedRides = myRides.filter(r => 
     r.status === "completed" || r.status === "cancelled" || 
@@ -1100,8 +1105,18 @@ export default function DriverPage() {
           {!activeRidesCardOpen && activeRides.length > 0 && (
             <div className="px-2 pb-2">
               <div className="flex items-center gap-2 text-xs bg-green-50 dark:bg-green-900/20 rounded-lg p-2">
-                <Badge className={activeRides[0].status === 'in_progress' ? 'bg-green-500' : 'bg-blue-500'}>
-                  {activeRides[0].status === 'in_progress' ? 'In Progress' : 'Scheduled'}
+                <Badge className={
+                  activeRides[0].status === 'in_progress' ? 'bg-green-500' : 
+                  activeRides[0].status === 'pending_payment' ? 'bg-amber-500' :
+                  activeRides[0].status === 'en_route_pickup' ? 'bg-amber-500' :
+                  activeRides[0].status === 'arrived_pickup' ? 'bg-green-500' :
+                  'bg-blue-500'
+                }>
+                  {activeRides[0].status === 'in_progress' ? 'In Progress' : 
+                   activeRides[0].status === 'pending_payment' ? 'Awaiting Payment' :
+                   activeRides[0].status === 'en_route_pickup' ? 'Going to Pickup' :
+                   activeRides[0].status === 'arrived_pickup' ? 'At Pickup' :
+                   'Ready to Start'}
                 </Badge>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{activeRides[0].pickupLocation}</p>
@@ -1130,8 +1145,18 @@ export default function DriverPage() {
                   {activeRides.map((ride) => (
                     <div key={ride.id} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '160px', maxWidth: '200px' }} data-testid={`card-ride-${ride.id}`}>
                       <div className="flex items-center justify-between mb-1">
-                        <Badge className={`text-[10px] ${ride.status === 'in_progress' ? 'bg-green-500' : 'bg-blue-500'}`}>
-                          {ride.status === 'in_progress' ? 'Active' : 'Scheduled'}
+                        <Badge className={`text-[10px] ${
+                          ride.status === 'in_progress' ? 'bg-green-500' : 
+                          ride.status === 'pending_payment' ? 'bg-amber-500' :
+                          ride.status === 'en_route_pickup' ? 'bg-amber-500' :
+                          ride.status === 'arrived_pickup' ? 'bg-green-500' :
+                          'bg-blue-500'
+                        }`}>
+                          {ride.status === 'in_progress' ? 'Active' : 
+                           ride.status === 'pending_payment' ? 'Awaiting Pay' :
+                           ride.status === 'en_route_pickup' ? 'To Pickup' :
+                           ride.status === 'arrived_pickup' ? 'At Pickup' :
+                           'Ready'}
                         </Badge>
                         <Badge className="bg-primary text-white text-[10px] px-1">£{ride.agreedPrice}</Badge>
                       </div>
