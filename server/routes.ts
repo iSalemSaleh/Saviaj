@@ -3034,7 +3034,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // Upload profile image
+  // Upload profile image (settings page)
   app.post('/api/settings/profile-image', isAuthenticated, profileImageUpload.single('profileImage'), async (req: any, res) => {
     try {
       const userId = req.session?.userId || req.user?.claims?.sub;
@@ -3051,6 +3051,44 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     } catch (error) {
       console.error("Error uploading profile image:", error);
       res.status(500).json({ message: "Failed to upload profile image" });
+    }
+  });
+
+  // Upload profile photo (become-driver page)
+  app.post('/api/user/upload-photo', isAuthenticated, profileImageUpload.single('photo'), async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No photo uploaded" });
+      }
+      
+      const profileImageUrl = `/uploads/profiles/${req.file.filename}`;
+      const updatedUser = await storage.updateUserProfile(userId, { profileImageUrl });
+      
+      res.json({ url: updatedUser.profileImageUrl });
+    } catch (error) {
+      console.error("Error uploading photo:", error);
+      res.status(500).json({ message: "Failed to upload photo" });
+    }
+  });
+
+  // Upload driver license (become-driver page)
+  app.post('/api/user/upload-license', isAuthenticated, licenseUpload.single('license'), async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No license uploaded" });
+      }
+      
+      const licenseUrl = `/api/uploads/licenses/${req.file.filename}`;
+      res.json({ url: licenseUrl, filename: req.file.filename });
+    } catch (error) {
+      console.error("Error uploading license:", error);
+      res.status(500).json({ message: "Failed to upload license" });
     }
   });
 }
