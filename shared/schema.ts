@@ -408,7 +408,7 @@ export const riderOffersRelations = relations(riderOffers, ({ one }) => ({
 }));
 
 export const insertRiderOfferSchema = createInsertSchema(riderOffers, {
-  offerPrice: z.coerce.number().min(0.01).max(500),
+  offerPrice: z.coerce.number().min(0.30).max(500),
   pickupLat: z.coerce.number().optional(),
   pickupLng: z.coerce.number().optional(),
   dropoffLat: z.coerce.number().optional(),

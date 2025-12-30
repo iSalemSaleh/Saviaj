@@ -799,9 +799,9 @@ export default function RiderPage() {
                 <Input 
                   type="number" 
                   placeholder="Offer"
-                  min="0.01"
+                  min="0.30"
                   max="500"
-                  step="1"
+                  step="0.01"
                   className="pl-6 h-8 text-sm bg-white dark:bg-slate-900 border-gray-200"
                   value={offerPrice}
                   onChange={(e) => setOfferPrice(e.target.value)}
@@ -1238,7 +1238,7 @@ export default function RiderPage() {
                 <Input 
                   type="number"
                   placeholder="Enter new price"
-                  min="0.01"
+                  min="0.30"
                   max="500"
                   className="pl-9"
                   value={editPrice}
