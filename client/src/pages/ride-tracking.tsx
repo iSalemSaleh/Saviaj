@@ -91,23 +91,60 @@ export default function RideTrackingPage() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('payment') === 'success') {
-      setPaymentSuccess(true);
-      toast({
-        title: "Payment Successful",
-        description: "Your ride has been paid. Thank you!",
-      });
+    const paymentStatus = urlParams.get('payment');
+    const sessionId = urlParams.get('session_id');
+    
+    if (paymentStatus === 'success') {
+      if (sessionId) {
+        fetch(`/api/rides/${rideId}/confirm-checkout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ sessionId }),
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success || data.message === "Payment already confirmed") {
+              setPaymentSuccess(true);
+              toast({
+                title: "Payment Successful",
+                description: "Your ride has been paid and confirmed. Thank you!",
+              });
+              queryClient.invalidateQueries({ queryKey: [`/api/rides/${rideId}`] });
+            } else {
+              toast({
+                title: "Payment Confirmation Issue",
+                description: data.message || "Please contact support if your ride isn't confirmed.",
+                variant: "destructive",
+              });
+            }
+          })
+          .catch(error => {
+            console.error("Error confirming checkout:", error);
+            toast({
+              title: "Payment Confirmation Issue",
+              description: "Please refresh the page. Contact support if the issue persists.",
+              variant: "destructive",
+            });
+          });
+      } else {
+        setPaymentSuccess(true);
+        toast({
+          title: "Payment Successful",
+          description: "Your ride has been paid. Thank you!",
+        });
+      }
       window.history.replaceState({}, '', `/ride/${rideId}`);
     }
     // Handle pending payment redirect from bid acceptance
-    if (urlParams.get('payment') === 'pending') {
+    if (paymentStatus === 'pending') {
       const secret = urlParams.get('secret');
       if (secret) {
         setPendingPaymentSecret(decodeURIComponent(secret));
       }
       window.history.replaceState({}, '', `/ride/${rideId}`);
     }
-  }, [rideId, toast]);
+  }, [rideId, toast, queryClient]);
 
   const { data: ride, isLoading: rideLoading } = useQuery<Ride>({
     queryKey: [`/api/rides/${rideId}`],

@@ -1,0 +1,72 @@
+import { storage } from './storage';
+import { stripeService } from './stripeService';
+
+const PAYMENT_TIMEOUT_MINUTES = 30;
+
+export async function cleanupStalePendingPayments(): Promise<void> {
+  try {
+    const cutoffTime = new Date(Date.now() - PAYMENT_TIMEOUT_MINUTES * 60 * 1000);
+    
+    const staleRides = await storage.getStalePendingPaymentRides(cutoffTime);
+    
+    if (staleRides.length === 0) {
+      return;
+    }
+    
+    console.log(`[Payment Cleanup] Found ${staleRides.length} stale pending_payment rides to clean up`);
+    
+    for (const ride of staleRides) {
+      try {
+        if (ride.paymentIntentId) {
+          try {
+            await stripeService.cancelPaymentIntent(ride.paymentIntentId);
+            console.log(`[Payment Cleanup] Cancelled PaymentIntent ${ride.paymentIntentId} for ride ${ride.id}`);
+          } catch (cancelError) {
+            console.error(`[Payment Cleanup] Failed to cancel PaymentIntent for ride ${ride.id}:`, cancelError);
+          }
+        }
+        
+        await storage.updateRide(ride.id, {
+          status: 'cancelled_payment_timeout',
+          paymentStatus: 'cancelled'
+        });
+        
+        if (ride.riderOfferId) {
+          await storage.updateRiderOfferStatus(ride.riderOfferId, 'pending');
+        }
+        
+        if (ride.driverRouteId) {
+          await storage.incrementRouteSeats(ride.driverRouteId);
+        }
+        
+        if (ride.driverId) {
+          await storage.createNotification({
+            userId: ride.driverId,
+            type: 'payment_timeout',
+            title: 'Ride Payment Expired',
+            message: `The rider did not complete payment within ${PAYMENT_TIMEOUT_MINUTES} minutes. The ride from ${ride.pickupLocation} to ${ride.dropoffLocation} has been cancelled.`,
+            relatedRideId: ride.id,
+            read: false,
+          });
+        }
+        
+        await storage.createNotification({
+          userId: ride.riderId,
+          type: 'payment_timeout',
+          title: 'Payment Window Expired',
+          message: `Your payment window for the ride from ${ride.pickupLocation} to ${ride.dropoffLocation} has expired. Please create a new ride request if you still need transportation.`,
+          relatedRideId: ride.id,
+          read: false,
+        });
+        
+        console.log(`[Payment Cleanup] Cancelled stale ride ${ride.id} (created: ${ride.createdAt})`);
+      } catch (rideError) {
+        console.error(`[Payment Cleanup] Failed to cleanup ride ${ride.id}:`, rideError);
+      }
+    }
+    
+    console.log(`[Payment Cleanup] Completed cleanup of ${staleRides.length} rides`);
+  } catch (error) {
+    console.error('[Payment Cleanup] Error in cleanup job:', error);
+  }
+}

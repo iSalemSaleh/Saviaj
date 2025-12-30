@@ -11,6 +11,27 @@ interface PaymentButtonProps {
   onError: (error: string) => void;
 }
 
+async function confirmPaymentWithBackend(rideId: number, paymentIntentId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`/api/rides/${rideId}/confirm-payment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ paymentIntentId }),
+    });
+    
+    if (!response.ok) {
+      const data = await response.json();
+      return { success: false, error: data.message || "Failed to confirm payment" };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error confirming payment with backend:", error);
+    return { success: false, error: "Network error confirming payment" };
+  }
+}
+
 function PaymentRequestButton({ amount, rideId, onSuccess, onError }: PaymentButtonProps) {
   const stripe = useStripe();
   const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
@@ -46,7 +67,7 @@ function PaymentRequestButton({ amount, rideId, onSuccess, onError }: PaymentBut
           headers: { "Content-Type": "application/json" },
         });
         
-        const { clientSecret, error: serverError } = await response.json();
+        const { clientSecret, paymentIntentId, error: serverError } = await response.json();
         
         if (serverError) {
           event.complete("fail");
@@ -66,15 +87,22 @@ function PaymentRequestButton({ amount, rideId, onSuccess, onError }: PaymentBut
         } else {
           event.complete("success");
           
+          let finalPaymentIntentId = paymentIntent.id;
+          
           if (paymentIntent.status === "requires_action") {
-            const { error: actionError } = await stripe.confirmCardPayment(clientSecret);
+            const { error: actionError, paymentIntent: confirmedIntent } = await stripe.confirmCardPayment(clientSecret);
             if (actionError) {
               onError(actionError.message || "Payment verification failed");
-            } else {
-              onSuccess();
+              return;
             }
-          } else {
+            finalPaymentIntentId = confirmedIntent?.id || paymentIntent.id;
+          }
+          
+          const confirmResult = await confirmPaymentWithBackend(rideId, finalPaymentIntentId);
+          if (confirmResult.success) {
             onSuccess();
+          } else {
+            onError(confirmResult.error || "Failed to confirm payment with server");
           }
         }
       } catch (err) {

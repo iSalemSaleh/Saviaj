@@ -448,7 +448,10 @@ export interface IStorage {
   
   // Enhanced ride operations
   updateRidePaymentStatus(id: number, status: string): Promise<Ride>;
+  updateRidePaymentIntent(id: number, paymentIntentId: string): Promise<Ride>;
+  getRideByPaymentIntentId(paymentIntentId: string): Promise<Ride | undefined>;
   getExpiredPendingPayments(): Promise<Ride[]>;
+  getStalePendingPaymentRides(cutoffTime: Date): Promise<Ride[]>;
   getRidesByRouteId(routeId: number): Promise<Ride[]>;
   decrementRouteSeats(routeId: number): Promise<DriverRoute>;
   incrementRouteSeats(routeId: number): Promise<DriverRoute>;
@@ -1335,6 +1338,35 @@ export class DatabaseStorage implements IStorage {
           lt(rides.paymentDeadline, new Date())
         )
       );
+  }
+
+  async getStalePendingPaymentRides(cutoffTime: Date): Promise<Ride[]> {
+    return await db
+      .select()
+      .from(rides)
+      .where(
+        and(
+          eq(rides.status, 'pending_payment'),
+          lt(rides.createdAt, cutoffTime)
+        )
+      );
+  }
+
+  async updateRidePaymentIntent(id: number, paymentIntentId: string): Promise<Ride> {
+    const [updated] = await db
+      .update(rides)
+      .set({ paymentIntentId })
+      .where(eq(rides.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getRideByPaymentIntentId(paymentIntentId: string): Promise<Ride | undefined> {
+    const [ride] = await db
+      .select()
+      .from(rides)
+      .where(eq(rides.paymentIntentId, paymentIntentId));
+    return ride;
   }
 
   async getRidesByRouteId(routeId: number): Promise<Ride[]> {

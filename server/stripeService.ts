@@ -56,6 +56,26 @@ export class StripeService {
     }
   }
 
+  async retrieveCheckoutSession(sessionId: string) {
+    const stripe = await getUncachableStripeClient();
+    try {
+      return await stripe.checkout.sessions.retrieve(sessionId);
+    } catch (error) {
+      console.error("Error retrieving checkout session:", error);
+      return null;
+    }
+  }
+
+  async cancelPaymentIntent(paymentIntentId: string) {
+    const stripe = await getUncachableStripeClient();
+    try {
+      return await stripe.paymentIntents.cancel(paymentIntentId);
+    } catch (error) {
+      console.error("Error cancelling payment intent:", error);
+      return null;
+    }
+  }
+
   async createRefund(paymentIntentId: string, reason?: string) {
     const stripe = await getUncachableStripeClient();
     try {

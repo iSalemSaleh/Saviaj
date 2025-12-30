@@ -171,4 +171,16 @@ async function initStripe() {
       log(`serving on port ${port}`);
     },
   );
+
+  // Start payment timeout cleanup job (runs every 5 minutes)
+  setInterval(async () => {
+    try {
+      const { cleanupStalePendingPayments } = await import('./paymentCleanup');
+      await cleanupStalePendingPayments();
+    } catch (error) {
+      console.error('Payment cleanup job failed:', error);
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+  
+  log('Payment timeout cleanup job scheduled (every 5 minutes)');
 })();

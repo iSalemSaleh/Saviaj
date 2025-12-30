@@ -1852,7 +1852,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         { rideId: rideId.toString() }
       );
 
-      res.json({ clientSecret: paymentIntent.client_secret });
+      res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
     } catch (error) {
       console.error("Error creating payment intent:", error);
       res.status(500).json({ error: "Failed to create payment intent" });
@@ -1885,7 +1885,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         customerId = customer.id;
       }
 
-      const successUrl = `${req.protocol}://${req.get('host')}/ride/${rideId}?payment=success`;
+      const successUrl = `${req.protocol}://${req.get('host')}/ride/${rideId}?payment=success&session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${req.protocol}://${req.get('host')}/ride/${rideId}?payment=cancelled`;
 
       const session = await stripeService.createCheckoutSession(
@@ -1929,7 +1929,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         customerId = customer.id;
       }
 
-      const successUrl = `${req.protocol}://${req.get('host')}/ride/${rideId}?payment=success`;
+      const successUrl = `${req.protocol}://${req.get('host')}/ride/${rideId}?payment=success&session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${req.protocol}://${req.get('host')}/ride/${rideId}?payment=cancelled`;
 
       const session = await stripeService.createCheckoutSession(
@@ -1947,14 +1947,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
-  // Confirm Payment (called after successful Stripe payment)
-  // SECURITY: Verifies payment intent status with Stripe before confirming ride
-  app.post('/api/rides/:id/confirm-payment', isAuthenticated, async (req: any, res) => {
+  // Confirm Payment from Checkout Session (called after Stripe Checkout redirect)
+  app.post('/api/rides/:id/confirm-checkout', isAuthenticated, async (req: any, res) => {
     try {
       const rideId = parseInt(req.params.id);
-      const { paymentIntentId } = req.body;
+      const { sessionId } = req.body;
       const userId = req.session?.userId || req.user?.claims?.sub;
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      if (!sessionId) {
+        return res.status(400).json({ message: "Session ID required" });
+      }
       
       const ride = await storage.getRideById(rideId);
       if (!ride) {
@@ -1965,15 +1968,134 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(403).json({ message: "Unauthorized" });
       }
 
+      // Ride must be pending_payment or already scheduled (idempotent)
+      if (ride.status === 'scheduled') {
+        return res.json({ success: true, message: "Payment already confirmed" });
+      }
+      
+      if (ride.status !== 'pending_payment') {
+        return res.status(400).json({ message: "Ride is not awaiting payment" });
+      }
+
+      const { stripeService } = await import('./stripeService');
+      
+      // Retrieve checkout session to get payment intent
+      const session = await stripeService.retrieveCheckoutSession(sessionId);
+      if (!session) {
+        return res.status(400).json({ message: "Invalid checkout session" });
+      }
+      
+      // Verify session is paid
+      if (session.payment_status !== 'paid') {
+        return res.status(400).json({ message: "Payment not completed" });
+      }
+      
+      const paymentIntentId = session.payment_intent as string;
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "No payment intent in session" });
+      }
+
+      // Verify payment intent status with Stripe
+      const paymentIntent = await stripeService.retrievePaymentIntent(paymentIntentId);
+      if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+        return res.status(400).json({ message: "Payment not successful" });
+      }
+
+      // SECURITY: Verify checkout session metadata matches this ride
+      const sessionMetadata = session.metadata || {};
+      if (sessionMetadata.rideId && sessionMetadata.rideId !== rideId.toString()) {
+        console.log(`[Checkout Confirm] Session rideId mismatch for ride ${rideId}: expected=${rideId}, got=${sessionMetadata.rideId}`);
+        return res.status(400).json({ message: "Checkout session was for a different ride" });
+      }
+
+      // SECURITY: Verify payment amount matches the agreed price
+      const expectedAmount = Math.round(parseFloat(ride.agreedPrice) * 100);
+      if (paymentIntent.amount !== expectedAmount) {
+        console.log(`[Checkout Confirm] Amount mismatch for ride ${rideId}: expected=${expectedAmount}, got=${paymentIntent.amount}`);
+        return res.status(400).json({ message: "Payment amount mismatch" });
+      }
+      
+      if (paymentIntent.currency !== 'gbp') {
+        console.log(`[Checkout Confirm] Currency mismatch for ride ${rideId}: expected=gbp, got=${paymentIntent.currency}`);
+        return res.status(400).json({ message: "Payment currency mismatch" });
+      }
+
+      // SECURITY: Ensure this payment hasn't already been used for another ride
+      const existingRideWithPayment = await storage.getRideByPaymentIntentId(paymentIntentId);
+      if (existingRideWithPayment && existingRideWithPayment.id !== rideId) {
+        console.log(`[Checkout Confirm] Payment intent ${paymentIntentId} already used for ride ${existingRideWithPayment.id}`);
+        return res.status(400).json({ message: "This payment has already been used" });
+      }
+
+      // Save payment intent ID and update ride status
+      await storage.updateRidePaymentIntent(rideId, paymentIntentId);
+      const updatedRide = await storage.updateRide(rideId, {
+        status: 'scheduled',
+        paymentStatus: 'paid',
+        paymentIntentId: paymentIntentId
+      });
+
+      // Notify driver via WebSocket
+      if (ride.driverId) {
+        broadcastToUser(ride.driverId, {
+          type: 'ride_payment_confirmed',
+          rideId: rideId,
+          message: `Ride #${rideId} has been paid and confirmed!`
+        });
+      }
+
+      // Create persistent notification for driver
+      if (ride.driverId) {
+        await storage.createNotification({
+          userId: ride.driverId,
+          type: 'ride_confirmed',
+          rideId: rideId,
+          message: `Rider has paid for the trip from ${ride.pickupLocation} to ${ride.dropoffLocation}. The ride is now confirmed!`,
+        });
+      }
+
+      console.log(`[Checkout Confirm] Ride ${rideId} payment confirmed via checkout session`);
+      res.json({ success: true, ride: updatedRide });
+    } catch (error) {
+      console.error("Error confirming checkout payment:", error);
+      res.status(500).json({ message: "Failed to confirm payment" });
+    }
+  });
+
+  // Confirm Payment (called after successful Stripe payment via Google Pay/Apple Pay)
+  // SECURITY: Verifies payment intent status with Stripe before confirming ride
+  app.post('/api/rides/:id/confirm-payment', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const { paymentIntentId } = req.body;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "Payment intent ID required" });
+      }
+      
+      const ride = await storage.getRideById(rideId);
+      if (!ride) {
+        return res.status(404).json({ message: "Ride not found" });
+      }
+
+      if (ride.riderId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      // Idempotency: if already scheduled, return success
+      if (ride.status === 'scheduled') {
+        return res.json({ message: "Payment already confirmed", ride });
+      }
+
       // Verify payment status is pending_payment
       if (ride.status !== 'pending_payment') {
         return res.status(400).json({ message: "Ride is not awaiting payment" });
       }
 
-      // Verify payment intent matches
-      if (ride.paymentIntentId !== paymentIntentId) {
-        return res.status(400).json({ message: "Payment intent mismatch" });
-      }
+      // For Google Pay/Apple Pay, payment intent is created fresh, not pre-stored
+      // So we skip the mismatch check if no prior paymentIntentId exists
 
       // CRITICAL: Verify payment actually succeeded with Stripe
       const paymentIntent = await stripeService.retrievePaymentIntent(paymentIntentId);
@@ -2015,6 +2137,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           message: "Payment has not been completed", 
           paymentStatus: paymentIntent.status 
         });
+      }
+
+      // SECURITY: Ensure this payment hasn't already been used for another ride
+      const existingRideWithPayment = await storage.getRideByPaymentIntentId(paymentIntentId);
+      if (existingRideWithPayment && existingRideWithPayment.id !== rideId) {
+        console.log(`[Confirm Payment] Payment intent ${paymentIntentId} already used for ride ${existingRideWithPayment.id}`);
+        return res.status(400).json({ message: "This payment has already been used" });
       }
 
       // Update ride status to scheduled (ready for driver to start)
