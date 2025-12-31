@@ -555,25 +555,38 @@ export default function RideTrackingPage() {
           </div>
         )}
 
-        {/* Rating UI - Ultra Compact */}
+        {/* Rating UI with Review */}
         {(showRating || (ride.status === 'completed' && !hasRated?.hasRated)) && (
-          <div className="backdrop-blur-md bg-white/60 dark:bg-slate-800/60 rounded-xl border border-white/20 shadow-md p-2.5">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium flex items-center gap-1">
-                <Star className="h-3.5 w-3.5 text-yellow-500" />
-                Rate {userType === 'rider' ? 'Driver' : 'Rider'}
-              </p>
-              <div className="flex gap-0.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button key={star} onClick={() => setRating(star)} data-testid={`star-${star}`}>
-                    <Star className={`h-5 w-5 ${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
-                  </button>
-                ))}
-              </div>
-              <Button size="sm" className="h-7 text-xs px-3" onClick={() => submitRatingMutation.mutate()} disabled={submitRatingMutation.isPending} data-testid="button-submit-rating">
-                {submitRatingMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Submit'}
-              </Button>
+          <div className="backdrop-blur-md bg-white/60 dark:bg-slate-800/60 rounded-xl border border-white/20 shadow-md p-3">
+            <p className="text-xs font-medium flex items-center gap-1.5 mb-2">
+              <Star className="h-3.5 w-3.5 text-yellow-500" />
+              Rate your {userType === 'rider' ? 'driver' : 'rider'}
+            </p>
+            <div className="flex justify-center gap-1 mb-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button key={star} onClick={() => setRating(star)} data-testid={`star-${star}`} className="p-0.5">
+                  <Star className={`h-7 w-7 ${star <= rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'} transition-colors`} />
+                </button>
+              ))}
             </div>
+            <textarea
+              value={ratingComment}
+              onChange={(e) => setRatingComment(e.target.value)}
+              placeholder={`Write something about your ${userType === 'rider' ? 'driver' : 'rider'} (optional)`}
+              className="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 resize-none mb-2"
+              rows={2}
+              maxLength={500}
+              data-testid="input-rating-comment"
+            />
+            <Button 
+              size="sm" 
+              className="w-full h-8 text-xs" 
+              onClick={() => submitRatingMutation.mutate()} 
+              disabled={submitRatingMutation.isPending} 
+              data-testid="button-submit-rating"
+            >
+              {submitRatingMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Submit Review'}
+            </Button>
           </div>
         )}
 

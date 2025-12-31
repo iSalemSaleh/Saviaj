@@ -1409,8 +1409,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         riderOfferId: offer.id,
       });
       
-      // Track daily activity for private driver limits
-      await storage.incrementDriverDailyActivity(driverId, new Date().toISOString().split('T')[0], price);
+      // Note: Driver daily activity is tracked at ride COMPLETION, not acceptance
+      // This prevents cancelled rides from counting towards limits
       
       res.json(offer);
     } catch (error) {
@@ -1770,8 +1770,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // Execute the transactional bid acceptance
       const result = await storage.acceptBidWithTransaction(bidId, paymentIntent.id);
       
-      // Track daily activity for private driver limits
-      await storage.incrementDriverDailyActivity(existingBid.driverId, new Date().toISOString().split('T')[0], price);
+      // Note: Driver daily activity is tracked at ride COMPLETION, not acceptance
+      // This prevents cancelled rides from counting towards limits
       
       // Return the ride with client secret for payment
       res.json({
@@ -2773,20 +2773,24 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       // Notify driver via WebSocket
       if (ride.driverId) {
-        broadcastToUser(ride.driverId, {
-          type: 'ride_payment_confirmed',
+        const { broadcast } = await import('./websocket');
+        broadcast({
+          type: 'PAYMENT_CONFIRMED',
           rideId: rideId,
-          message: `Ride #${rideId} has been paid and confirmed!`
-        });
+          status: 'scheduled',
+          message: 'Payment confirmed - ready to start'
+        }, ride.driverId);
       }
 
       // Create persistent notification for driver
       if (ride.driverId) {
         await storage.createNotification({
           userId: ride.driverId,
-          type: 'ride_confirmed',
-          rideId: rideId,
+          type: 'payment_confirmed',
+          title: 'Payment Received!',
           message: `Rider has paid for the trip from ${ride.pickupLocation} to ${ride.dropoffLocation}. The ride is now confirmed!`,
+          relatedRideId: rideId,
+          read: false,
         });
       }
 
@@ -3560,6 +3564,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (ride.driverId !== userId) return res.status(403).json({ message: "Unauthorized" });
       
       const updatedRide = await storage.updateRideStatus(id, 'completed');
+      
+      // Track driver daily activity at completion (for private driver limits)
+      if (ride.driverId && ride.agreedPrice) {
+        const price = parseFloat(ride.agreedPrice);
+        await storage.incrementDriverDailyActivity(
+          ride.driverId, 
+          new Date().toISOString().split('T')[0], 
+          price
+        );
+      }
       
       // Set both users back to inactive
       await storage.updateUserAvailability(ride.riderId, null, false);
