@@ -164,32 +164,6 @@ export default function RideTrackingPage() {
     enabled: !!ride?.driverId,
   });
 
-  // Fetch rider details for driver to call
-  const { data: riderInfo } = useQuery<{
-    id: string;
-    phoneNumber?: string;
-  }>({
-    queryKey: [`/api/users/${ride?.riderId}`],
-    enabled: !!ride?.riderId && userType === 'driver',
-  });
-
-  // Get the phone number of the other party
-  const otherPartyPhone = userType === 'rider' ? driverInfo?.phoneNumber : riderInfo?.phoneNumber;
-
-  const handleCall = () => {
-    if (otherPartyPhone) {
-      window.location.href = `tel:${otherPartyPhone}`;
-    } else {
-      toast({
-        title: "Phone Not Available",
-        description: userType === 'rider' 
-          ? "Driver's phone number is not available." 
-          : "Rider's phone number is not available.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const { data: hasRated } = useQuery<{ hasRated: boolean }>({
     queryKey: [`/api/ratings/check/${rideId}`],
     enabled: rideId > 0 && !!user,
@@ -296,6 +270,36 @@ export default function RideTrackingPage() {
   const currentUserId = (user as any)?.id;
   const otherUserId = userType === 'rider' ? ride?.driverId : ride?.riderId;
   const isRideActive = ride?.status === 'in_progress' || ride?.status === 'scheduled' || ride?.status === 'en_route_pickup' || ride?.status === 'matched';
+
+  // Fetch rider details for driver to call (now that userType is defined)
+  const { data: riderInfo, isLoading: riderInfoLoading } = useQuery<{
+    id: string;
+    phoneNumber?: string;
+  }>({
+    queryKey: [`/api/users/${ride?.riderId}`],
+    enabled: !!ride?.riderId && userType === 'driver',
+  });
+
+  // Get the phone number of the other party
+  const otherPartyPhone = userType === 'rider' ? driverInfo?.phoneNumber : riderInfo?.phoneNumber;
+  const isPhoneLoading = userType === 'driver' && riderInfoLoading;
+
+  const handleCall = () => {
+    if (isPhoneLoading) {
+      return;
+    }
+    if (otherPartyPhone) {
+      window.location.href = `tel:${otherPartyPhone}`;
+    } else {
+      toast({
+        title: "Phone Not Available",
+        description: userType === 'rider' 
+          ? "Driver's phone number is not available." 
+          : "Rider's phone number is not available.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleChatMessage = useCallback((message: any) => {
     // Always try to add to chat if it's open
@@ -484,7 +488,7 @@ export default function RideTrackingPage() {
               </div>
             </div>
             <div className="flex gap-1">
-              <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={handleCall} data-testid="button-call">
+              <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={handleCall} disabled={isPhoneLoading} data-testid="button-call">
                 <Phone className="h-3.5 w-3.5" />
               </Button>
               <Button 
