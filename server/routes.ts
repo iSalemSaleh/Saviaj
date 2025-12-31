@@ -2618,13 +2618,44 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       const { stripeService } = await import('./stripeService');
       
+      // Check if ride is already paid
+      if (ride.paymentStatus === 'completed' || ride.paymentStatus === 'paid') {
+        return res.status(409).json({ error: "Payment already completed for this ride" });
+      }
+      
+      // If ride already has a payment intent, retrieve and return it
+      if (ride.paymentIntentId) {
+        try {
+          const existingIntent = await stripeService.retrievePaymentIntent(ride.paymentIntentId);
+          if (existingIntent) {
+            // If already succeeded, don't allow new payment
+            if (existingIntent.status === 'succeeded') {
+              return res.status(409).json({ error: "Payment already completed for this ride" });
+            }
+            // Return existing intent for pending, requires_confirmation, requires_action, or requires_payment_method
+            if (existingIntent.status !== 'canceled') {
+              return res.json({ 
+                clientSecret: existingIntent.client_secret, 
+                paymentIntentId: existingIntent.id,
+                status: existingIntent.status 
+              });
+            }
+          }
+        } catch (err) {
+          console.log("Existing payment intent not found or invalid, creating new one");
+        }
+      }
+      
       const paymentIntent = await stripeService.createPaymentIntent(
         Math.round(parseFloat(ride.agreedPrice) * 100),
         'gbp',
         { rideId: rideId.toString() }
       );
+      
+      // Update ride with the new payment intent ID
+      await storage.updateRide(rideId, { paymentIntentId: paymentIntent.id });
 
-      res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
+      res.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id, status: paymentIntent.status });
     } catch (error) {
       console.error("Error creating payment intent:", error);
       res.status(500).json({ error: "Failed to create payment intent" });
