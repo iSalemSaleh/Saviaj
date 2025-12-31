@@ -3,6 +3,54 @@ import { stripeService } from './stripeService';
 
 const PAYMENT_TIMEOUT_MINUTES = 30;
 
+export async function markExpiredRides(): Promise<void> {
+  try {
+    const expiredRides = await storage.getExpiredScheduledRides();
+    
+    if (expiredRides.length === 0) {
+      return;
+    }
+    
+    console.log(`[Expired Rides] Found ${expiredRides.length} rides past their scheduled time to mark as expired`);
+    
+    for (const ride of expiredRides) {
+      try {
+        await storage.updateRide(ride.id, {
+          status: 'expired'
+        });
+        
+        await storage.createNotification({
+          userId: ride.riderId,
+          type: 'ride_expired',
+          title: 'Ride Expired',
+          message: `Your ride from ${ride.pickupLocation} to ${ride.dropoffLocation} has expired as the scheduled time has passed.`,
+          relatedRideId: ride.id,
+          read: false,
+        });
+        
+        if (ride.driverId) {
+          await storage.createNotification({
+            userId: ride.driverId,
+            type: 'ride_expired',
+            title: 'Ride Expired',
+            message: `The ride from ${ride.pickupLocation} to ${ride.dropoffLocation} has expired as the scheduled time has passed.`,
+            relatedRideId: ride.id,
+            read: false,
+          });
+        }
+        
+        console.log(`[Expired Rides] Marked ride ${ride.id} as expired`);
+      } catch (rideError) {
+        console.error(`[Expired Rides] Failed to mark ride ${ride.id} as expired:`, rideError);
+      }
+    }
+    
+    console.log(`[Expired Rides] Completed marking ${expiredRides.length} rides as expired`);
+  } catch (error) {
+    console.error('[Expired Rides] Error in expired rides job:', error);
+  }
+}
+
 export async function cleanupStalePendingPayments(): Promise<void> {
   try {
     const cutoffTime = new Date(Date.now() - PAYMENT_TIMEOUT_MINUTES * 60 * 1000);

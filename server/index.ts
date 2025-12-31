@@ -175,12 +175,13 @@ async function initStripe() {
   // Start payment timeout cleanup job (runs every 5 minutes)
   setInterval(async () => {
     try {
-      const { cleanupStalePendingPayments } = await import('./paymentCleanup');
+      const { cleanupStalePendingPayments, markExpiredRides } = await import('./paymentCleanup');
       await cleanupStalePendingPayments();
+      await markExpiredRides();
     } catch (error) {
-      console.error('Payment cleanup job failed:', error);
+      console.error('Cleanup job failed:', error);
     }
   }, 5 * 60 * 1000); // 5 minutes
   
-  log('Payment timeout cleanup job scheduled (every 5 minutes)');
+  log('Payment timeout and expired rides cleanup job scheduled (every 5 minutes)');
 })();

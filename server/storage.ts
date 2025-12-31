@@ -47,7 +47,7 @@ import {
   type InsertProHireNegotiationOffer,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, sql, lt, gt, or, isNotNull, ne } from "drizzle-orm";
+import { eq, and, desc, sql, lt, gt, or, isNotNull, ne, inArray } from "drizzle-orm";
 import { pool } from "./db";
 
 // Feature flag for dual-write to new normalized tables
@@ -469,6 +469,8 @@ export interface IStorage {
   getRideByPaymentIntentId(paymentIntentId: string): Promise<Ride | undefined>;
   getExpiredPendingPayments(): Promise<Ride[]>;
   getStalePendingPaymentRides(cutoffTime: Date): Promise<Ride[]>;
+  getExpiredScheduledRides(): Promise<Ride[]>;
+  clearUserHistory(userId: string): Promise<void>;
   getRidesByRouteId(routeId: number): Promise<Ride[]>;
   decrementRouteSeats(routeId: number): Promise<DriverRoute>;
   incrementRouteSeats(routeId: number): Promise<DriverRoute>;
@@ -1409,6 +1411,42 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(rides.status, 'pending_payment'),
           lt(rides.createdAt, cutoffTime)
+        )
+      );
+  }
+
+  async getExpiredScheduledRides(): Promise<Ride[]> {
+    const now = new Date();
+    const activeStatuses = ['scheduled', 'matched', 'en_route_pickup', 'arrived_pickup'];
+    return await db
+      .select()
+      .from(rides)
+      .where(
+        and(
+          inArray(rides.status, activeStatuses),
+          lt(rides.scheduledTime, now)
+        )
+      );
+  }
+
+  async clearUserHistory(userId: string): Promise<void> {
+    const historyStatuses = ['completed', 'cancelled', 'cancelled_by_rider', 'cancelled_by_driver', 'cancelled_payment_timeout', 'expired'];
+    await db
+      .update(rides)
+      .set({ hiddenByRider: true })
+      .where(
+        and(
+          eq(rides.riderId, userId),
+          inArray(rides.status, historyStatuses)
+        )
+      );
+    await db
+      .update(rides)
+      .set({ hiddenByDriver: true })
+      .where(
+        and(
+          eq(rides.driverId, userId),
+          inArray(rides.status, historyStatuses)
         )
       );
   }

@@ -498,6 +498,8 @@ export const rides = pgTable("rides", {
   createdAt: timestamp("created_at").defaultNow(),
   completedAt: timestamp("completed_at"),
   updatedAt: timestamp("updated_at").defaultNow(),
+  hiddenByRider: boolean("hidden_by_rider").default(false),
+  hiddenByDriver: boolean("hidden_by_driver").default(false),
 });
 
 export const ridesRelations = relations(rides, ({ one }) => ({
