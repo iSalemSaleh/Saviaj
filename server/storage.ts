@@ -1172,7 +1172,7 @@ export class DatabaseStorage implements IStorage {
         ['accepted', bid.driver_id, bid.rider_offer_id]
       );
       
-      // Create the ride with payment_pending status
+      // Create the ride with pending_payment status
       const paymentDeadline = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
       const rideResult = await client.query(
         `INSERT INTO rides (
@@ -1193,7 +1193,7 @@ export class DatabaseStorage implements IStorage {
           offer.dropoff_lng,
           bid.bid_price,
           offer.requested_time,
-          'payment_pending',
+          'pending_payment',
           'pending',
           offer.id,
           paymentDeadline
