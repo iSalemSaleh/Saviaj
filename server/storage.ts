@@ -16,6 +16,10 @@ import {
   vehicles,
   userBankAccounts,
   driverDocuments,
+  routeNegotiations,
+  routeNegotiationOffers,
+  proHireNegotiations,
+  proHireNegotiationOffers,
   type User,
   type UpsertUser,
   type NormalizedUser,
@@ -33,6 +37,14 @@ import {
   type InsertRating,
   type ChatMessage,
   type InsertChatMessage,
+  type RouteNegotiation,
+  type InsertRouteNegotiation,
+  type RouteNegotiationOffer,
+  type InsertRouteNegotiationOffer,
+  type ProHireNegotiation,
+  type InsertProHireNegotiation,
+  type ProHireNegotiationOffer,
+  type InsertProHireNegotiationOffer,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, lt, gt, or, isNotNull, ne } from "drizzle-orm";
@@ -501,6 +513,25 @@ export interface IStorage {
   restoreUser(id: string): Promise<User>;
   getDeletedUsers(): Promise<User[]>;
   verifyUserPassword(id: string, passwordHash: string): Promise<boolean>;
+  
+  // Route Negotiation operations
+  createRouteNegotiation(data: InsertRouteNegotiation): Promise<RouteNegotiation>;
+  getRouteNegotiationById(id: number): Promise<RouteNegotiation | undefined>;
+  getRouteNegotiationsByUser(userId: string): Promise<RouteNegotiation[]>;
+  getRouteNegotiationsByRoute(routeId: number): Promise<RouteNegotiation[]>;
+  updateRouteNegotiation(id: number, data: Partial<RouteNegotiation>): Promise<RouteNegotiation>;
+  createRouteNegotiationOffer(data: InsertRouteNegotiationOffer): Promise<RouteNegotiationOffer>;
+  getRouteNegotiationOffers(negotiationId: number): Promise<RouteNegotiationOffer[]>;
+  getLatestRouteNegotiationOffer(negotiationId: number): Promise<RouteNegotiationOffer | undefined>;
+  
+  // Pro Hire Negotiation operations
+  createProHireNegotiation(data: InsertProHireNegotiation): Promise<ProHireNegotiation>;
+  getProHireNegotiationById(id: number): Promise<ProHireNegotiation | undefined>;
+  getProHireNegotiationsByUser(userId: string): Promise<ProHireNegotiation[]>;
+  updateProHireNegotiation(id: number, data: Partial<ProHireNegotiation>): Promise<ProHireNegotiation>;
+  createProHireNegotiationOffer(data: InsertProHireNegotiationOffer): Promise<ProHireNegotiationOffer>;
+  getProHireNegotiationOffers(negotiationId: number): Promise<ProHireNegotiationOffer[]>;
+  getLatestProHireNegotiationOffer(negotiationId: number): Promise<ProHireNegotiationOffer | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1743,6 +1774,144 @@ export class DatabaseStorage implements IStorage {
   async verifyUserPassword(id: string, passwordHash: string): Promise<boolean> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user?.passwordHash === passwordHash;
+  }
+
+  // Route Negotiation operations
+  async createRouteNegotiation(data: InsertRouteNegotiation): Promise<RouteNegotiation> {
+    const [negotiation] = await db
+      .insert(routeNegotiations)
+      .values(data)
+      .returning();
+    return negotiation;
+  }
+
+  async getRouteNegotiationById(id: number): Promise<RouteNegotiation | undefined> {
+    const [negotiation] = await db
+      .select()
+      .from(routeNegotiations)
+      .where(eq(routeNegotiations.id, id));
+    return negotiation;
+  }
+
+  async getRouteNegotiationsByUser(userId: string): Promise<RouteNegotiation[]> {
+    return db
+      .select()
+      .from(routeNegotiations)
+      .where(
+        or(
+          eq(routeNegotiations.riderId, userId),
+          eq(routeNegotiations.driverId, userId)
+        )
+      )
+      .orderBy(desc(routeNegotiations.updatedAt));
+  }
+
+  async getRouteNegotiationsByRoute(routeId: number): Promise<RouteNegotiation[]> {
+    return db
+      .select()
+      .from(routeNegotiations)
+      .where(eq(routeNegotiations.driverRouteId, routeId))
+      .orderBy(desc(routeNegotiations.createdAt));
+  }
+
+  async updateRouteNegotiation(id: number, data: Partial<RouteNegotiation>): Promise<RouteNegotiation> {
+    const [updated] = await db
+      .update(routeNegotiations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(routeNegotiations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createRouteNegotiationOffer(data: InsertRouteNegotiationOffer): Promise<RouteNegotiationOffer> {
+    const [offer] = await db
+      .insert(routeNegotiationOffers)
+      .values(data)
+      .returning();
+    return offer;
+  }
+
+  async getRouteNegotiationOffers(negotiationId: number): Promise<RouteNegotiationOffer[]> {
+    return db
+      .select()
+      .from(routeNegotiationOffers)
+      .where(eq(routeNegotiationOffers.negotiationId, negotiationId))
+      .orderBy(routeNegotiationOffers.createdAt);
+  }
+
+  async getLatestRouteNegotiationOffer(negotiationId: number): Promise<RouteNegotiationOffer | undefined> {
+    const [offer] = await db
+      .select()
+      .from(routeNegotiationOffers)
+      .where(eq(routeNegotiationOffers.negotiationId, negotiationId))
+      .orderBy(desc(routeNegotiationOffers.createdAt))
+      .limit(1);
+    return offer;
+  }
+
+  // Pro Hire Negotiation operations
+  async createProHireNegotiation(data: InsertProHireNegotiation): Promise<ProHireNegotiation> {
+    const [negotiation] = await db
+      .insert(proHireNegotiations)
+      .values(data)
+      .returning();
+    return negotiation;
+  }
+
+  async getProHireNegotiationById(id: number): Promise<ProHireNegotiation | undefined> {
+    const [negotiation] = await db
+      .select()
+      .from(proHireNegotiations)
+      .where(eq(proHireNegotiations.id, id));
+    return negotiation;
+  }
+
+  async getProHireNegotiationsByUser(userId: string): Promise<ProHireNegotiation[]> {
+    return db
+      .select()
+      .from(proHireNegotiations)
+      .where(
+        or(
+          eq(proHireNegotiations.riderId, userId),
+          eq(proHireNegotiations.driverId, userId)
+        )
+      )
+      .orderBy(desc(proHireNegotiations.updatedAt));
+  }
+
+  async updateProHireNegotiation(id: number, data: Partial<ProHireNegotiation>): Promise<ProHireNegotiation> {
+    const [updated] = await db
+      .update(proHireNegotiations)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(proHireNegotiations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async createProHireNegotiationOffer(data: InsertProHireNegotiationOffer): Promise<ProHireNegotiationOffer> {
+    const [offer] = await db
+      .insert(proHireNegotiationOffers)
+      .values(data)
+      .returning();
+    return offer;
+  }
+
+  async getProHireNegotiationOffers(negotiationId: number): Promise<ProHireNegotiationOffer[]> {
+    return db
+      .select()
+      .from(proHireNegotiationOffers)
+      .where(eq(proHireNegotiationOffers.negotiationId, negotiationId))
+      .orderBy(proHireNegotiationOffers.createdAt);
+  }
+
+  async getLatestProHireNegotiationOffer(negotiationId: number): Promise<ProHireNegotiationOffer | undefined> {
+    const [offer] = await db
+      .select()
+      .from(proHireNegotiationOffers)
+      .where(eq(proHireNegotiationOffers.negotiationId, negotiationId))
+      .orderBy(desc(proHireNegotiationOffers.createdAt))
+      .limit(1);
+    return offer;
   }
 }
 

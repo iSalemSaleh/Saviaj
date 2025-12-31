@@ -1786,6 +1786,742 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Route Negotiation Routes - Riders can negotiate price on driver routes
+  app.post('/api/route-negotiations', isAuthenticated, isProfileComplete, async (req: any, res) => {
+    try {
+      const riderId = req.session?.userId || req.user?.claims?.sub;
+      if (!riderId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const { driverRouteId, seatsRequested, proposedPrice, message } = req.body;
+      
+      // Validate price
+      const price = parseFloat(proposedPrice);
+      if (isNaN(price) || price < 0.30) {
+        return res.status(400).json({ message: "Minimum price is £0.30" });
+      }
+      
+      // Get the route
+      const route = await storage.getDriverRouteById(driverRouteId);
+      if (!route) {
+        return res.status(404).json({ message: "Route not found" });
+      }
+      
+      if (route.status !== 'active') {
+        return res.status(400).json({ message: "This route is no longer available" });
+      }
+      
+      if (route.driverId === riderId) {
+        return res.status(400).json({ message: "You cannot negotiate on your own route" });
+      }
+      
+      const seats = parseInt(seatsRequested) || 1;
+      if (seats < 1 || seats > route.availableSeats) {
+        return res.status(400).json({ message: `Only ${route.availableSeats} seats available` });
+      }
+      
+      // Create the negotiation
+      const negotiation = await storage.createRouteNegotiation({
+        driverRouteId,
+        riderId,
+        driverId: route.driverId,
+        seatsRequested: seats,
+        lastOfferBy: 'rider',
+        status: 'pending',
+      });
+      
+      // Create the first offer
+      await storage.createRouteNegotiationOffer({
+        negotiationId: negotiation.id,
+        offeredByRole: 'rider',
+        offeredByUserId: riderId,
+        amount: price.toString(),
+        message: message || null,
+      });
+      
+      // Notify driver
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'NEW_ROUTE_NEGOTIATION',
+        negotiationId: negotiation.id,
+        routeId: driverRouteId,
+      }, route.driverId);
+      
+      const rider = await storage.getUser(riderId);
+      await storage.createNotification({
+        userId: route.driverId,
+        type: 'negotiation_started',
+        title: 'New Price Negotiation',
+        message: `${rider?.firstName || 'A rider'} wants to negotiate for ${seats} seat${seats > 1 ? 's' : ''} on your route. They offered £${price.toFixed(2)}.`,
+        read: false,
+      });
+      
+      res.status(201).json(negotiation);
+    } catch (error: any) {
+      console.error("Error creating route negotiation:", error);
+      res.status(400).json({ message: error.message || "Failed to create negotiation" });
+    }
+  });
+
+  app.get('/api/route-negotiations/mine', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const negotiations = await storage.getRouteNegotiationsByUser(userId);
+      
+      // Enrich with route and user info
+      const enriched = await Promise.all(negotiations.map(async (neg) => {
+        const route = await storage.getDriverRouteById(neg.driverRouteId);
+        const rider = await storage.getUser(neg.riderId);
+        const driver = await storage.getUser(neg.driverId);
+        const offers = await storage.getRouteNegotiationOffers(neg.id);
+        const latestOffer = offers[offers.length - 1];
+        
+        return {
+          ...neg,
+          route: route ? {
+            id: route.id,
+            startLocation: route.startLocation,
+            endLocation: route.endLocation,
+            pricePerSeat: route.pricePerSeat,
+            departureTime: route.departureTime,
+          } : null,
+          rider: rider ? {
+            id: rider.id,
+            firstName: rider.firstName,
+            lastName: rider.lastName,
+            profileImageUrl: rider.profileImageUrl,
+            riderRating: rider.riderRating,
+          } : null,
+          driver: driver ? {
+            id: driver.id,
+            firstName: driver.firstName,
+            lastName: driver.lastName,
+            profileImageUrl: driver.profileImageUrl,
+            driverRating: driver.driverRating,
+          } : null,
+          latestOffer: latestOffer ? {
+            amount: latestOffer.amount,
+            offeredByRole: latestOffer.offeredByRole,
+            message: latestOffer.message,
+            createdAt: latestOffer.createdAt,
+          } : null,
+          offerCount: offers.length,
+        };
+      }));
+      
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching route negotiations:", error);
+      res.status(500).json({ message: "Failed to fetch negotiations" });
+    }
+  });
+
+  app.get('/api/route-negotiations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const negotiationId = parseInt(req.params.id);
+      const negotiation = await storage.getRouteNegotiationById(negotiationId);
+      
+      if (!negotiation) {
+        return res.status(404).json({ message: "Negotiation not found" });
+      }
+      
+      if (negotiation.riderId !== userId && negotiation.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      const offers = await storage.getRouteNegotiationOffers(negotiationId);
+      const route = await storage.getDriverRouteById(negotiation.driverRouteId);
+      
+      res.json({ negotiation, offers, route });
+    } catch (error) {
+      console.error("Error fetching negotiation:", error);
+      res.status(500).json({ message: "Failed to fetch negotiation" });
+    }
+  });
+
+  app.post('/api/route-negotiations/:id/counter', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const negotiationId = parseInt(req.params.id);
+      const { counterPrice, message } = req.body;
+      
+      const price = parseFloat(counterPrice);
+      if (isNaN(price) || price < 0.30) {
+        return res.status(400).json({ message: "Minimum price is £0.30" });
+      }
+      
+      const negotiation = await storage.getRouteNegotiationById(negotiationId);
+      if (!negotiation) {
+        return res.status(404).json({ message: "Negotiation not found" });
+      }
+      
+      if (negotiation.status !== 'pending') {
+        return res.status(400).json({ message: "This negotiation is no longer active" });
+      }
+      
+      // Determine user role
+      let role: 'rider' | 'driver';
+      let otherUserId: string;
+      if (negotiation.riderId === userId) {
+        role = 'rider';
+        otherUserId = negotiation.driverId;
+      } else if (negotiation.driverId === userId) {
+        role = 'driver';
+        otherUserId = negotiation.riderId;
+      } else {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // Ensure it's their turn
+      if (negotiation.lastOfferBy === role) {
+        return res.status(400).json({ message: "Wait for the other party to respond" });
+      }
+      
+      // Create counter offer
+      await storage.createRouteNegotiationOffer({
+        negotiationId,
+        offeredByRole: role,
+        offeredByUserId: userId,
+        amount: price.toString(),
+        message: message || null,
+      });
+      
+      // Update negotiation
+      await storage.updateRouteNegotiation(negotiationId, { lastOfferBy: role });
+      
+      // Notify other party
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'NEGOTIATION_COUNTER',
+        negotiationId,
+      }, otherUserId);
+      
+      const user = await storage.getUser(userId);
+      await storage.createNotification({
+        userId: otherUserId,
+        type: 'negotiation_counter',
+        title: 'Counter Offer Received',
+        message: `${user?.firstName || 'The other party'} countered with £${price.toFixed(2)}.`,
+        read: false,
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error creating counter offer:", error);
+      res.status(400).json({ message: error.message || "Failed to create counter offer" });
+    }
+  });
+
+  app.patch('/api/route-negotiations/:id/accept', isAuthenticated, isProfileComplete, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const negotiationId = parseInt(req.params.id);
+      const negotiation = await storage.getRouteNegotiationById(negotiationId);
+      
+      if (!negotiation) {
+        return res.status(404).json({ message: "Negotiation not found" });
+      }
+      
+      if (negotiation.status !== 'pending') {
+        return res.status(400).json({ message: "This negotiation is no longer active" });
+      }
+      
+      if (negotiation.riderId !== userId && negotiation.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      // Get the latest offer (the one being accepted)
+      const latestOffer = await storage.getLatestRouteNegotiationOffer(negotiationId);
+      if (!latestOffer) {
+        return res.status(400).json({ message: "No offer to accept" });
+      }
+      
+      const agreedPrice = parseFloat(latestOffer.amount);
+      
+      // Get the route
+      const route = await storage.getDriverRouteById(negotiation.driverRouteId);
+      if (!route || route.status !== 'active') {
+        return res.status(400).json({ message: "Route is no longer available" });
+      }
+      
+      if (route.availableSeats < negotiation.seatsRequested) {
+        return res.status(400).json({ message: "Not enough seats available" });
+      }
+      
+      // Check driver limits if driver is accepting
+      if (negotiation.driverId === userId) {
+        const limitCheck = await checkPrivateDriverLimits(negotiation.driverId);
+        if (!limitCheck.allowed) {
+          return res.status(403).json({ message: "You have reached your daily ride limit" });
+        }
+      }
+      
+      // Create payment intent
+      const paymentIntent = await stripeService.createPaymentIntent(
+        Math.round(agreedPrice * 100),
+        'gbp',
+        {
+          negotiationId: negotiationId.toString(),
+          routeId: negotiation.driverRouteId.toString(),
+          riderId: negotiation.riderId,
+          driverId: negotiation.driverId,
+        }
+      );
+      
+      // Create the ride
+      const ride = await storage.createRide({
+        riderId: negotiation.riderId,
+        driverId: negotiation.driverId,
+        driverRouteId: negotiation.driverRouteId,
+        pickupLocation: `Route: ${route.startLocation}`,
+        dropoffLocation: `Route: ${route.endLocation}`,
+        agreedPrice: agreedPrice.toString(),
+        scheduledTime: route.departureTime,
+        status: 'pending_payment',
+        seatsRequested: negotiation.seatsRequested,
+        paymentIntentId: paymentIntent.id,
+      });
+      
+      // Update negotiation
+      await storage.updateRouteNegotiation(negotiationId, {
+        status: 'accepted',
+        agreedPrice: agreedPrice.toString(),
+        rideId: ride.id,
+      });
+      
+      // Notify other party
+      const otherUserId = userId === negotiation.riderId ? negotiation.driverId : negotiation.riderId;
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'NEGOTIATION_ACCEPTED',
+        negotiationId,
+        rideId: ride.id,
+      }, otherUserId);
+      
+      const user = await storage.getUser(userId);
+      await storage.createNotification({
+        userId: otherUserId,
+        type: 'negotiation_accepted',
+        title: 'Offer Accepted!',
+        message: `${user?.firstName || 'The other party'} accepted the offer of £${agreedPrice.toFixed(2)}. ${userId === negotiation.driverId ? 'Please proceed to payment.' : 'Waiting for payment.'}`,
+        relatedRideId: ride.id,
+        read: false,
+      });
+      
+      res.json({
+        negotiation: await storage.getRouteNegotiationById(negotiationId),
+        ride,
+        clientSecret: paymentIntent.client_secret,
+      });
+    } catch (error: any) {
+      console.error("Error accepting negotiation:", error);
+      res.status(500).json({ message: error.message || "Failed to accept negotiation" });
+    }
+  });
+
+  app.patch('/api/route-negotiations/:id/decline', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const negotiationId = parseInt(req.params.id);
+      const negotiation = await storage.getRouteNegotiationById(negotiationId);
+      
+      if (!negotiation) {
+        return res.status(404).json({ message: "Negotiation not found" });
+      }
+      
+      if (negotiation.riderId !== userId && negotiation.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      if (negotiation.status !== 'pending') {
+        return res.status(400).json({ message: "This negotiation is no longer active" });
+      }
+      
+      await storage.updateRouteNegotiation(negotiationId, { status: 'declined' });
+      
+      // Notify other party
+      const otherUserId = userId === negotiation.riderId ? negotiation.driverId : negotiation.riderId;
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'NEGOTIATION_DECLINED',
+        negotiationId,
+      }, otherUserId);
+      
+      const user = await storage.getUser(userId);
+      await storage.createNotification({
+        userId: otherUserId,
+        type: 'negotiation_declined',
+        title: 'Negotiation Declined',
+        message: `${user?.firstName || 'The other party'} declined the negotiation.`,
+        read: false,
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error declining negotiation:", error);
+      res.status(400).json({ message: error.message || "Failed to decline negotiation" });
+    }
+  });
+
+  // Pro Hire Negotiation Routes - Riders can negotiate rate with Pro drivers
+  app.post('/api/pro-negotiations', isAuthenticated, isProfileComplete, async (req: any, res) => {
+    try {
+      const riderId = req.session?.userId || req.user?.claims?.sub;
+      if (!riderId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const { driverId, pickupLocation, dropoffLocation, pickupLat, pickupLng, dropoffLat, dropoffLng, estimatedDistance, proposedPrice, message } = req.body;
+      
+      const price = parseFloat(proposedPrice);
+      if (isNaN(price) || price < 0.30) {
+        return res.status(400).json({ message: "Minimum price is £0.30" });
+      }
+      
+      // Verify driver is a Pro driver and online
+      const driver = await storage.getUser(driverId);
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+      
+      if (!driver.isCommercialDriver || !driver.commercialStatusVerified) {
+        return res.status(400).json({ message: "This driver is not a Pro driver" });
+      }
+      
+      if (driverId === riderId) {
+        return res.status(400).json({ message: "You cannot negotiate with yourself" });
+      }
+      
+      // Create the negotiation
+      const negotiation = await storage.createProHireNegotiation({
+        driverId,
+        riderId,
+        pickupLocation,
+        dropoffLocation,
+        pickupLat: pickupLat?.toString(),
+        pickupLng: pickupLng?.toString(),
+        dropoffLat: dropoffLat?.toString(),
+        dropoffLng: dropoffLng?.toString(),
+        estimatedDistance: estimatedDistance?.toString(),
+        lastOfferBy: 'rider',
+        status: 'pending',
+      });
+      
+      // Create the first offer
+      await storage.createProHireNegotiationOffer({
+        negotiationId: negotiation.id,
+        offeredByRole: 'rider',
+        offeredByUserId: riderId,
+        amount: price.toString(),
+        message: message || null,
+      });
+      
+      // Notify driver
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'NEW_PRO_NEGOTIATION',
+        negotiationId: negotiation.id,
+      }, driverId);
+      
+      const rider = await storage.getUser(riderId);
+      await storage.createNotification({
+        userId: driverId,
+        type: 'pro_negotiation_started',
+        title: 'New Ride Negotiation',
+        message: `${rider?.firstName || 'A rider'} wants to negotiate a ride from ${pickupLocation} to ${dropoffLocation}. They offered £${price.toFixed(2)}.`,
+        read: false,
+      });
+      
+      res.status(201).json(negotiation);
+    } catch (error: any) {
+      console.error("Error creating Pro hire negotiation:", error);
+      res.status(400).json({ message: error.message || "Failed to create negotiation" });
+    }
+  });
+
+  app.get('/api/pro-negotiations/mine', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const negotiations = await storage.getProHireNegotiationsByUser(userId);
+      
+      const enriched = await Promise.all(negotiations.map(async (neg) => {
+        const rider = await storage.getUser(neg.riderId);
+        const driver = await storage.getUser(neg.driverId);
+        const offers = await storage.getProHireNegotiationOffers(neg.id);
+        const latestOffer = offers[offers.length - 1];
+        
+        return {
+          ...neg,
+          rider: rider ? {
+            id: rider.id,
+            firstName: rider.firstName,
+            lastName: rider.lastName,
+            profileImageUrl: rider.profileImageUrl,
+            riderRating: rider.riderRating,
+          } : null,
+          driver: driver ? {
+            id: driver.id,
+            firstName: driver.firstName,
+            lastName: driver.lastName,
+            profileImageUrl: driver.profileImageUrl,
+            driverRating: driver.driverRating,
+            ratePerMile: driver.ratePerMile,
+          } : null,
+          latestOffer: latestOffer ? {
+            amount: latestOffer.amount,
+            offeredByRole: latestOffer.offeredByRole,
+            message: latestOffer.message,
+            createdAt: latestOffer.createdAt,
+          } : null,
+          offerCount: offers.length,
+        };
+      }));
+      
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching Pro hire negotiations:", error);
+      res.status(500).json({ message: "Failed to fetch negotiations" });
+    }
+  });
+
+  app.get('/api/pro-negotiations/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const negotiationId = parseInt(req.params.id);
+      const negotiation = await storage.getProHireNegotiationById(negotiationId);
+      
+      if (!negotiation) {
+        return res.status(404).json({ message: "Negotiation not found" });
+      }
+      
+      if (negotiation.riderId !== userId && negotiation.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      const offers = await storage.getProHireNegotiationOffers(negotiationId);
+      
+      res.json({ negotiation, offers });
+    } catch (error) {
+      console.error("Error fetching Pro negotiation:", error);
+      res.status(500).json({ message: "Failed to fetch negotiation" });
+    }
+  });
+
+  app.post('/api/pro-negotiations/:id/counter', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const negotiationId = parseInt(req.params.id);
+      const { counterPrice, message } = req.body;
+      
+      const price = parseFloat(counterPrice);
+      if (isNaN(price) || price < 0.30) {
+        return res.status(400).json({ message: "Minimum price is £0.30" });
+      }
+      
+      const negotiation = await storage.getProHireNegotiationById(negotiationId);
+      if (!negotiation) {
+        return res.status(404).json({ message: "Negotiation not found" });
+      }
+      
+      if (negotiation.status !== 'pending') {
+        return res.status(400).json({ message: "This negotiation is no longer active" });
+      }
+      
+      let role: 'rider' | 'driver';
+      let otherUserId: string;
+      if (negotiation.riderId === userId) {
+        role = 'rider';
+        otherUserId = negotiation.driverId;
+      } else if (negotiation.driverId === userId) {
+        role = 'driver';
+        otherUserId = negotiation.riderId;
+      } else {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      if (negotiation.lastOfferBy === role) {
+        return res.status(400).json({ message: "Wait for the other party to respond" });
+      }
+      
+      await storage.createProHireNegotiationOffer({
+        negotiationId,
+        offeredByRole: role,
+        offeredByUserId: userId,
+        amount: price.toString(),
+        message: message || null,
+      });
+      
+      await storage.updateProHireNegotiation(negotiationId, { lastOfferBy: role });
+      
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'PRO_NEGOTIATION_COUNTER',
+        negotiationId,
+      }, otherUserId);
+      
+      const user = await storage.getUser(userId);
+      await storage.createNotification({
+        userId: otherUserId,
+        type: 'pro_negotiation_counter',
+        title: 'Counter Offer Received',
+        message: `${user?.firstName || 'The other party'} countered with £${price.toFixed(2)}.`,
+        read: false,
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error creating Pro counter offer:", error);
+      res.status(400).json({ message: error.message || "Failed to create counter offer" });
+    }
+  });
+
+  app.patch('/api/pro-negotiations/:id/accept', isAuthenticated, isProfileComplete, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const negotiationId = parseInt(req.params.id);
+      const negotiation = await storage.getProHireNegotiationById(negotiationId);
+      
+      if (!negotiation) {
+        return res.status(404).json({ message: "Negotiation not found" });
+      }
+      
+      if (negotiation.status !== 'pending') {
+        return res.status(400).json({ message: "This negotiation is no longer active" });
+      }
+      
+      if (negotiation.riderId !== userId && negotiation.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      const latestOffer = await storage.getLatestProHireNegotiationOffer(negotiationId);
+      if (!latestOffer) {
+        return res.status(400).json({ message: "No offer to accept" });
+      }
+      
+      const agreedPrice = parseFloat(latestOffer.amount);
+      
+      // Create payment intent
+      const paymentIntent = await stripeService.createPaymentIntent(
+        Math.round(agreedPrice * 100),
+        'gbp',
+        {
+          proNegotiationId: negotiationId.toString(),
+          riderId: negotiation.riderId,
+          driverId: negotiation.driverId,
+        }
+      );
+      
+      // Create the ride
+      const ride = await storage.createRide({
+        riderId: negotiation.riderId,
+        driverId: negotiation.driverId,
+        pickupLocation: negotiation.pickupLocation,
+        dropoffLocation: negotiation.dropoffLocation,
+        pickupLat: negotiation.pickupLat,
+        pickupLng: negotiation.pickupLng,
+        dropoffLat: negotiation.dropoffLat,
+        dropoffLng: negotiation.dropoffLng,
+        agreedPrice: agreedPrice.toString(),
+        status: 'pending_payment',
+        paymentIntentId: paymentIntent.id,
+      });
+      
+      await storage.updateProHireNegotiation(negotiationId, {
+        status: 'accepted',
+        agreedPrice: agreedPrice.toString(),
+        rideId: ride.id,
+      });
+      
+      const otherUserId = userId === negotiation.riderId ? negotiation.driverId : negotiation.riderId;
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'PRO_NEGOTIATION_ACCEPTED',
+        negotiationId,
+        rideId: ride.id,
+      }, otherUserId);
+      
+      const user = await storage.getUser(userId);
+      await storage.createNotification({
+        userId: otherUserId,
+        type: 'pro_negotiation_accepted',
+        title: 'Offer Accepted!',
+        message: `${user?.firstName || 'The other party'} accepted the offer of £${agreedPrice.toFixed(2)}. ${userId === negotiation.driverId ? 'Please proceed to payment.' : 'Waiting for payment.'}`,
+        relatedRideId: ride.id,
+        read: false,
+      });
+      
+      res.json({
+        negotiation: await storage.getProHireNegotiationById(negotiationId),
+        ride,
+        clientSecret: paymentIntent.client_secret,
+      });
+    } catch (error: any) {
+      console.error("Error accepting Pro negotiation:", error);
+      res.status(500).json({ message: error.message || "Failed to accept negotiation" });
+    }
+  });
+
+  app.patch('/api/pro-negotiations/:id/decline', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const negotiationId = parseInt(req.params.id);
+      const negotiation = await storage.getProHireNegotiationById(negotiationId);
+      
+      if (!negotiation) {
+        return res.status(404).json({ message: "Negotiation not found" });
+      }
+      
+      if (negotiation.riderId !== userId && negotiation.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      if (negotiation.status !== 'pending') {
+        return res.status(400).json({ message: "This negotiation is no longer active" });
+      }
+      
+      await storage.updateProHireNegotiation(negotiationId, { status: 'declined' });
+      
+      const otherUserId = userId === negotiation.riderId ? negotiation.driverId : negotiation.riderId;
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'PRO_NEGOTIATION_DECLINED',
+        negotiationId,
+      }, otherUserId);
+      
+      const user = await storage.getUser(userId);
+      await storage.createNotification({
+        userId: otherUserId,
+        type: 'pro_negotiation_declined',
+        title: 'Negotiation Declined',
+        message: `${user?.firstName || 'The other party'} declined the negotiation.`,
+        read: false,
+      });
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error declining Pro negotiation:", error);
+      res.status(400).json({ message: error.message || "Failed to decline negotiation" });
+    }
+  });
+
   // Ride Routes
   app.get('/api/rides', isAuthenticated, async (req: any, res) => {
     try {

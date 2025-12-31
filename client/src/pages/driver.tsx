@@ -368,6 +368,27 @@ export default function DriverPage() {
     refetchInterval: 200, // Refresh every 0.2 seconds for time-critical updates
   });
 
+  // Fetch incoming negotiations (route and pro hire)
+  const { data: myNegotiations = [] } = useQuery<any[]>({
+    queryKey: ["/api/route-negotiations/mine"],
+    enabled: !!user,
+    refetchInterval: 5000,
+  });
+
+  const { data: myProNegotiations = [] } = useQuery<any[]>({
+    queryKey: ["/api/pro-negotiations/mine"],
+    enabled: !!user?.isCommercialDriver,
+    refetchInterval: 5000,
+  });
+
+  // Filter to only pending negotiations where driver needs to respond
+  const pendingNegotiations = [
+    ...myNegotiations.filter((n: any) => n.status === 'pending' && n.driverId === user?.id && n.lastOfferBy === 'rider'),
+    ...myProNegotiations.filter((n: any) => n.status === 'pending' && n.driverId === user?.id && n.lastOfferBy === 'rider'),
+  ];
+
+  const [negotiationLoading, setNegotiationLoading] = useState<number | null>(null);
+
   const respondToRequestMutation = useMutation({
     mutationFn: async ({ rideId, action }: { rideId: number; action: 'accept' | 'decline' }) => {
       const response = await apiRequest("PATCH", `/api/pro-driver/respond-to-request/${rideId}`, { action });
@@ -471,6 +492,44 @@ export default function DriverPage() {
       });
     },
   });
+
+  // Handle negotiation responses
+  const handleNegotiationResponse = async (negotiation: any, action: 'accept' | 'decline', isProNegotiation: boolean) => {
+    setNegotiationLoading(negotiation.id);
+    try {
+      const endpoint = isProNegotiation 
+        ? `/api/pro-negotiations/${negotiation.id}/${action}`
+        : `/api/route-negotiations/${negotiation.id}/${action}`;
+      const response = await apiRequest("PATCH", endpoint, {});
+      if (response.ok) {
+        toast({
+          title: action === 'accept' ? "Offer Accepted!" : "Offer Declined",
+          description: action === 'accept' 
+            ? "You've accepted the offer. Waiting for payment." 
+            : "You've declined the negotiation.",
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/route-negotiations/mine"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/pro-negotiations/mine"] });
+        if (action === 'accept') {
+          const data = await response.json();
+          if (data.ride) {
+            navigate(`/ride/${data.ride.id}`);
+          }
+        }
+      } else {
+        const data = await response.json();
+        throw new Error(data.message || `Failed to ${action} negotiation`);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || `Failed to ${action} negotiation`,
+        variant: "destructive",
+      });
+    } finally {
+      setNegotiationLoading(null);
+    }
+  };
 
   const handlePublishRoute = (e: React.FormEvent) => {
     e.preventDefault();
@@ -695,6 +754,92 @@ export default function DriverPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Negotiations */}
+      {pendingNegotiations.length > 0 && (
+        <div className={`fixed ${pendingRequests.length > 0 ? 'top-64' : 'top-11'} right-2 z-40 w-64 sm:w-72`}>
+          <div className="bg-primary/95 backdrop-blur-md rounded-xl shadow-lg border border-primary/50 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <PoundSterling className="h-4 w-4 text-white" />
+              <span className="text-sm font-semibold text-white">Price Negotiations</span>
+              <Badge className="bg-white/20 text-white text-xs">{pendingNegotiations.length}</Badge>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {pendingNegotiations.slice(0, 3).map((negotiation: any) => {
+                const isProNegotiation = !negotiation.driverRouteId;
+                return (
+                  <div key={`neg-${negotiation.id}-${isProNegotiation}`} className="bg-white/10 rounded-lg p-2" data-testid={`pending-negotiation-${negotiation.id}`}>
+                    <div className="flex items-start gap-2 text-xs text-white mb-1">
+                      <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        {negotiation.route ? (
+                          <>
+                            <p className="font-medium truncate">{negotiation.route.startLocation}</p>
+                            <p className="text-white/70 truncate">→ {negotiation.route.endLocation}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-medium truncate">{negotiation.pickupLocation}</p>
+                            <p className="text-white/70 truncate">→ {negotiation.dropoffLocation}</p>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end shrink-0">
+                        <Badge className="bg-white text-primary font-bold text-xs">
+                          £{negotiation.latestOffer?.amount || '0'}
+                        </Badge>
+                        {negotiation.seatsRequested > 1 && (
+                          <span className="text-[10px] text-white/80 mt-0.5">{negotiation.seatsRequested} seats</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <Avatar className="h-4 w-4">
+                        <AvatarImage src={negotiation.rider?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${negotiation.riderId}`} />
+                        <AvatarFallback className="text-[8px]">{negotiation.rider?.firstName?.charAt(0) || 'R'}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-[10px] text-white/80">{negotiation.rider?.firstName || 'Rider'}</span>
+                    </div>
+                    {negotiation.latestOffer?.message && (
+                      <div className="bg-white/10 rounded p-1.5 mb-1">
+                        <p className="text-[10px] text-white/90 italic line-clamp-2">"{negotiation.latestOffer.message}"</p>
+                      </div>
+                    )}
+                    <div className="flex gap-1 justify-end">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 bg-red-500/80 hover:bg-red-600 text-white"
+                        onClick={() => handleNegotiationResponse(negotiation, 'decline', isProNegotiation)}
+                        disabled={negotiationLoading === negotiation.id}
+                        data-testid={`button-decline-negotiation-${negotiation.id}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-6 px-2 bg-green-500 hover:bg-green-600 text-white"
+                        onClick={() => handleNegotiationResponse(negotiation, 'accept', isProNegotiation)}
+                        disabled={negotiationLoading === negotiation.id}
+                        data-testid={`button-accept-negotiation-${negotiation.id}`}
+                      >
+                        {negotiationLoading === negotiation.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Check className="h-3 w-3 mr-1" />
+                            Accept
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

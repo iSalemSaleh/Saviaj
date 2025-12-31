@@ -761,3 +761,164 @@ export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTo
 });
 export type InsertPasswordResetToken = z.infer<typeof insertPasswordResetTokenSchema>;
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// Route Negotiations - Riders can negotiate price on driver routes
+export const routeNegotiations = pgTable("route_negotiations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  driverRouteId: integer("driver_route_id").notNull().references(() => driverRoutes.id),
+  riderId: varchar("rider_id").notNull().references(() => users.id),
+  driverId: varchar("driver_id").notNull().references(() => users.id),
+  seatsRequested: integer("seats_requested").default(1).notNull(),
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, accepted, declined, expired, cancelled
+  agreedPrice: decimal("agreed_price", { precision: 10, scale: 2 }),
+  lastOfferBy: varchar("last_offer_by", { length: 20 }).notNull(), // 'rider' or 'driver'
+  rideId: integer("ride_id").references(() => rides.id), // Set when accepted and ride created
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const routeNegotiationsRelations = relations(routeNegotiations, ({ one, many }) => ({
+  driverRoute: one(driverRoutes, {
+    fields: [routeNegotiations.driverRouteId],
+    references: [driverRoutes.id],
+  }),
+  rider: one(users, {
+    fields: [routeNegotiations.riderId],
+    references: [users.id],
+    relationName: "negotiationRider",
+  }),
+  driver: one(users, {
+    fields: [routeNegotiations.driverId],
+    references: [users.id],
+    relationName: "negotiationDriver",
+  }),
+  ride: one(rides, {
+    fields: [routeNegotiations.rideId],
+    references: [rides.id],
+  }),
+  offers: many(routeNegotiationOffers),
+}));
+
+export const insertRouteNegotiationSchema = createInsertSchema(routeNegotiations, {
+  seatsRequested: z.coerce.number().min(1).max(7),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertRouteNegotiation = z.infer<typeof insertRouteNegotiationSchema>;
+export type RouteNegotiation = typeof routeNegotiations.$inferSelect;
+
+// Route Negotiation Offers - Individual offers in a negotiation thread
+export const routeNegotiationOffers = pgTable("route_negotiation_offers", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  negotiationId: integer("negotiation_id").notNull().references(() => routeNegotiations.id),
+  offeredByRole: varchar("offered_by_role", { length: 20 }).notNull(), // 'rider' or 'driver'
+  offeredByUserId: varchar("offered_by_user_id").notNull().references(() => users.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  message: text("message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const routeNegotiationOffersRelations = relations(routeNegotiationOffers, ({ one }) => ({
+  negotiation: one(routeNegotiations, {
+    fields: [routeNegotiationOffers.negotiationId],
+    references: [routeNegotiations.id],
+  }),
+  offeredBy: one(users, {
+    fields: [routeNegotiationOffers.offeredByUserId],
+    references: [users.id],
+  }),
+}));
+
+export const insertRouteNegotiationOfferSchema = createInsertSchema(routeNegotiationOffers, {
+  amount: z.coerce.number().min(0.30),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertRouteNegotiationOffer = z.infer<typeof insertRouteNegotiationOfferSchema>;
+export type RouteNegotiationOffer = typeof routeNegotiationOffers.$inferSelect;
+
+// Pro Hire Negotiations - Riders can negotiate rate with Pro drivers
+export const proHireNegotiations = pgTable("pro_hire_negotiations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  driverId: varchar("driver_id").notNull().references(() => users.id),
+  riderId: varchar("rider_id").notNull().references(() => users.id),
+  pickupLocation: text("pickup_location").notNull(),
+  dropoffLocation: text("dropoff_location").notNull(),
+  pickupLat: decimal("pickup_lat", { precision: 10, scale: 7 }),
+  pickupLng: decimal("pickup_lng", { precision: 10, scale: 7 }),
+  dropoffLat: decimal("dropoff_lat", { precision: 10, scale: 7 }),
+  dropoffLng: decimal("dropoff_lng", { precision: 10, scale: 7 }),
+  estimatedDistance: decimal("estimated_distance", { precision: 10, scale: 2 }),
+  status: varchar("status", { length: 50 }).default("pending").notNull(), // pending, accepted, declined, expired, cancelled
+  agreedPrice: decimal("agreed_price", { precision: 10, scale: 2 }),
+  lastOfferBy: varchar("last_offer_by", { length: 20 }).notNull(), // 'rider' or 'driver'
+  rideId: integer("ride_id").references(() => rides.id), // Set when accepted and ride created
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const proHireNegotiationsRelations = relations(proHireNegotiations, ({ one, many }) => ({
+  driver: one(users, {
+    fields: [proHireNegotiations.driverId],
+    references: [users.id],
+    relationName: "proNegotiationDriver",
+  }),
+  rider: one(users, {
+    fields: [proHireNegotiations.riderId],
+    references: [users.id],
+    relationName: "proNegotiationRider",
+  }),
+  ride: one(rides, {
+    fields: [proHireNegotiations.rideId],
+    references: [rides.id],
+  }),
+  offers: many(proHireNegotiationOffers),
+}));
+
+export const insertProHireNegotiationSchema = createInsertSchema(proHireNegotiations, {
+  pickupLat: z.coerce.number().optional(),
+  pickupLng: z.coerce.number().optional(),
+  dropoffLat: z.coerce.number().optional(),
+  dropoffLng: z.coerce.number().optional(),
+  estimatedDistance: z.coerce.number().optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertProHireNegotiation = z.infer<typeof insertProHireNegotiationSchema>;
+export type ProHireNegotiation = typeof proHireNegotiations.$inferSelect;
+
+// Pro Hire Negotiation Offers - Individual offers in a Pro hire negotiation thread
+export const proHireNegotiationOffers = pgTable("pro_hire_negotiation_offers", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  negotiationId: integer("negotiation_id").notNull().references(() => proHireNegotiations.id),
+  offeredByRole: varchar("offered_by_role", { length: 20 }).notNull(), // 'rider' or 'driver'
+  offeredByUserId: varchar("offered_by_user_id").notNull().references(() => users.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  message: text("message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const proHireNegotiationOffersRelations = relations(proHireNegotiationOffers, ({ one }) => ({
+  negotiation: one(proHireNegotiations, {
+    fields: [proHireNegotiationOffers.negotiationId],
+    references: [proHireNegotiations.id],
+  }),
+  offeredBy: one(users, {
+    fields: [proHireNegotiationOffers.offeredByUserId],
+    references: [users.id],
+  }),
+}));
+
+export const insertProHireNegotiationOfferSchema = createInsertSchema(proHireNegotiationOffers, {
+  amount: z.coerce.number().min(0.30),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertProHireNegotiationOffer = z.infer<typeof insertProHireNegotiationOfferSchema>;
+export type ProHireNegotiationOffer = typeof proHireNegotiationOffers.$inferSelect;

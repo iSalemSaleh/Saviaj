@@ -8,7 +8,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -175,6 +176,15 @@ export default function RiderPage() {
   const [seatCount, setSeatCount] = useState(1);
   const [tripMessage, setTripMessage] = useState("");
   const INITIAL_DISPLAY_COUNT = 5;
+
+  // Negotiation state
+  const [negotiateSheetOpen, setNegotiateSheetOpen] = useState(false);
+  const [negotiateRoute, setNegotiateRoute] = useState<DriverRoute | null>(null);
+  const [negotiateDriver, setNegotiateDriver] = useState<NearbyDriver | null>(null);
+  const [negotiatePrice, setNegotiatePrice] = useState("");
+  const [negotiateSeats, setNegotiateSeats] = useState(1);
+  const [negotiateMessage, setNegotiateMessage] = useState("");
+  const [isNegotiating, setIsNegotiating] = useState(false);
 
   // Auto-minimize payment banner after 3 seconds if not hovered
   useEffect(() => {
@@ -518,6 +528,105 @@ export default function RiderPage() {
       seats: seatCount,
       message: tripMessage,
     });
+  };
+
+  // Negotiate route handler
+  const handleNegotiateRoute = (route: DriverRoute) => {
+    setNegotiateRoute(route);
+    setNegotiateDriver(null);
+    setNegotiatePrice(route.pricePerSeat || "");
+    setNegotiateSeats(1);
+    setNegotiateMessage("");
+    setNegotiateSheetOpen(true);
+  };
+
+  // Negotiate Pro driver handler
+  const handleNegotiateProDriver = (driver: NearbyDriver) => {
+    if (!dropoffCoords || !dropoffLocation) {
+      toast({
+        title: "Set Destination",
+        description: "Please set a destination first to negotiate with this driver.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setNegotiateDriver(driver);
+    setNegotiateRoute(null);
+    const estimatedCost = getEstimatedCost(driver);
+    setNegotiatePrice(estimatedCost || "");
+    setNegotiateSeats(1);
+    setNegotiateMessage("");
+    setNegotiateSheetOpen(true);
+  };
+
+  // Submit negotiation
+  const submitNegotiation = async () => {
+    const price = parseFloat(negotiatePrice);
+    if (isNaN(price) || price < 0.30) {
+      toast({
+        title: "Invalid Price",
+        description: "Minimum price is £0.30",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsNegotiating(true);
+    try {
+      if (negotiateRoute) {
+        // Route negotiation
+        const response = await apiRequest("POST", "/api/route-negotiations", {
+          driverRouteId: negotiateRoute.id,
+          seatsRequested: negotiateSeats,
+          proposedPrice: price,
+          message: negotiateMessage || null,
+        });
+        if (response.ok) {
+          toast({
+            title: "Negotiation Sent!",
+            description: "The driver will receive your offer and can accept, counter, or decline.",
+          });
+          setNegotiateSheetOpen(false);
+          queryClient.invalidateQueries({ queryKey: ["/api/route-negotiations/mine"] });
+        } else {
+          const data = await response.json();
+          throw new Error(data.message || "Failed to start negotiation");
+        }
+      } else if (negotiateDriver) {
+        // Pro driver negotiation
+        const response = await apiRequest("POST", "/api/pro-negotiations", {
+          driverId: negotiateDriver.id,
+          pickupLocation: pickupLocation,
+          dropoffLocation: dropoffLocation,
+          pickupLat: pickupCoords?.lat,
+          pickupLng: pickupCoords?.lon,
+          dropoffLat: dropoffCoords?.lat,
+          dropoffLng: dropoffCoords?.lon,
+          estimatedDistance: routeInfo?.distance,
+          proposedPrice: price,
+          message: negotiateMessage || null,
+        });
+        if (response.ok) {
+          toast({
+            title: "Negotiation Sent!",
+            description: "The driver will receive your offer and can accept, counter, or decline.",
+          });
+          setNegotiateSheetOpen(false);
+          queryClient.invalidateQueries({ queryKey: ["/api/pro-negotiations/mine"] });
+        } else {
+          const data = await response.json();
+          throw new Error(data.message || "Failed to start negotiation");
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Negotiation Failed",
+        description: error.message || "Failed to start negotiation. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsNegotiating(false);
+    }
   };
 
   const handleRevisePrice = () => {
@@ -1008,9 +1117,14 @@ export default function RiderPage() {
                             {estimatedCost && <Badge className="bg-primary text-white text-[10px] px-1">£{estimatedCost}</Badge>}
                           </div>
                         </Link>
-                        <Button size="sm" className="w-full h-6 mt-1 text-[10px]" onClick={() => handleRequestProDriver(driver)} disabled={requestingDriverId === driver.id || !dropoffCoords} data-testid={`button-request-pro-driver-${driver.id}`}>
-                          {requestingDriverId === driver.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Request'}
-                        </Button>
+                        <div className="flex gap-1 mt-1">
+                          <Button size="sm" className="flex-1 h-6 text-[10px]" onClick={() => handleRequestProDriver(driver)} disabled={requestingDriverId === driver.id || !dropoffCoords} data-testid={`button-request-pro-driver-${driver.id}`}>
+                            {requestingDriverId === driver.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Request'}
+                          </Button>
+                          <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleNegotiateProDriver(driver)} disabled={!dropoffCoords} data-testid={`button-negotiate-pro-driver-${driver.id}`}>
+                            Negotiate
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}
@@ -1110,14 +1224,25 @@ export default function RiderPage() {
                           </Badge>
                         </div>
                       </Link>
-                      <Button
-                        size="sm"
-                        className="w-full h-6 mt-1 text-[10px]"
-                        onClick={(e) => { e.stopPropagation(); handleSeatRequest(route); }}
-                        data-testid={`button-request-seat-${route.id}`}
-                      >
-                        Request Seat
-                      </Button>
+                      <div className="flex gap-1 mt-1">
+                        <Button
+                          size="sm"
+                          className="flex-1 h-6 text-[10px]"
+                          onClick={(e) => { e.stopPropagation(); handleSeatRequest(route); }}
+                          data-testid={`button-request-seat-${route.id}`}
+                        >
+                          Request
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[10px] px-2"
+                          onClick={(e) => { e.stopPropagation(); handleNegotiateRoute(route); }}
+                          data-testid={`button-negotiate-route-${route.id}`}
+                        >
+                          Negotiate
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1425,6 +1550,149 @@ export default function RiderPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Negotiate Price Sheet */}
+      <Sheet open={negotiateSheetOpen} onOpenChange={(open) => { setNegotiateSheetOpen(open); if (!open) { setNegotiateRoute(null); setNegotiateDriver(null); } }}>
+        <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto rounded-t-xl">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <PoundSterling className="h-5 w-5 text-primary" />
+              Negotiate Price
+            </SheetTitle>
+            <SheetDescription>
+              Make an offer. The driver can accept, counter, or decline.
+            </SheetDescription>
+          </SheetHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Route or Driver info */}
+            {negotiateRoute && (
+              <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={negotiateRoute.driver?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${negotiateRoute.driverId}`} />
+                    <AvatarFallback>{negotiateRoute.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{negotiateRoute.driver?.firstName || 'Driver'}</p>
+                    {negotiateRoute.driver?.driverRating && (
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 mr-0.5" />
+                        {parseFloat(negotiateRoute.driver.driverRating).toFixed(1)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs"><span className="text-primary">●</span> {negotiateRoute.startLocation}</p>
+                <p className="text-xs"><span className="text-secondary">●</span> {negotiateRoute.endLocation}</p>
+                <div className="flex gap-2 mt-2">
+                  <Badge variant="outline" className="text-xs">
+                    <Clock className="h-3 w-3 mr-1" />
+                    {new Date(negotiateRoute.departureTime).toLocaleDateString()} {new Date(negotiateRoute.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Badge>
+                  {negotiateRoute.pricePerSeat && (
+                    <Badge className="bg-primary text-white text-xs">
+                      Driver asks £{negotiateRoute.pricePerSeat}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {negotiateDriver && (
+              <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={negotiateDriver.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${negotiateDriver.id}`} />
+                    <AvatarFallback>{negotiateDriver.firstName?.charAt(0) || 'D'}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="font-medium">{negotiateDriver.firstName || 'Driver'}</p>
+                    {negotiateDriver.driverRating && (
+                      <div className="flex items-center text-xs text-muted-foreground">
+                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 mr-0.5" />
+                        {parseFloat(negotiateDriver.driverRating).toFixed(1)}
+                      </div>
+                    )}
+                  </div>
+                  <Badge className="bg-amber-500 text-white text-xs">Pro Driver</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">Rate: £{negotiateDriver.ratePerMile}/mile • {negotiateDriver.distanceFromPickup.toFixed(1)} mi away</p>
+                <div className="mt-2 text-xs">
+                  <p><span className="text-primary">●</span> {pickupLocation}</p>
+                  <p><span className="text-secondary">●</span> {dropoffLocation}</p>
+                </div>
+                {routeInfo && (
+                  <Badge variant="outline" className="mt-2 text-xs">
+                    Est. {routeInfo.distance.toFixed(1)} miles
+                  </Badge>
+                )}
+              </div>
+            )}
+            
+            {/* Seats (for routes only) */}
+            {negotiateRoute && (
+              <div className="space-y-2">
+                <Label>Number of seats</Label>
+                <Select value={negotiateSeats.toString()} onValueChange={(val) => setNegotiateSeats(parseInt(val))}>
+                  <SelectTrigger data-testid="select-negotiate-seats">
+                    <SelectValue placeholder="Select seats" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: negotiateRoute.availableSeats }, (_, i) => i + 1).map((num) => (
+                      <SelectItem key={num} value={num.toString()}>{num} {num === 1 ? 'seat' : 'seats'}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
+            {/* Price offer */}
+            <div className="space-y-2">
+              <Label htmlFor="negotiate-price">Your Offer (£)</Label>
+              <Input
+                id="negotiate-price"
+                type="number"
+                step="0.50"
+                min="0.30"
+                value={negotiatePrice}
+                onChange={(e) => setNegotiatePrice(e.target.value)}
+                placeholder="Enter your price offer"
+                data-testid="input-negotiate-price"
+              />
+              <p className="text-xs text-muted-foreground">Minimum £0.30</p>
+            </div>
+            
+            {/* Optional message */}
+            <div className="space-y-2">
+              <Label htmlFor="negotiate-message">Message (optional)</Label>
+              <Textarea
+                id="negotiate-message"
+                placeholder="Add any notes for the driver..."
+                value={negotiateMessage}
+                onChange={(e) => setNegotiateMessage(e.target.value)}
+                className="min-h-[60px]"
+                data-testid="textarea-negotiate-message"
+              />
+            </div>
+          </div>
+          
+          <SheetFooter>
+            <Button
+              onClick={submitNegotiation}
+              className="w-full"
+              disabled={isNegotiating || !negotiatePrice}
+              data-testid="button-submit-negotiation"
+            >
+              {isNegotiating ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending Offer...</>
+              ) : (
+                `Send Offer: £${negotiatePrice || '0.00'}`
+              )}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
