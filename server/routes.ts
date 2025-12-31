@@ -1672,6 +1672,42 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Get all bids made by the current driver (with rider offer info)
+  app.get('/api/bids/mine', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      // Use efficient single-query method with joins
+      const bidsWithOffers = await storage.getBidsWithOffersByDriverId(userId);
+      
+      // Transform to expected frontend format
+      const result = bidsWithOffers.map(({ bid, offer, rider }) => ({
+        ...bid,
+        offer: offer ? {
+          id: offer.id,
+          pickupLocation: offer.pickupLocation,
+          dropoffLocation: offer.dropoffLocation,
+          offerPrice: offer.offerPrice,
+          requestedTime: offer.requestedTime,
+          status: offer.status,
+        } : null,
+        rider: rider ? {
+          id: rider.id,
+          firstName: rider.firstName,
+          lastName: rider.lastName,
+          profileImageUrl: rider.profileImageUrl,
+          riderRating: rider.riderRating,
+        } : null
+      }));
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching driver bids:", error);
+      res.status(500).json({ message: "Failed to fetch bids" });
+    }
+  });
+
   app.get('/api/bids/offer/:offerId', async (req, res) => {
     try {
       const offerId = parseInt(req.params.offerId);

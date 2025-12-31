@@ -112,6 +112,7 @@ export default function DriverPage() {
   const [formExpanded, setFormExpanded] = useState(true);
   const [offersCardOpen, setOffersCardOpen] = useState(false);
   const [activeRidesCardOpen, setActiveRidesCardOpen] = useState(false);
+  const [myOffersCardOpen, setMyOffersCardOpen] = useState(false);
 
   const handleStartChange = (value: string, lat?: number, lon?: number) => {
     setStartLocation(value);
@@ -381,10 +382,24 @@ export default function DriverPage() {
     refetchInterval: 5000,
   });
 
+  // Fetch driver's own bids on rider offers
+  const { data: myBids = [], isLoading: bidsLoading } = useQuery<any[]>({
+    queryKey: ["/api/bids/mine"],
+    enabled: !!user,
+    refetchInterval: 5000,
+  });
+
   // Filter to only pending negotiations where driver needs to respond
   const pendingNegotiations = [
     ...myNegotiations.filter((n: any) => n.status === 'pending' && n.driverId === user?.id && n.lastOfferBy === 'rider'),
     ...myProNegotiations.filter((n: any) => n.status === 'pending' && n.driverId === user?.id && n.lastOfferBy === 'rider'),
+  ];
+
+  // All driver's pending offers (bids + negotiations where they made an offer)
+  const myPendingBids = myBids.filter((b: any) => b.status === 'pending');
+  const myPendingNegotiationOffers = [
+    ...myNegotiations.filter((n: any) => n.status === 'pending' && n.lastOfferBy === 'driver'),
+    ...myProNegotiations.filter((n: any) => n.status === 'pending' && n.lastOfferBy === 'driver'),
   ];
 
   const [negotiationLoading, setNegotiationLoading] = useState<number | null>(null);
@@ -675,13 +690,19 @@ export default function DriverPage() {
     setCenterTrigger(prev => prev + 1);
   };
 
-  const handleCardToggle = (card: 'offers' | 'active') => {
+  const handleCardToggle = (card: 'offers' | 'active' | 'myOffers') => {
     if (card === 'offers') {
       setOffersCardOpen(!offersCardOpen);
       setActiveRidesCardOpen(false);
-    } else {
+      setMyOffersCardOpen(false);
+    } else if (card === 'active') {
       setActiveRidesCardOpen(!activeRidesCardOpen);
       setOffersCardOpen(false);
+      setMyOffersCardOpen(false);
+    } else {
+      setMyOffersCardOpen(!myOffersCardOpen);
+      setOffersCardOpen(false);
+      setActiveRidesCardOpen(false);
     }
   };
 
@@ -1048,7 +1069,8 @@ export default function DriverPage() {
         <Crosshair className="h-4 w-4" />
       </Button>
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 px-2 pb-2 space-y-1.5" style={{ maxHeight: '45vh' }}>
+      <div className="fixed bottom-0 left-0 right-0 z-40 px-2 pb-2 overflow-y-auto" style={{ maxHeight: '45vh' }}>
+        <div className="space-y-1.5">
         <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
           <div
             className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
@@ -1309,6 +1331,117 @@ export default function DriverPage() {
               )}
             </div>
           )}
+        </div>
+
+        {/* My Offers Card - Driver's bids and negotiations */}
+        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
+          <div
+            className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
+            onClick={() => handleCardToggle('myOffers')}
+          >
+            <div className="flex items-center gap-2">
+              <PoundSterling className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">My Offers</span>
+              {(myPendingBids.length + myPendingNegotiationOffers.length) > 0 && (
+                <Badge className="bg-primary text-white text-xs">
+                  {myPendingBids.length + myPendingNegotiationOffers.length}
+                </Badge>
+              )}
+            </div>
+            {myOffersCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+          </div>
+
+          {!myOffersCardOpen && (myPendingBids.length > 0 || myPendingNegotiationOffers.length > 0) && (
+            <div className="px-2 pb-2">
+              <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg p-2">
+                <PoundSterling className="h-4 w-4 text-primary" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">
+                    {myPendingBids.length > 0 
+                      ? myPendingBids[0].offer?.pickupLocation || 'Pending bid'
+                      : myPendingNegotiationOffers[0]?.route?.startLocation || myPendingNegotiationOffers[0]?.pickupLocation || 'Pending offer'}
+                  </p>
+                  <p className="text-muted-foreground">Waiting for response</p>
+                </div>
+                <Badge variant="outline" className="text-primary">Pending</Badge>
+              </div>
+            </div>
+          )}
+
+          {!myOffersCardOpen && myPendingBids.length === 0 && myPendingNegotiationOffers.length === 0 && (
+            <div className="px-2 pb-2">
+              <p className="text-xs text-muted-foreground text-center py-2">No pending offers</p>
+            </div>
+          )}
+
+          {myOffersCardOpen && (
+            <div className="px-2 pb-2">
+              {bidsLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : myPendingBids.length === 0 && myPendingNegotiationOffers.length === 0 ? (
+                <div className="text-center py-6">
+                  <PoundSterling className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No pending offers</p>
+                  <p className="text-xs text-muted-foreground mt-1">Bid on rider offers or negotiate on routes</p>
+                </div>
+              ) : (
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-my-offers">
+                  {/* Bids */}
+                  {myPendingBids.map((bid: any) => (
+                    <div key={`bid-${bid.id}`} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start w-[160px] min-w-[160px]" data-testid={`card-my-bid-${bid.id}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Avatar className="h-5 w-5">
+                          <AvatarImage src={bid.rider?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bid.offer?.id}`} />
+                          <AvatarFallback className="text-[10px]">R</AvatarFallback>
+                        </Avatar>
+                        <span className="text-[10px] font-medium truncate flex-1">{bid.rider?.firstName || 'Rider'}</span>
+                        <Badge variant="outline" className="text-[10px] text-amber-600">Bid</Badge>
+                      </div>
+                      <p className="text-[10px] font-medium truncate">{bid.offer?.pickupLocation}</p>
+                      <p className="text-[10px] text-muted-foreground truncate mb-1">→ {bid.offer?.dropoffLocation}</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-muted-foreground">Your bid:</span>
+                        <Badge className="bg-primary text-white text-[10px] px-1">£{bid.bidPrice}</Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span>Original:</span>
+                        <span>£{bid.offer?.offerPrice}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {/* Negotiations */}
+                  {myPendingNegotiationOffers.map((neg: any) => {
+                    const isRouteNeg = !!neg.driverRouteId;
+                    return (
+                      <div key={`neg-${neg.id}-${isRouteNeg}`} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start w-[160px] min-w-[160px]" data-testid={`card-my-negotiation-${neg.id}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Avatar className="h-5 w-5">
+                            <AvatarImage src={neg.rider?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${neg.riderId}`} />
+                            <AvatarFallback className="text-[10px]">R</AvatarFallback>
+                          </Avatar>
+                          <span className="text-[10px] font-medium truncate flex-1">{neg.rider?.firstName || 'Rider'}</span>
+                          <Badge variant="outline" className="text-[10px] text-blue-600">Nego</Badge>
+                        </div>
+                        <p className="text-[10px] font-medium truncate">
+                          {isRouteNeg ? neg.route?.startLocation : neg.pickupLocation}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground truncate mb-1">
+                          → {isRouteNeg ? neg.route?.endLocation : neg.dropoffLocation}
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">Latest:</span>
+                          <Badge className="bg-primary text-white text-[10px] px-1">£{neg.latestOffer?.amount || '0'}</Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         </div>
       </div>
     </div>

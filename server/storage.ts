@@ -432,6 +432,11 @@ export interface IStorage {
   createBid(bid: InsertBid): Promise<Bid>;
   getBidsByOfferId(offerId: number): Promise<Bid[]>;
   getBidsByDriverId(driverId: string): Promise<Bid[]>;
+  getBidsWithOffersByDriverId(driverId: string): Promise<Array<{
+    bid: Bid;
+    offer: RiderOffer | null;
+    rider: { id: string; firstName: string | null; lastName: string | null; profileImageUrl: string | null; riderRating: string | null } | null;
+  }>>;
   updateBidStatus(id: number, status: string): Promise<Bid>;
   acceptBidWithTransaction(bidId: number, paymentIntentId: string): Promise<{
     bid: Bid;
@@ -1073,6 +1078,31 @@ export class DatabaseStorage implements IStorage {
       .from(bids)
       .where(eq(bids.driverId, driverId))
       .orderBy(desc(bids.createdAt));
+  }
+
+  async getBidsWithOffersByDriverId(driverId: string): Promise<Array<{
+    bid: Bid;
+    offer: RiderOffer | null;
+    rider: { id: string; firstName: string | null; lastName: string | null; profileImageUrl: string | null; riderRating: string | null } | null;
+  }>> {
+    const result = await db
+      .select({
+        bid: bids,
+        offer: riderOffers,
+        rider: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+          riderRating: users.riderRating,
+        }
+      })
+      .from(bids)
+      .leftJoin(riderOffers, eq(bids.riderOfferId, riderOffers.id))
+      .leftJoin(users, eq(riderOffers.riderId, users.id))
+      .where(eq(bids.driverId, driverId))
+      .orderBy(desc(bids.createdAt));
+    return result;
   }
 
   async updateBidStatus(id: number, status: string): Promise<Bid> {
