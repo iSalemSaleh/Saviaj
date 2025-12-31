@@ -158,10 +158,37 @@ export default function RideTrackingPage() {
     vehicleMake?: string;
     vehicleModel?: string;
     vehicleColor?: string;
+    phoneNumber?: string;
   }>({
     queryKey: [`/api/users/${ride?.driverId}`],
     enabled: !!ride?.driverId,
   });
+
+  // Fetch rider details for driver to call
+  const { data: riderInfo } = useQuery<{
+    id: string;
+    phoneNumber?: string;
+  }>({
+    queryKey: [`/api/users/${ride?.riderId}`],
+    enabled: !!ride?.riderId && userType === 'driver',
+  });
+
+  // Get the phone number of the other party
+  const otherPartyPhone = userType === 'rider' ? driverInfo?.phoneNumber : riderInfo?.phoneNumber;
+
+  const handleCall = () => {
+    if (otherPartyPhone) {
+      window.location.href = `tel:${otherPartyPhone}`;
+    } else {
+      toast({
+        title: "Phone Not Available",
+        description: userType === 'rider' 
+          ? "Driver's phone number is not available." 
+          : "Rider's phone number is not available.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const { data: hasRated } = useQuery<{ hasRated: boolean }>({
     queryKey: [`/api/ratings/check/${rideId}`],
@@ -457,7 +484,7 @@ export default function RideTrackingPage() {
               </div>
             </div>
             <div className="flex gap-1">
-              <Button variant="outline" size="sm" className="h-7 w-7 p-0" data-testid="button-call">
+              <Button variant="outline" size="sm" className="h-7 w-7 p-0" onClick={handleCall} data-testid="button-call">
                 <Phone className="h-3.5 w-3.5" />
               </Button>
               <Button 
