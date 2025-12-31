@@ -276,7 +276,7 @@ export default function RiderPage() {
       return response.json();
     },
     enabled: !!user,
-    refetchInterval: 200, // Refresh every 0.2 seconds for time-critical bids
+    refetchInterval: 5000, // Refresh every 5 seconds for bids
   });
 
   // Query for nearby commercial drivers (Pro drivers)
@@ -321,7 +321,7 @@ export default function RiderPage() {
       return response.json();
     },
     enabled: !!viewingBidsForOffer && bidsDialogOpen,
-    refetchInterval: bidsDialogOpen ? 200 : false, // Refresh every 0.2 seconds when viewing bids
+    refetchInterval: bidsDialogOpen ? 3000 : false, // Refresh every 3 seconds when viewing bids
   });
 
   // Mutation to accept a bid - now redirects to payment
