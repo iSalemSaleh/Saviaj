@@ -67,11 +67,9 @@ const PRIVATE_DRIVER_EARNINGS_LIMIT = 99.99;
 async function checkPrivateDriverLimits(userId: string): Promise<{ allowed: boolean; message?: string }> {
   const user = await storage.getUser(userId);
   
-  // Debug: log the user's commercial status
-  console.log(`[checkPrivateDriverLimits] userId: ${userId}, isCommercialDriver: ${user?.isCommercialDriver}, commercialStatusVerified: ${user?.commercialStatusVerified}`);
-  
-  // Commercial drivers have no limits
-  if (user?.isCommercialDriver && user?.commercialStatusVerified) {
+  // Commercial drivers have no limits - check isCommercialDriver flag
+  // (commercialStatusVerified is for document verification which is auto-approved for now)
+  if (user?.isCommercialDriver) {
     return { allowed: true };
   }
   
@@ -104,7 +102,7 @@ async function wouldExceedEarningsLimit(userId: string, newEarnings: number): Pr
   const user = await storage.getUser(userId);
   
   // Commercial drivers have no limits
-  if (user?.isCommercialDriver && user?.commercialStatusVerified) {
+  if (user?.isCommercialDriver) {
     return false;
   }
   
@@ -1616,7 +1614,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const user = await storage.getUser(userId);
       
       // Commercial drivers have no limits
-      if (user?.isCommercialDriver && user?.commercialStatusVerified) {
+      if (user?.isCommercialDriver) {
         return res.json({
           isCommercial: true,
           ridesCount: 0,
