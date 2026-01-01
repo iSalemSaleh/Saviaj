@@ -1565,13 +1565,31 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "You cannot request a seat on your own route" });
       }
       
+      // Validate route has valid coordinates - reject if missing/invalid to prevent map fallback issues
+      // Coerce to numbers and validate - empty strings, null, undefined, and 0,0 coordinates are invalid
+      const startLat = route.startLat ? parseFloat(String(route.startLat)) : null;
+      const startLng = route.startLng ? parseFloat(String(route.startLng)) : null;
+      const endLat = route.endLat ? parseFloat(String(route.endLat)) : null;
+      const endLng = route.endLng ? parseFloat(String(route.endLng)) : null;
+      
+      if (startLat === null || startLng === null || endLat === null || endLng === null ||
+          isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng) ||
+          (startLat === 0 && startLng === 0) || (endLat === 0 && endLng === 0)) {
+        return res.status(400).json({ message: "This route is missing location coordinates. Please contact the driver." });
+      }
+      
       // Create a ride request with pending_driver_confirmation status
+      // Use validated route coordinates for pickup/dropoff
       const ride = await storage.createRide({
         riderId: userId,
         driverId: route.driverId,
         driverRouteId: routeId,
-        pickupLocation: `Route: ${route.startLocation}`,
-        dropoffLocation: `Route: ${route.endLocation}`,
+        pickupLocation: route.startLocation,
+        dropoffLocation: route.endLocation,
+        pickupLat: startLat.toString(),
+        pickupLng: startLng.toString(),
+        dropoffLat: endLat.toString(),
+        dropoffLng: endLng.toString(),
         agreedPrice: route.pricePerSeat ? (parseFloat(route.pricePerSeat) * seats).toString() : "0",
         scheduledTime: route.departureTime,
         status: 'pending_driver_confirmation',
@@ -2093,6 +2111,18 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Not enough seats available" });
       }
       
+      // Validate route has valid coordinates - reject if missing/invalid to prevent map fallback issues
+      const startLat = route.startLat ? parseFloat(String(route.startLat)) : null;
+      const startLng = route.startLng ? parseFloat(String(route.startLng)) : null;
+      const endLat = route.endLat ? parseFloat(String(route.endLat)) : null;
+      const endLng = route.endLng ? parseFloat(String(route.endLng)) : null;
+      
+      if (startLat === null || startLng === null || endLat === null || endLng === null ||
+          isNaN(startLat) || isNaN(startLng) || isNaN(endLat) || isNaN(endLng) ||
+          (startLat === 0 && startLng === 0) || (endLat === 0 && endLng === 0)) {
+        return res.status(400).json({ message: "This route is missing location coordinates. Please contact the driver." });
+      }
+      
       // Check driver limits if driver is accepting
       if (negotiation.driverId === userId) {
         const limitCheck = await checkPrivateDriverLimits(negotiation.driverId);
@@ -2113,13 +2143,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         }
       );
       
-      // Create the ride
+      // Create the ride with validated route coordinates
       const ride = await storage.createRide({
         riderId: negotiation.riderId,
         driverId: negotiation.driverId,
         driverRouteId: negotiation.driverRouteId,
-        pickupLocation: `Route: ${route.startLocation}`,
-        dropoffLocation: `Route: ${route.endLocation}`,
+        pickupLocation: route.startLocation,
+        dropoffLocation: route.endLocation,
+        pickupLat: startLat.toString(),
+        pickupLng: startLng.toString(),
+        dropoffLat: endLat.toString(),
+        dropoffLng: endLng.toString(),
         agreedPrice: agreedPrice.toString(),
         scheduledTime: route.departureTime,
         status: 'pending_payment',

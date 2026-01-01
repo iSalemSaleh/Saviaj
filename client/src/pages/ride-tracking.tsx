@@ -153,8 +153,10 @@ export default function RideTrackingPage() {
   });
 
   // Sync paymentSuccess with ride.paymentStatus from backend to prevent going back to payment after it's done
+  // Handle all terminal/locked Stripe statuses: paid, completed, processing, succeeded, requires_capture
   useEffect(() => {
-    if (ride?.paymentStatus === 'paid' || ride?.paymentStatus === 'completed') {
+    const terminalStatuses = ['paid', 'completed', 'processing', 'succeeded', 'requires_capture'];
+    if (ride?.paymentStatus && terminalStatuses.includes(ride.paymentStatus)) {
       setPaymentSuccess(true);
     }
   }, [ride?.paymentStatus]);
@@ -352,7 +354,11 @@ export default function RideTrackingPage() {
   });
 
   // Use actual coordinates from ride data - don't default to London
-  const hasValidCoordinates = ride?.pickupLat && ride?.pickupLng && ride?.dropoffLat && ride?.dropoffLng;
+  // Check for valid non-zero coordinates
+  const hasValidCoordinates = !!(
+    ride?.pickupLat && ride?.pickupLng && ride?.dropoffLat && ride?.dropoffLng &&
+    parseFloat(ride.pickupLat) !== 0 && parseFloat(ride.dropoffLat) !== 0
+  );
   
   const pickupLocation = {
     lat: parseFloat(ride?.pickupLat || "0"),
@@ -363,6 +369,23 @@ export default function RideTrackingPage() {
     lat: parseFloat(ride?.dropoffLat || "0"),
     lng: parseFloat(ride?.dropoffLng || "0"),
   };
+  
+  // Debug logging for coordinates
+  useEffect(() => {
+    if (ride) {
+      console.log('[RideTracking] Ride data:', {
+        id: ride.id,
+        pickupLat: ride.pickupLat,
+        pickupLng: ride.pickupLng,
+        dropoffLat: ride.dropoffLat,
+        dropoffLng: ride.dropoffLng,
+        pickupLocation: ride.pickupLocation,
+        dropoffLocation: ride.dropoffLocation,
+        status: ride.status,
+        paymentStatus: ride.paymentStatus,
+      });
+    }
+  }, [ride]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -434,6 +457,7 @@ export default function RideTrackingPage() {
       <div className="fixed inset-0 z-0">
         {hasValidCoordinates ? (
           <RideMap
+            key={`${ride?.id}-${ride?.pickupLat}-${ride?.dropoffLat}`}
             pickupLocation={pickupLocation}
             dropoffLocation={dropoffLocation}
             driverLocation={driverLocation}
@@ -636,8 +660,10 @@ export default function RideTrackingPage() {
         )}
 
         {/* Payment Section for Riders - Inline */}
-        {/* Only show payment button if: status requires payment AND payment not already completed */}
-        {ride.status === 'pending_payment' && ride.paymentStatus !== 'paid' && ride.paymentStatus !== 'completed' && userType === 'rider' && !paymentSuccess && (
+        {/* Only show payment button if: status requires payment AND payment not already in terminal state */}
+        {ride.status === 'pending_payment' && 
+         !['paid', 'completed', 'processing', 'succeeded', 'requires_capture'].includes(ride.paymentStatus || '') && 
+         userType === 'rider' && !paymentSuccess && (
           <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 p-2">
             <div className="flex items-center gap-2 mb-1.5">
               <CreditCard className="h-3.5 w-3.5 text-primary" />
