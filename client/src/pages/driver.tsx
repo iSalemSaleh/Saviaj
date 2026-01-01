@@ -546,6 +546,7 @@ export default function DriverPage() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/pro-driver/pending-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rides"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/driver-routes/mine"] });
       if (variables.action === 'accept') {
         navigate(`/ride/${data.id}`);
       }
