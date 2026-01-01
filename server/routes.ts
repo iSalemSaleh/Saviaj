@@ -67,6 +67,9 @@ const PRIVATE_DRIVER_EARNINGS_LIMIT = 99.99;
 async function checkPrivateDriverLimits(userId: string): Promise<{ allowed: boolean; message?: string }> {
   const user = await storage.getUser(userId);
   
+  // Debug: log the user's commercial status
+  console.log(`[checkPrivateDriverLimits] userId: ${userId}, isCommercialDriver: ${user?.isCommercialDriver}, commercialStatusVerified: ${user?.commercialStatusVerified}`);
+  
   // Commercial drivers have no limits
   if (user?.isCommercialDriver && user?.commercialStatusVerified) {
     return { allowed: true };
