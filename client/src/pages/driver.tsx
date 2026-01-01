@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
@@ -143,6 +143,12 @@ export default function DriverPage() {
   const [ratePerMile, setRatePerMile] = useState("");
   const [driverTagline, setDriverTagline] = useState("");
   const [isUpdatingOnlineStatus, setIsUpdatingOnlineStatus] = useState(false);
+  
+  // Request banner state (matches rider pending payment banner behavior)
+  const [requestBannerOpen, setRequestBannerOpen] = useState(true);
+  const [requestBannerHovered, setRequestBannerHovered] = useState(false);
+  const [negotiationBannerOpen, setNegotiationBannerOpen] = useState(true);
+  const [negotiationBannerHovered, setNegotiationBannerHovered] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -150,6 +156,30 @@ export default function DriverPage() {
     }, 60000);
     return () => clearInterval(interval);
   }, []);
+  
+  // Auto-collapse request banner after 3 seconds if not hovered (matches rider page)
+  useEffect(() => {
+    if (requestBannerOpen && !requestBannerHovered) {
+      const timer = setTimeout(() => {
+        setRequestBannerOpen(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [requestBannerOpen, requestBannerHovered]);
+  
+  // Auto-collapse negotiation banner after 3 seconds if not hovered (matches rider page)
+  useEffect(() => {
+    if (negotiationBannerOpen && !negotiationBannerHovered) {
+      const timer = setTimeout(() => {
+        setNegotiationBannerOpen(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [negotiationBannerOpen, negotiationBannerHovered]);
+  
+  // Refs for tracking previous counts (used in effects after queries)
+  const prevRequestsCount = useRef(0);
+  const prevNegotiationsCount = useRef(0);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -394,6 +424,22 @@ export default function DriverPage() {
     ...myNegotiations.filter((n: any) => n.status === 'pending' && n.driverId === user?.id && n.lastOfferBy === 'rider'),
     ...myProNegotiations.filter((n: any) => n.status === 'pending' && n.driverId === user?.id && n.lastOfferBy === 'rider'),
   ];
+  
+  // Reopen request banner when new requests arrive
+  useEffect(() => {
+    if (pendingRequests.length > prevRequestsCount.current) {
+      setRequestBannerOpen(true);
+    }
+    prevRequestsCount.current = pendingRequests.length;
+  }, [pendingRequests.length]);
+  
+  // Reopen negotiation banner when new negotiations arrive
+  useEffect(() => {
+    if (pendingNegotiations.length > prevNegotiationsCount.current) {
+      setNegotiationBannerOpen(true);
+    }
+    prevNegotiationsCount.current = pendingNegotiations.length;
+  }, [pendingNegotiations.length]);
 
   // All driver's pending offers (bids + negotiations where they made an offer)
   const myPendingBids = myBids.filter((b: any) => b.status === 'pending');
@@ -722,147 +768,184 @@ export default function DriverPage() {
         <Navbar />
       </div>
 
+      {/* FLOATING BANNER: Incoming Ride Requests - Collapsible (matches rider pending payment style) */}
       {pendingRequests.length > 0 && (
-        <div className="fixed top-14 right-2 z-[9990] w-64 sm:w-72">
-          <div className="bg-amber-500/95 backdrop-blur-md rounded-xl shadow-2xl border border-amber-400 p-3 ring-2 ring-amber-300/50">
-            <div className="flex items-center gap-2 mb-2">
-              <Bell className="h-4 w-4 animate-bounce text-white" />
-              <span className="text-sm font-semibold text-white">Incoming Requests</span>
-              <Badge className="bg-white/20 text-white text-xs">{pendingRequests.length}</Badge>
-            </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {pendingRequests.slice(0, 3).map((request) => (
-                <div key={request.id} className="bg-white/10 rounded-lg p-2" data-testid={`pending-request-${request.id}`}>
-                  <div className="flex items-start gap-2 text-xs text-white mb-1">
-                    <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{request.pickupLocation}</p>
-                      <p className="text-white/70 truncate">→ {request.dropoffLocation}</p>
-                    </div>
-                    <div className="flex flex-col items-end shrink-0">
-                      <Badge className="bg-white text-amber-600 font-bold text-xs">£{request.agreedPrice}</Badge>
-                      {request.seatsRequested && request.seatsRequested > 1 && (
-                        <span className="text-[10px] text-white/80 mt-0.5">{request.seatsRequested} seats</span>
-                      )}
-                    </div>
+        <div className="fixed top-12 right-2 z-[9990]">
+          {requestBannerOpen ? (
+            <div 
+              className="w-64 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-xl shadow-lg border border-primary/30 dark:border-primary/50 overflow-hidden"
+              onMouseEnter={() => setRequestBannerHovered(true)}
+              onMouseLeave={() => setRequestBannerHovered(false)}
+              onTouchStart={() => setRequestBannerHovered(true)}
+              onTouchEnd={() => setRequestBannerHovered(false)}
+            >
+              <button
+                onClick={() => setRequestBannerOpen(false)}
+                className="w-full px-3 py-2 flex items-center justify-between hover:bg-primary/10 transition-colors"
+                data-testid="button-collapse-request-banner"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+                    <Bell className="h-3 w-3 text-white" />
                   </div>
-                  {request.tripMessage && (
-                    <div className="bg-white/10 rounded p-1.5 mb-1">
-                      <p className="text-[10px] text-white/90 italic line-clamp-2">"{request.tripMessage}"</p>
-                    </div>
-                  )}
-                  <div className="flex gap-1 justify-end">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 bg-red-500/80 hover:bg-red-600 text-white"
-                      onClick={() => respondToRequestMutation.mutate({ rideId: request.id, action: 'decline' })}
-                      disabled={respondToRequestMutation.isPending}
-                      data-testid={`button-decline-request-${request.id}`}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="h-6 px-2 bg-green-500 hover:bg-green-600 text-white"
-                      onClick={() => respondToRequestMutation.mutate({ rideId: request.id, action: 'accept' })}
-                      disabled={respondToRequestMutation.isPending}
-                      data-testid={`button-accept-request-${request.id}`}
-                    >
-                      <Check className="h-3 w-3 mr-1" />
-                      Accept
-                    </Button>
-                  </div>
+                  <span className="text-xs font-semibold text-primary">Ride Requests</span>
+                  <Badge className="bg-primary/20 text-primary text-[10px]">{pendingRequests.length}</Badge>
                 </div>
-              ))}
+                <ChevronUp className="h-4 w-4 text-primary" />
+              </button>
+              <div className="px-3 pb-2 space-y-2 max-h-40 overflow-y-auto">
+                {pendingRequests.slice(0, 3).map((request) => (
+                  <div key={request.id} className="bg-primary/10 rounded-lg p-2" data-testid={`pending-request-${request.id}`}>
+                    <div className="flex items-start gap-2 text-xs mb-1.5">
+                      <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate text-slate-700 dark:text-slate-200">{request.pickupLocation}</p>
+                        <p className="text-slate-500 truncate text-[10px]">→ {request.dropoffLocation}</p>
+                      </div>
+                      <span className="text-primary font-bold text-xs shrink-0">£{request.agreedPrice}</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        className="flex-1 h-6 text-[10px]"
+                        data-testid={`button-accept-request-${request.id}`}
+                        onClick={() => respondToRequestMutation.mutate({ rideId: request.id, action: 'accept' })}
+                        disabled={respondToRequestMutation.isPending}
+                      >
+                        <Check className="h-3 w-3 mr-1" />
+                        Accept
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-6 px-2 text-[10px] text-white hover:opacity-90"
+                        style={{ backgroundColor: '#D93B24' }}
+                        data-testid={`button-decline-request-${request.id}`}
+                        onClick={() => respondToRequestMutation.mutate({ rideId: request.id, action: 'decline' })}
+                        disabled={respondToRequestMutation.isPending}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <button
+              onClick={() => setRequestBannerOpen(true)}
+              className="flex items-center gap-2 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-full shadow-lg border border-primary/30 dark:border-primary/50 px-3 py-1.5 hover:bg-primary/10 transition-colors"
+              data-testid="button-expand-request-banner"
+            >
+              <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center animate-pulse">
+                <Bell className="h-2.5 w-2.5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-primary">{pendingRequests.length} requests</span>
+              <ChevronDown className="h-3 w-3 text-primary" />
+            </button>
+          )}
         </div>
       )}
 
-      {/* Pending Negotiations */}
+      {/* FLOATING BANNER: Price Negotiations - Collapsible (matches rider pending payment style) */}
       {pendingNegotiations.length > 0 && (
-        <div className={`fixed ${pendingRequests.length > 0 ? 'top-64' : 'top-14'} right-2 z-[9990] w-64 sm:w-72`}>
-          <div className="bg-primary/95 backdrop-blur-md rounded-xl shadow-2xl border border-primary/50 p-3 ring-2 ring-primary/30">
-            <div className="flex items-center gap-2 mb-2">
-              <PoundSterling className="h-4 w-4 text-white" />
-              <span className="text-sm font-semibold text-white">Price Negotiations</span>
-              <Badge className="bg-white/20 text-white text-xs">{pendingNegotiations.length}</Badge>
-            </div>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {pendingNegotiations.slice(0, 3).map((negotiation: any) => {
-                const isProNegotiation = !negotiation.driverRouteId;
-                return (
-                  <div key={`neg-${negotiation.id}-${isProNegotiation}`} className="bg-white/10 rounded-lg p-2" data-testid={`pending-negotiation-${negotiation.id}`}>
-                    <div className="flex items-start gap-2 text-xs text-white mb-1">
-                      <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        {negotiation.route ? (
-                          <>
-                            <p className="font-medium truncate">{negotiation.route.startLocation}</p>
-                            <p className="text-white/70 truncate">→ {negotiation.route.endLocation}</p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="font-medium truncate">{negotiation.pickupLocation}</p>
-                            <p className="text-white/70 truncate">→ {negotiation.dropoffLocation}</p>
-                          </>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-end shrink-0">
-                        <Badge className="bg-white text-primary font-bold text-xs">
-                          £{negotiation.latestOffer?.amount || '0'}
-                        </Badge>
-                        {negotiation.seatsRequested > 1 && (
-                          <span className="text-[10px] text-white/80 mt-0.5">{negotiation.seatsRequested} seats</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <Avatar className="h-4 w-4">
-                        <AvatarImage src={negotiation.rider?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${negotiation.riderId}`} />
-                        <AvatarFallback className="text-[8px]">{negotiation.rider?.firstName?.charAt(0) || 'R'}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-[10px] text-white/80">{negotiation.rider?.firstName || 'Rider'}</span>
-                    </div>
-                    {negotiation.latestOffer?.message && (
-                      <div className="bg-white/10 rounded p-1.5 mb-1">
-                        <p className="text-[10px] text-white/90 italic line-clamp-2">"{negotiation.latestOffer.message}"</p>
-                      </div>
-                    )}
-                    <div className="flex gap-1 justify-end">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2 bg-red-500/80 hover:bg-red-600 text-white"
-                        onClick={() => handleNegotiationResponse(negotiation, 'decline', isProNegotiation)}
-                        disabled={negotiationLoading === negotiation.id}
-                        data-testid={`button-decline-negotiation-${negotiation.id}`}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-6 px-2 bg-green-500 hover:bg-green-600 text-white"
-                        onClick={() => handleNegotiationResponse(negotiation, 'accept', isProNegotiation)}
-                        disabled={negotiationLoading === negotiation.id}
-                        data-testid={`button-accept-negotiation-${negotiation.id}`}
-                      >
-                        {negotiationLoading === negotiation.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <>
-                            <Check className="h-3 w-3 mr-1" />
-                            Accept
-                          </>
-                        )}
-                      </Button>
-                    </div>
+        <div className={`fixed ${pendingRequests.length > 0 ? (requestBannerOpen ? 'top-56' : 'top-20') : 'top-12'} right-2 z-[9990]`}>
+          {negotiationBannerOpen ? (
+            <div 
+              className="w-64 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-xl shadow-lg border border-primary/30 dark:border-primary/50 overflow-hidden"
+              onMouseEnter={() => setNegotiationBannerHovered(true)}
+              onMouseLeave={() => setNegotiationBannerHovered(false)}
+              onTouchStart={() => setNegotiationBannerHovered(true)}
+              onTouchEnd={() => setNegotiationBannerHovered(false)}
+            >
+              <button
+                onClick={() => setNegotiationBannerOpen(false)}
+                className="w-full px-3 py-2 flex items-center justify-between hover:bg-primary/10 transition-colors"
+                data-testid="button-collapse-negotiation-banner"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
+                    <PoundSterling className="h-3 w-3 text-white" />
                   </div>
-                );
-              })}
+                  <span className="text-xs font-semibold text-primary">Negotiations</span>
+                  <Badge className="bg-primary/20 text-primary text-[10px]">{pendingNegotiations.length}</Badge>
+                </div>
+                <ChevronUp className="h-4 w-4 text-primary" />
+              </button>
+              <div className="px-3 pb-2 space-y-2 max-h-40 overflow-y-auto">
+                {pendingNegotiations.slice(0, 3).map((negotiation: any) => {
+                  const isProNegotiation = !negotiation.driverRouteId;
+                  return (
+                    <div key={`neg-${negotiation.id}-${isProNegotiation}`} className="bg-primary/10 rounded-lg p-2" data-testid={`pending-negotiation-${negotiation.id}`}>
+                      <div className="flex items-start gap-2 text-xs mb-1.5">
+                        <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0 text-primary" />
+                        <div className="flex-1 min-w-0">
+                          {negotiation.route ? (
+                            <>
+                              <p className="font-medium truncate text-slate-700 dark:text-slate-200">{negotiation.route.startLocation}</p>
+                              <p className="text-slate-500 truncate text-[10px]">→ {negotiation.route.endLocation}</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="font-medium truncate text-slate-700 dark:text-slate-200">{negotiation.pickupLocation}</p>
+                              <p className="text-slate-500 truncate text-[10px]">→ {negotiation.dropoffLocation}</p>
+                            </>
+                          )}
+                        </div>
+                        <span className="text-primary font-bold text-xs shrink-0">£{negotiation.latestOffer?.amount || '0'}</span>
+                      </div>
+                      <div className="flex items-center gap-1 mb-1.5">
+                        <Avatar className="h-4 w-4">
+                          <AvatarImage src={negotiation.rider?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${negotiation.riderId}`} />
+                          <AvatarFallback className="text-[8px]">{negotiation.rider?.firstName?.charAt(0) || 'R'}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-[10px] text-slate-600 dark:text-slate-300">{negotiation.rider?.firstName || 'Rider'}</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Button
+                          size="sm"
+                          className="flex-1 h-6 text-[10px]"
+                          data-testid={`button-accept-negotiation-${negotiation.id}`}
+                          onClick={() => handleNegotiationResponse(negotiation, 'accept', isProNegotiation)}
+                          disabled={negotiationLoading === negotiation.id}
+                        >
+                          {negotiationLoading === negotiation.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <>
+                              <Check className="h-3 w-3 mr-1" />
+                              Accept
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-6 px-2 text-[10px] text-white hover:opacity-90"
+                          style={{ backgroundColor: '#D93B24' }}
+                          data-testid={`button-decline-negotiation-${negotiation.id}`}
+                          onClick={() => handleNegotiationResponse(negotiation, 'decline', isProNegotiation)}
+                          disabled={negotiationLoading === negotiation.id}
+                        >
+                          Decline
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          ) : (
+            <button
+              onClick={() => setNegotiationBannerOpen(true)}
+              className="flex items-center gap-2 backdrop-blur-md bg-white/90 dark:bg-slate-800/90 rounded-full shadow-lg border border-primary/30 dark:border-primary/50 px-3 py-1.5 hover:bg-primary/10 transition-colors"
+              data-testid="button-expand-negotiation-banner"
+            >
+              <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center animate-pulse">
+                <PoundSterling className="h-2.5 w-2.5 text-white" />
+              </div>
+              <span className="text-xs font-medium text-primary">{pendingNegotiations.length} offers</span>
+              <ChevronDown className="h-3 w-3 text-primary" />
+            </button>
+          )}
         </div>
       )}
 

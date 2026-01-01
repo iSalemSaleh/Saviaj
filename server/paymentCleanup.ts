@@ -1,7 +1,8 @@
 import { storage } from './storage';
 import { stripeService } from './stripeService';
 
-const PAYMENT_TIMEOUT_MINUTES = 30;
+const PAYMENT_TIMEOUT_MINUTES_STANDARD = 30;
+const PAYMENT_TIMEOUT_MINUTES_PRO_DRIVER = 15;
 
 export async function markExpiredRides(): Promise<void> {
   try {
@@ -53,9 +54,29 @@ export async function markExpiredRides(): Promise<void> {
 
 export async function cleanupStalePendingPayments(): Promise<void> {
   try {
-    const cutoffTime = new Date(Date.now() - PAYMENT_TIMEOUT_MINUTES * 60 * 1000);
+    // Pro driver rides (no riderOfferId and no driverRouteId) have 15 min timeout
+    // Standard rides have 30 min timeout
+    const proCutoffTime = new Date(Date.now() - PAYMENT_TIMEOUT_MINUTES_PRO_DRIVER * 60 * 1000);
+    const standardCutoffTime = new Date(Date.now() - PAYMENT_TIMEOUT_MINUTES_STANDARD * 60 * 1000);
     
-    const staleRides = await storage.getStalePendingPaymentRides(cutoffTime);
+    // Get all pending payment rides
+    const allStaleRides = await storage.getStalePendingPaymentRides(proCutoffTime);
+    
+    if (allStaleRides.length === 0) {
+      return;
+    }
+    
+    // Filter rides based on type and appropriate timeout
+    const staleRides = allStaleRides.filter(ride => {
+      const isProDriverRide = !ride.riderOfferId && !ride.driverRouteId;
+      if (isProDriverRide) {
+        // Pro driver rides: 15 min timeout
+        return ride.createdAt && new Date(ride.createdAt) < proCutoffTime;
+      } else {
+        // Standard rides: 30 min timeout
+        return ride.createdAt && new Date(ride.createdAt) < standardCutoffTime;
+      }
+    });
     
     if (staleRides.length === 0) {
       return;
@@ -65,6 +86,9 @@ export async function cleanupStalePendingPayments(): Promise<void> {
     
     for (const ride of staleRides) {
       try {
+        const isProDriverRide = !ride.riderOfferId && !ride.driverRouteId;
+        const timeoutMinutes = isProDriverRide ? PAYMENT_TIMEOUT_MINUTES_PRO_DRIVER : PAYMENT_TIMEOUT_MINUTES_STANDARD;
+        
         if (ride.paymentIntentId) {
           try {
             await stripeService.cancelPaymentIntent(ride.paymentIntentId);
@@ -92,7 +116,7 @@ export async function cleanupStalePendingPayments(): Promise<void> {
             userId: ride.driverId,
             type: 'payment_timeout',
             title: 'Ride Payment Expired',
-            message: `The rider did not complete payment within ${PAYMENT_TIMEOUT_MINUTES} minutes. The ride from ${ride.pickupLocation} to ${ride.dropoffLocation} has been cancelled.`,
+            message: `The rider did not complete payment within ${timeoutMinutes} minutes. The ride from ${ride.pickupLocation} to ${ride.dropoffLocation} has been cancelled.`,
             relatedRideId: ride.id,
             read: false,
           });
