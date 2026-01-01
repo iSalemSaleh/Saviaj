@@ -1566,12 +1566,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       
       // Create a ride request with pending_driver_confirmation status
+      // Map driver route coordinates to ride pickup/dropoff coordinates
       const ride = await storage.createRide({
         riderId: userId,
         driverId: route.driverId,
         driverRouteId: routeId,
         pickupLocation: `Route: ${route.startLocation}`,
         dropoffLocation: `Route: ${route.endLocation}`,
+        pickupLat: route.startLat,
+        pickupLng: route.startLng,
+        dropoffLat: route.endLat,
+        dropoffLng: route.endLng,
         agreedPrice: route.pricePerSeat ? (parseFloat(route.pricePerSeat) * seats).toString() : "0",
         scheduledTime: route.departureTime,
         status: 'pending_driver_confirmation',
@@ -2113,13 +2118,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         }
       );
       
-      // Create the ride
+      // Create the ride with driver route coordinates mapped to pickup/dropoff
       const ride = await storage.createRide({
         riderId: negotiation.riderId,
         driverId: negotiation.driverId,
         driverRouteId: negotiation.driverRouteId,
         pickupLocation: `Route: ${route.startLocation}`,
         dropoffLocation: `Route: ${route.endLocation}`,
+        pickupLat: route.startLat,
+        pickupLng: route.startLng,
+        dropoffLat: route.endLat,
+        dropoffLng: route.endLng,
         agreedPrice: agreedPrice.toString(),
         scheduledTime: route.departureTime,
         status: 'pending_payment',

@@ -351,45 +351,25 @@ export default function RideTrackingPage() {
     onChatMessage: handleChatMessage,
   });
 
-  // Use actual coordinates from ride data
   // Parse coordinates - handle both string and number types from API
   // Drizzle returns decimal as string, so we must parse them
   const parseCoord = (val: string | number | null | undefined): number | null => {
     if (val === null || val === undefined) return null;
-    // Handle both string and number (Drizzle returns decimal as string)
     const num = typeof val === 'number' ? val : parseFloat(String(val));
     return Number.isFinite(num) ? num : null;
   };
-  
-  // Debug: log what we're receiving from the API
-  console.log('[DEBUG] Ride coordinates from API:', {
-    pickupLat: ride?.pickupLat,
-    pickupLng: ride?.pickupLng,
-    dropoffLat: ride?.dropoffLat,
-    dropoffLng: ride?.dropoffLng,
-    rideId: ride?.id,
-  });
   
   const pickupLatParsed = parseCoord(ride?.pickupLat);
   const pickupLngParsed = parseCoord(ride?.pickupLng);
   const dropoffLatParsed = parseCoord(ride?.dropoffLat);
   const dropoffLngParsed = parseCoord(ride?.dropoffLng);
   
-  console.log('[DEBUG] Parsed coordinates:', {
-    pickupLatParsed,
-    pickupLngParsed,
-    dropoffLatParsed,
-    dropoffLngParsed,
-  });
-  
   // Valid if all coordinates are finite numbers
   const hasValidCoordinates = pickupLatParsed !== null && pickupLngParsed !== null &&
                                dropoffLatParsed !== null && dropoffLngParsed !== null;
   
-  console.log('[DEBUG] hasValidCoordinates:', hasValidCoordinates);
-  
   const pickupLocation = {
-    lat: pickupLatParsed ?? 51.5074, // Default to London only for map display fallback
+    lat: pickupLatParsed ?? 51.5074,
     lng: pickupLngParsed ?? -0.1278,
   };
 
