@@ -998,10 +998,25 @@ export class DatabaseStorage implements IStorage {
 
   // Ride operations
   async createRide(ride: InsertRide): Promise<Ride> {
+    console.log('[DEBUG createRide] Input coordinates:', {
+      pickupLat: ride.pickupLat,
+      pickupLng: ride.pickupLng,
+      dropoffLat: ride.dropoffLat,
+      dropoffLng: ride.dropoffLng,
+      pickupLocation: ride.pickupLocation,
+      dropoffLocation: ride.dropoffLocation,
+    });
     const [newRide] = await db
       .insert(rides)
       .values(ride as any)
       .returning();
+    console.log('[DEBUG createRide] Stored ride coordinates:', {
+      id: newRide.id,
+      pickupLat: newRide.pickupLat,
+      pickupLng: newRide.pickupLng,
+      dropoffLat: newRide.dropoffLat,
+      dropoffLng: newRide.dropoffLng,
+    });
     return newRide;
   }
 
