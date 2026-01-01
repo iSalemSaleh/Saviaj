@@ -47,6 +47,17 @@ interface RiderOffer {
   status: string;
 }
 
+interface DriverRoute {
+  id: number;
+  driverId: string;
+  startLocation: string;
+  endLocation: string;
+  departureTime: string;
+  availableSeats: number;
+  pricePerSeat: string;
+  status: string;
+}
+
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3959;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -113,6 +124,7 @@ export default function DriverPage() {
   const [offersCardOpen, setOffersCardOpen] = useState(false);
   const [activeRidesCardOpen, setActiveRidesCardOpen] = useState(false);
   const [myOffersCardOpen, setMyOffersCardOpen] = useState(false);
+  const [myRoutesCardOpen, setMyRoutesCardOpen] = useState(false);
 
   const handleStartChange = (value: string, lat?: number, lon?: number) => {
     setStartLocation(value);
@@ -415,6 +427,13 @@ export default function DriverPage() {
   // Fetch driver's own bids on rider offers
   const { data: myBids = [], isLoading: bidsLoading } = useQuery<any[]>({
     queryKey: ["/api/bids/mine"],
+    enabled: !!user,
+    refetchInterval: 5000,
+  });
+  
+  // Fetch driver's own posted routes
+  const { data: myPostedRoutes = [], isLoading: myRoutesLoading } = useQuery<DriverRoute[]>({
+    queryKey: ["/api/driver-routes/mine"],
     enabled: !!user,
     refetchInterval: 5000,
   });
@@ -736,21 +755,36 @@ export default function DriverPage() {
     setCenterTrigger(prev => prev + 1);
   };
 
-  const handleCardToggle = (card: 'offers' | 'active' | 'myOffers') => {
+  const handleCardToggle = (card: 'offers' | 'active' | 'myOffers' | 'myRoutes') => {
     if (card === 'offers') {
       setOffersCardOpen(!offersCardOpen);
       setActiveRidesCardOpen(false);
       setMyOffersCardOpen(false);
+      setMyRoutesCardOpen(false);
     } else if (card === 'active') {
       setActiveRidesCardOpen(!activeRidesCardOpen);
       setOffersCardOpen(false);
       setMyOffersCardOpen(false);
-    } else {
+      setMyRoutesCardOpen(false);
+    } else if (card === 'myOffers') {
       setMyOffersCardOpen(!myOffersCardOpen);
       setOffersCardOpen(false);
       setActiveRidesCardOpen(false);
+      setMyRoutesCardOpen(false);
+    } else {
+      setMyRoutesCardOpen(!myRoutesCardOpen);
+      setOffersCardOpen(false);
+      setActiveRidesCardOpen(false);
+      setMyOffersCardOpen(false);
     }
   };
+  
+  // Filter posted routes - show active routes that haven't departed yet
+  const activePostedRoutes = myPostedRoutes.filter(route => {
+    if (route.status !== 'active') return false;
+    const departureTime = new Date(route.departureTime);
+    return departureTime >= now;
+  });
 
   return (
     <div className="h-screen w-screen overflow-hidden relative">
@@ -1520,6 +1554,78 @@ export default function DriverPage() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* My Routes Card - Driver's posted routes */}
+        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
+          <div
+            className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
+            onClick={() => handleCardToggle('myRoutes')}
+          >
+            <div className="flex items-center gap-2">
+              <Route className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">My Routes</span>
+              {activePostedRoutes.length > 0 && (
+                <Badge className="bg-primary text-white text-xs">
+                  {activePostedRoutes.length}
+                </Badge>
+              )}
+            </div>
+            {myRoutesCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+          </div>
+
+          {!myRoutesCardOpen && activePostedRoutes.length > 0 && (
+            <div className="px-2 pb-2">
+              <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg p-2">
+                <Route className="h-4 w-4 text-primary" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{activePostedRoutes[0].startLocation}</p>
+                  <p className="text-muted-foreground truncate">→ {activePostedRoutes[0].endLocation}</p>
+                </div>
+                <Badge variant="outline" className="text-primary">{activePostedRoutes[0].availableSeats} seats</Badge>
+              </div>
+            </div>
+          )}
+
+          {!myRoutesCardOpen && activePostedRoutes.length === 0 && (
+            <div className="px-2 pb-2">
+              <p className="text-xs text-muted-foreground text-center py-2">No active routes</p>
+            </div>
+          )}
+
+          {myRoutesCardOpen && (
+            <div className="px-2 pb-2">
+              {myRoutesLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : activePostedRoutes.length === 0 ? (
+                <div className="text-center py-6">
+                  <Route className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No active routes</p>
+                  <p className="text-xs text-muted-foreground mt-1">Post a route above to share your journey</p>
+                </div>
+              ) : (
+                <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-my-routes">
+                  {activePostedRoutes.map((route) => (
+                    <div key={route.id} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start w-[160px] min-w-[160px]" data-testid={`card-my-route-${route.id}`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <Badge variant="outline" className="text-[10px] text-green-600">Active</Badge>
+                        <Badge className="bg-primary text-white text-[10px] px-1">£{route.pricePerSeat}/seat</Badge>
+                      </div>
+                      <p className="text-[10px] font-medium truncate">{route.startLocation}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">→ {route.endLocation}</p>
+                      <p className="text-[10px] text-muted-foreground mb-1">{formatDate(route.departureTime)} {formatTime(route.departureTime)}</p>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground">Available:</span>
+                        <span className="font-medium">{route.availableSeats} seats</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
