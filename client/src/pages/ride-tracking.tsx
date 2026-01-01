@@ -41,10 +41,10 @@ interface Ride {
   driverId: string;
   pickupLocation: string;
   dropoffLocation: string;
-  pickupLat: string | null;
-  pickupLng: string | null;
-  dropoffLat: string | null;
-  dropoffLng: string | null;
+  pickupLat: string | number | null;
+  pickupLng: string | number | null;
+  dropoffLat: string | number | null;
+  dropoffLng: string | number | null;
   agreedPrice: string;
   scheduledTime: string;
   status: string;
@@ -352,24 +352,30 @@ export default function RideTrackingPage() {
   });
 
   // Use actual coordinates from ride data
-  // Check for valid coordinates - must exist and be parseable as finite numbers
-  const pickupLat = ride?.pickupLat ? parseFloat(ride.pickupLat) : null;
-  const pickupLng = ride?.pickupLng ? parseFloat(ride.pickupLng) : null;
-  const dropoffLat = ride?.dropoffLat ? parseFloat(ride.dropoffLat) : null;
-  const dropoffLng = ride?.dropoffLng ? parseFloat(ride.dropoffLng) : null;
+  // Parse coordinates - handle both string and number types from API
+  const parseCoord = (val: string | number | null | undefined): number | null => {
+    if (val === null || val === undefined) return null;
+    const num = typeof val === 'number' ? val : parseFloat(val);
+    return Number.isFinite(num) ? num : null;
+  };
   
-  // Use Number.isFinite to accept 0 as valid (equator/prime meridian)
-  const hasValidCoordinates = Number.isFinite(pickupLat) && Number.isFinite(pickupLng) &&
-                               Number.isFinite(dropoffLat) && Number.isFinite(dropoffLng);
+  const pickupLat = parseCoord(ride?.pickupLat);
+  const pickupLng = parseCoord(ride?.pickupLng);
+  const dropoffLat = parseCoord(ride?.dropoffLat);
+  const dropoffLng = parseCoord(ride?.dropoffLng);
+  
+  // Valid if all coordinates are finite numbers
+  const hasValidCoordinates = pickupLat !== null && pickupLng !== null &&
+                               dropoffLat !== null && dropoffLng !== null;
   
   const pickupLocation = {
-    lat: pickupLat ?? 0,
-    lng: pickupLng ?? 0,
+    lat: pickupLat ?? 51.5074, // Default to London only for map display fallback
+    lng: pickupLng ?? -0.1278,
   };
 
   const dropoffLocation = {
-    lat: dropoffLat ?? 0,
-    lng: dropoffLng ?? 0,
+    lat: dropoffLat ?? 51.5174,
+    lng: dropoffLng ?? -0.1378,
   };
 
   const getStatusColor = (status: string) => {
@@ -440,25 +446,23 @@ export default function RideTrackingPage() {
     <div className="h-screen w-screen overflow-hidden relative">
       {/* Full-screen Map Background */}
       <div className="fixed inset-0 z-0">
-        {hasValidCoordinates ? (
-          <RideMap
-            pickupLocation={pickupLocation}
-            dropoffLocation={dropoffLocation}
-            driverLocation={driverLocation}
-            riderLocation={riderLocation}
-            driverVehicleColor={driverInfo?.vehicleColor || null}
-            showRoute={true}
-            onEtaUpdate={setEta}
-            onDistanceUpdate={setDistance}
-            className="w-full h-full"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-muted/50">
-            <div className="text-center text-muted-foreground">
-              <AlertCircle className="h-12 w-12 mx-auto mb-2" />
-              <p className="text-sm">Map coordinates unavailable</p>
-              <p className="text-xs">Route information could not be loaded</p>
-            </div>
+        <RideMap
+          pickupLocation={pickupLocation}
+          dropoffLocation={dropoffLocation}
+          driverLocation={driverLocation}
+          riderLocation={riderLocation}
+          driverVehicleColor={driverInfo?.vehicleColor || null}
+          showRoute={hasValidCoordinates}
+          onEtaUpdate={setEta}
+          onDistanceUpdate={setDistance}
+          className="w-full h-full"
+        />
+        {!hasValidCoordinates && (
+          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-10 backdrop-blur-sm bg-amber-100/80 dark:bg-amber-900/50 rounded-lg px-3 py-2 shadow-lg">
+            <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" />
+              Route coordinates loading...
+            </p>
           </div>
         )}
       </div>
