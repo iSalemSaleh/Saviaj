@@ -3289,6 +3289,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       
       // Create the ride with status pending_driver_confirmation
+      // For online Pro drivers, rides are immediate - default to now if no time specified
+      const rideTime = scheduledTime ? new Date(scheduledTime) : new Date();
+      
       const ride = await storage.createRide({
         riderId,
         driverId,
@@ -3299,7 +3302,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         dropoffLat,
         dropoffLng,
         agreedPrice: estimatedPrice,
-        scheduledTime: new Date(scheduledTime),
+        scheduledTime: rideTime,
         status: 'pending_driver_confirmation',
       });
       
