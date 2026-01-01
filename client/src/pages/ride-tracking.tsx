@@ -419,31 +419,32 @@ export default function RideTrackingPage() {
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <Navbar />
-      
-      <div className="flex-1 flex flex-col px-3 pt-2 pb-3 max-w-lg mx-auto w-full min-h-0 overflow-y-auto">
-        
-        {/* Dynamic Map - takes remaining space */}
-        <div className="flex-1 rounded-xl overflow-hidden shadow-lg border border-white/20 min-h-[120px] mb-2">
-          <RideMap
-            pickupLocation={pickupLocation}
-            dropoffLocation={dropoffLocation}
-            driverLocation={driverLocation}
-            riderLocation={riderLocation}
-            driverVehicleColor={driverInfo?.vehicleColor || null}
-            showRoute={true}
-            onEtaUpdate={setEta}
-            onDistanceUpdate={setDistance}
-            className="w-full h-full"
-          />
-        </div>
+    <div className="h-screen w-screen overflow-hidden relative">
+      {/* Full-screen Map Background */}
+      <div className="fixed inset-0 z-0">
+        <RideMap
+          pickupLocation={pickupLocation}
+          dropoffLocation={dropoffLocation}
+          driverLocation={driverLocation}
+          riderLocation={riderLocation}
+          driverVehicleColor={driverInfo?.vehicleColor || null}
+          showRoute={true}
+          onEtaUpdate={setEta}
+          onDistanceUpdate={setDistance}
+          className="w-full h-full"
+        />
+      </div>
 
-        {/* Bottom Cards - anchored, don't shrink */}
-        <div className="shrink-0 space-y-2">
+      {/* Navbar */}
+      <div className="relative z-10">
+        <Navbar />
+      </div>
+      
+      {/* Overlay Cards */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 p-3 space-y-2 max-h-[60vh] overflow-y-auto">
         
         {/* Combined Status + Route + Driver Card */}
-        <div className="backdrop-blur-md bg-white/60 dark:bg-slate-800/60 rounded-xl border border-white/20 shadow-md p-2.5">
+        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 p-2.5">
           {/* Top row: Status + ETA + Price */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -537,12 +538,7 @@ export default function RideTrackingPage() {
         {/* Action Section - Integrated with status */}
         {userType === 'driver' && (ride.status === 'scheduled' || ride.status === 'matched' || ride.status === 'en_route_pickup' || ride.status === 'arrived_pickup' || ride.status === 'in_progress') && (
           <Button 
-            className={`w-full h-9 text-sm ${
-              ride.status === 'in_progress' ? 'bg-green-600 hover:bg-green-700' :
-              ride.status === 'arrived_pickup' ? 'bg-green-500 hover:bg-green-600' :
-              ride.status === 'en_route_pickup' ? 'bg-primary hover:bg-primary/90' :
-              'bg-amber-500 hover:bg-amber-600'
-            }`}
+            className="w-full h-9 text-sm bg-primary hover:bg-primary/90"
             onClick={() => {
               if (ride.status === 'scheduled' || ride.status === 'matched') startPickupMutation.mutate();
               else if (ride.status === 'en_route_pickup') arrivedPickupMutation.mutate();
@@ -572,23 +568,21 @@ export default function RideTrackingPage() {
         
         {/* Pre-pickup rider alert - inline badge style */}
         {isPrePickup && userType === 'rider' && (
-          <div className={`flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-medium ${
-            ride.status === 'arrived_pickup' 
-              ? 'bg-green-100/80 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-              : 'bg-amber-100/80 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-          }`}>
-            <Car className={`h-3.5 w-3.5 ${ride.status === 'arrived_pickup' ? '' : 'animate-pulse'}`} />
-            {ride.status === 'arrived_pickup' 
-              ? 'Driver has arrived! Head to pickup point' 
-              : ride.status === 'en_route_pickup' 
-                ? `Driver arriving in ~${eta || '--'}m` 
-                : 'Waiting for driver'}
+          <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 flex items-center justify-center gap-2 py-1.5 px-3 text-xs font-medium">
+            <Car className={`h-3.5 w-3.5 text-primary ${ride.status === 'arrived_pickup' ? '' : 'animate-pulse'}`} />
+            <span className={ride.status === 'arrived_pickup' ? 'text-green-600' : 'text-primary'}>
+              {ride.status === 'arrived_pickup' 
+                ? 'Driver has arrived! Head to pickup point' 
+                : ride.status === 'en_route_pickup' 
+                  ? `Driver arriving in ~${eta || '--'}m` 
+                  : 'Waiting for driver'}
+            </span>
           </div>
         )}
 
         {/* Rating UI with Review */}
         {(showRating || (ride.status === 'completed' && !hasRated?.hasRated)) && (
-          <div className="backdrop-blur-md bg-white/60 dark:bg-slate-800/60 rounded-xl border border-white/20 shadow-md p-3">
+          <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 p-3">
             <p className="text-xs font-medium flex items-center gap-1.5 mb-2">
               <Star className="h-3.5 w-3.5 text-yellow-500" />
               Rate your {userType === 'rider' ? 'driver' : 'rider'}
@@ -604,14 +598,14 @@ export default function RideTrackingPage() {
               value={ratingComment}
               onChange={(e) => setRatingComment(e.target.value)}
               placeholder={`Write something about your ${userType === 'rider' ? 'driver' : 'rider'} (optional)`}
-              className="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 resize-none mb-2"
+              className="w-full text-xs p-2 rounded-lg border border-white/20 bg-background/30 resize-none mb-2"
               rows={2}
               maxLength={500}
               data-testid="input-rating-comment"
             />
             <Button 
               size="sm" 
-              className="w-full h-8 text-xs" 
+              className="w-full h-8 text-xs bg-primary hover:bg-primary/90" 
               onClick={() => submitRatingMutation.mutate()} 
               disabled={submitRatingMutation.isPending} 
               data-testid="button-submit-rating"
@@ -623,7 +617,7 @@ export default function RideTrackingPage() {
 
         {/* Payment Section for Riders - Inline */}
         {(ride.status === 'pending_payment' || ride.status === 'completed' || ride.status === 'in_progress') && userType === 'rider' && !paymentSuccess && (
-          <div className="backdrop-blur-md bg-white/60 dark:bg-slate-800/60 rounded-xl border border-white/20 shadow-md p-2">
+          <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 p-2">
             <div className="flex items-center gap-2 mb-1.5">
               <CreditCard className="h-3.5 w-3.5 text-primary" />
               <span className="text-xs font-medium">Pay £{ride.agreedPrice}</span>
@@ -642,21 +636,20 @@ export default function RideTrackingPage() {
         )}
 
         {paymentSuccess && (
-          <div className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-green-100/80 text-green-700 text-xs font-medium">
+          <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 flex items-center justify-center gap-1.5 py-1.5 px-3 text-green-600 text-xs font-medium">
             <CheckCircle className="h-3.5 w-3.5" />
             Payment Complete
           </div>
         )}
 
         {locationError && (
-          <div className="backdrop-blur-md bg-orange-50/80 dark:bg-orange-950/50 rounded-xl border border-orange-200 shadow-md p-3">
+          <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 p-3">
             <div className="flex items-center gap-2 text-orange-600">
               <AlertCircle className="h-4 w-4" />
               <p className="text-xs">{locationError}</p>
             </div>
           </div>
         )}
-        </div>{/* End of shrink-0 bottom cards wrapper */}
       </div>
     </div>
   );
