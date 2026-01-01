@@ -69,25 +69,44 @@ export default function BecomeDriverPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Determine starting step based on profile picture
+  // Check for upgrade=pro query parameter (private driver upgrading to commercial)
+  const urlParams = new URLSearchParams(window.location.search);
+  const isProUpgrade = urlParams.get('upgrade') === 'pro';
+  const isPrivateDriver = (user as any)?.isDriver && !(user as any)?.isCommercialDriver;
+
+  // Determine starting step based on context
   const hasProfilePicture = !!(user as any)?.profileImageUrl;
-  const startingStep = hasProfilePicture ? 4 : 3;
-  const [step, setStep] = useState(startingStep);
+  // If upgrading to pro, start at step 6 (commercial driver step)
+  // Otherwise, start at step 3 or 4 based on profile picture
+  const getStartingStep = () => {
+    if (isProUpgrade && isPrivateDriver) return 6;
+    return hasProfilePicture ? 4 : 3;
+  };
+  const [step, setStep] = useState(getStartingStep);
   const totalSteps = 6;
 
   useEffect(() => {
-    if ((user as any)?.isDriver) {
+    // If already a driver and NOT doing pro upgrade, redirect to driver page
+    if ((user as any)?.isDriver && !isProUpgrade) {
       navigate("/driver");
     }
-  }, [user, navigate]);
+    // If already a commercial driver, redirect to driver page
+    if ((user as any)?.isCommercialDriver) {
+      navigate("/driver");
+    }
+  }, [user, navigate, isProUpgrade]);
 
   // Update starting step when user data loads
   useEffect(() => {
     if (user) {
-      const hasPic = !!(user as any)?.profileImageUrl;
-      setStep(hasPic ? 4 : 3);
+      if (isProUpgrade && isPrivateDriver) {
+        setStep(6);
+      } else {
+        const hasPic = !!(user as any)?.profileImageUrl;
+        setStep(hasPic ? 4 : 3);
+      }
     }
-  }, [user]);
+  }, [user, isProUpgrade, isPrivateDriver]);
 
   // Profile photo state
   const [profileImageUrl, setProfileImageUrl] = useState((user as any)?.profileImageUrl || "");
@@ -126,6 +145,8 @@ export default function BecomeDriverPage() {
   const [phvLicenseUrl, setPhvLicenseUrl] = useState("");
   const [phvLicenseNumber, setPhvLicenseNumber] = useState("");
   const [phvLicenseExpiry, setPhvLicenseExpiry] = useState("");
+  const [ratePerMile, setRatePerMile] = useState("");
+  const [driverTagline, setDriverTagline] = useState("");
 
   // Validation error states
   const [errors, setErrors] = useState<{
@@ -282,6 +303,30 @@ export default function BecomeDriverPage() {
     },
   });
 
+  // Mutation for upgrading existing private driver to commercial/pro status
+  const commercialUpgradeMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/user/upgrade-to-commercial", data);
+      return response.json();
+    },
+    onSuccess: async () => {
+      toast({
+        title: "Congratulations!",
+        description: "You are now a Pro driver with unlimited rides and earnings!",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/auth/user"] });
+      window.location.href = "/driver";
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upgrade to Pro status",
+        variant: "destructive",
+      });
+    },
+  });
+
   const validateStep = (): boolean => {
     setError("");
     const newErrors: typeof errors = {};
@@ -432,38 +477,56 @@ export default function BecomeDriverPage() {
   const handleNext = () => {
     if (validateStep()) {
       if (step === 6) {
-        // Validate ALL required data before final submission
-        if (!validateAllRequiredData()) {
-          return;
+        // Pro upgrade mode - use commercial upgrade endpoint
+        if (isProUpgrade && isPrivateDriver) {
+          commercialUpgradeMutation.mutate({
+            privateHireLicenseUrl: isCommercialDriver ? privateHireLicenseUrl : undefined,
+            privateHireLicenseNumber: isCommercialDriver ? privateHireLicenseNumber : undefined,
+            dvlaCheckCode: isCommercialDriver ? dvlaCheckCode : undefined,
+            commercialInsuranceUrl: isCommercialDriver ? commercialInsuranceUrl : undefined,
+            commercialInsuranceExpiry: isCommercialDriver ? commercialInsuranceExpiry : undefined,
+            vehicleInspectionUrl: isCommercialDriver ? vehicleInspectionUrl : undefined,
+            vehicleInspectionExpiry: isCommercialDriver ? vehicleInspectionExpiry : undefined,
+            phvLicenseUrl: isCommercialDriver ? phvLicenseUrl : undefined,
+            phvLicenseNumber: isCommercialDriver ? phvLicenseNumber : undefined,
+            phvLicenseExpiry: isCommercialDriver ? phvLicenseExpiry : undefined,
+            ratePerMile,
+            driverTagline,
+          });
+        } else {
+          // Validate ALL required data before final submission
+          if (!validateAllRequiredData()) {
+            return;
+          }
+          // Submit the form for new driver registration
+          upgradeMutation.mutate({
+            profileImageUrl,
+            driverLicenseUrl,
+            driverLicenseNumber: driverLicenseNumber.toUpperCase().replace(/\s/g, ''),
+            driverLicenseExpiry,
+            backgroundCheckConsent,
+            vehicleMake,
+            vehicleModel,
+            vehicleYear,
+            vehicleColor,
+            vehicleRegistration,
+            vehicleInsuranceExpiry,
+            bankAccountName,
+            bankSortCode: bankSortCode.replace(/\D/g, ''),
+            bankAccountNumber: bankAccountNumber.replace(/\D/g, ''),
+            isCommercialDriver,
+            privateHireLicenseUrl: isCommercialDriver ? privateHireLicenseUrl : undefined,
+            privateHireLicenseNumber: isCommercialDriver ? privateHireLicenseNumber : undefined,
+            dvlaCheckCode: isCommercialDriver ? dvlaCheckCode : undefined,
+            commercialInsuranceUrl: isCommercialDriver ? commercialInsuranceUrl : undefined,
+            commercialInsuranceExpiry: isCommercialDriver ? commercialInsuranceExpiry : undefined,
+            vehicleInspectionUrl: isCommercialDriver ? vehicleInspectionUrl : undefined,
+            vehicleInspectionExpiry: isCommercialDriver ? vehicleInspectionExpiry : undefined,
+            phvLicenseUrl: isCommercialDriver ? phvLicenseUrl : undefined,
+            phvLicenseNumber: isCommercialDriver ? phvLicenseNumber : undefined,
+            phvLicenseExpiry: isCommercialDriver ? phvLicenseExpiry : undefined,
+          });
         }
-        // Submit the form
-        upgradeMutation.mutate({
-          profileImageUrl,
-          driverLicenseUrl,
-          driverLicenseNumber: driverLicenseNumber.toUpperCase().replace(/\s/g, ''),
-          driverLicenseExpiry,
-          backgroundCheckConsent,
-          vehicleMake,
-          vehicleModel,
-          vehicleYear,
-          vehicleColor,
-          vehicleRegistration,
-          vehicleInsuranceExpiry,
-          bankAccountName,
-          bankSortCode: bankSortCode.replace(/\D/g, ''),
-          bankAccountNumber: bankAccountNumber.replace(/\D/g, ''),
-          isCommercialDriver,
-          privateHireLicenseUrl: isCommercialDriver ? privateHireLicenseUrl : undefined,
-          privateHireLicenseNumber: isCommercialDriver ? privateHireLicenseNumber : undefined,
-          dvlaCheckCode: isCommercialDriver ? dvlaCheckCode : undefined,
-          commercialInsuranceUrl: isCommercialDriver ? commercialInsuranceUrl : undefined,
-          commercialInsuranceExpiry: isCommercialDriver ? commercialInsuranceExpiry : undefined,
-          vehicleInspectionUrl: isCommercialDriver ? vehicleInspectionUrl : undefined,
-          vehicleInspectionExpiry: isCommercialDriver ? vehicleInspectionExpiry : undefined,
-          phvLicenseUrl: isCommercialDriver ? phvLicenseUrl : undefined,
-          phvLicenseNumber: isCommercialDriver ? phvLicenseNumber : undefined,
-          phvLicenseExpiry: isCommercialDriver ? phvLicenseExpiry : undefined,
-        });
       } else {
         setStep(step + 1);
       }
@@ -471,13 +534,20 @@ export default function BecomeDriverPage() {
   };
 
   const handleBack = () => {
-    if (step > startingStep) {
+    const minStep = isProUpgrade && isPrivateDriver ? 6 : (hasProfilePicture ? 4 : 3);
+    if (step > minStep) {
       setStep(step - 1);
       setError("");
+    } else if (isProUpgrade && isPrivateDriver) {
+      navigate("/driver");
     }
   };
 
   const getStepTitle = () => {
+    // Special title for pro upgrade mode
+    if (isProUpgrade && isPrivateDriver) {
+      return { title: "Upgrade to Pro", description: "Remove ride and earnings limits with commercial verification" };
+    }
     switch (step) {
       case 3:
         return { title: "Profile Photo", description: "Add a photo so riders can recognize you" };
@@ -996,8 +1066,8 @@ export default function BecomeDriverPage() {
           <Progress value={progress} className="h-2" />
         </div>
 
-        {/* Benefits Cards - only show on first step */}
-        {step === startingStep && (
+        {/* Benefits Cards - only show on first step (not for pro upgrade) */}
+        {!isProUpgrade && step === getStartingStep() && (
           <div className="grid gap-4 mb-8">
             <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-lg">
               <Car className="h-8 w-8 text-primary" />
@@ -1046,7 +1116,7 @@ export default function BecomeDriverPage() {
                 type="button"
                 variant="outline"
                 onClick={handleBack}
-                disabled={step === startingStep}
+                disabled={isProUpgrade && isPrivateDriver ? false : step === getStartingStep()}
                 data-testid="button-back"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1056,10 +1126,10 @@ export default function BecomeDriverPage() {
               <Button
                 type="button"
                 onClick={handleNext}
-                disabled={upgradeMutation.isPending}
+                disabled={upgradeMutation.isPending || commercialUpgradeMutation.isPending}
                 data-testid="button-next"
               >
-                {upgradeMutation.isPending ? (
+                {(upgradeMutation.isPending || commercialUpgradeMutation.isPending) ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Submitting...
@@ -1067,7 +1137,7 @@ export default function BecomeDriverPage() {
                 ) : step === 6 ? (
                   <>
                     <Check className="mr-2 h-4 w-4" />
-                    Complete Registration
+                    {isProUpgrade && isPrivateDriver ? "Upgrade to Pro" : "Complete Registration"}
                   </>
                 ) : (
                   <>

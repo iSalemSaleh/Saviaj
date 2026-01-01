@@ -1236,6 +1236,71 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Upgrade existing private driver to commercial (Pro) status
+  app.post('/api/user/upgrade-to-commercial', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      const existingUser = await storage.getUser(userId);
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (!existingUser.isDriver) {
+        return res.status(400).json({ message: "You must be a driver to upgrade to commercial status" });
+      }
+      
+      if (existingUser.isCommercialDriver) {
+        return res.status(400).json({ message: "You are already a commercial driver" });
+      }
+      
+      const {
+        privateHireLicenseUrl,
+        privateHireLicenseNumber,
+        dvlaCheckCode,
+        commercialInsuranceUrl,
+        commercialInsuranceExpiry,
+        vehicleInspectionUrl,
+        vehicleInspectionExpiry,
+        phvLicenseUrl,
+        phvLicenseNumber,
+        phvLicenseExpiry,
+        ratePerMile,
+        driverTagline,
+      } = req.body;
+      
+      // Update user with commercial driver fields
+      const [user] = await db
+        .update(users)
+        .set({
+          isCommercialDriver: true,
+          privateHireLicenseUrl,
+          privateHireLicenseNumber,
+          dvlaCheckCode,
+          commercialInsuranceUrl,
+          commercialInsuranceExpiry,
+          vehicleInspectionUrl,
+          vehicleInspectionExpiry,
+          phvLicenseUrl,
+          phvLicenseNumber,
+          phvLicenseExpiry,
+          ratePerMile: ratePerMile ? parseFloat(ratePerMile) : null,
+          driverTagline,
+          // TESTING ONLY: Auto-verify commercial drivers before March 1, 2026
+          commercialStatusVerified: new Date() < new Date('2026-03-01T00:00:00Z'),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      
+      res.json(user);
+    } catch (error) {
+      console.error("Error upgrading to commercial:", error);
+      res.status(500).json({ message: "Failed to upgrade to commercial status" });
+    }
+  });
+
   // Upload driver's license (authenticated - for profile updates)
   app.post('/api/user/upload-license', isAuthenticated, licenseUpload.single('license'), async (req: any, res) => {
     try {
