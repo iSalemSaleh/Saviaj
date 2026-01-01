@@ -2586,6 +2586,20 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(404).json({ message: "Ride not found" });
       }
       
+      // Debug logging for coordinate issues
+      console.log(`[DEBUG] Ride ${id} coordinates:`, {
+        pickupLat: ride.pickupLat,
+        pickupLng: ride.pickupLng,
+        dropoffLat: ride.dropoffLat,
+        dropoffLng: ride.dropoffLng,
+        types: {
+          pickupLat: typeof ride.pickupLat,
+          pickupLng: typeof ride.pickupLng,
+          dropoffLat: typeof ride.dropoffLat,
+          dropoffLng: typeof ride.dropoffLng,
+        }
+      });
+      
       res.json(ride);
     } catch (error) {
       console.error("Error fetching ride:", error);
