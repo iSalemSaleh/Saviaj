@@ -810,6 +810,10 @@ export default function RiderPage() {
       dropoffLocation,
       requestedTime: selectedTime.toISOString(),
       offerPrice: price,
+      pickupLat: pickupCoords?.lat?.toString(),
+      pickupLng: pickupCoords?.lon?.toString(),
+      dropoffLat: dropoffCoords?.lat?.toString(),
+      dropoffLng: dropoffCoords?.lon?.toString(),
     });
   };
 
