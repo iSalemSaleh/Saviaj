@@ -161,6 +161,22 @@ export default function DriverPage() {
   const [negotiationBannerOpen, setNegotiationBannerOpen] = useState(true);
   const [negotiationBannerHovered, setNegotiationBannerHovered] = useState(false);
 
+  // Hidden items state (persisted in localStorage)
+  const [hiddenOffers, setHiddenOffers] = useState<Set<number>>(() => {
+    try {
+      const saved = localStorage.getItem('hiddenOffers');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const hideOffer = (offerId: number) => {
+    setHiddenOffers(prev => {
+      const next = new Set(prev).add(offerId);
+      localStorage.setItem('hiddenOffers', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
@@ -373,12 +389,13 @@ export default function DriverPage() {
     const twentyFourHoursLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     
     return riderOffers.filter(offer => {
+      if (hiddenOffers.has(offer.id)) return false;
       const requestedTime = new Date(offer.requestedTime);
       if (requestedTime < now) return false;
       if (!showFutureDates && requestedTime > twentyFourHoursLater) return false;
       return offer.status === "pending";
     });
-  }, [riderOffers, showFutureDates, currentTime]);
+  }, [riderOffers, showFutureDates, currentTime, hiddenOffers]);
 
   const detourDistanceInMiles = useMemo(() => {
     const value = parseFloat(maxDetour) || 2;
@@ -632,6 +649,27 @@ export default function DriverPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to submit bid",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelRouteMutation = useMutation({
+    mutationFn: async (routeId: number) => {
+      const response = await apiRequest("PATCH", `/api/driver-routes/${routeId}/close`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Route Cancelled",
+        description: "Your posted route has been removed.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/driver-routes/mine"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel route",
         variant: "destructive",
       });
     },
@@ -1047,7 +1085,7 @@ export default function DriverPage() {
               <span className="text-xs font-semibold text-primary">Post Your Route</span>
             </div>
             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              {user?.isCommercialDriver && (
+              {user?.isCommercialDriver ? (
                 <>
                   <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-200">
                     <Radio className={`h-2.5 w-2.5 ${isOnlineForHire ? 'text-green-500 animate-pulse' : 'text-slate-400'}`} />
@@ -1105,6 +1143,16 @@ export default function DriverPage() {
                     </DialogContent>
                   </Dialog>
                 </>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 px-1.5 text-[10px] text-amber-600 hover:text-amber-700 hover:bg-amber-100"
+                  onClick={() => navigate('/become-driver?upgrade=pro')}
+                  data-testid="button-upgrade-pro"
+                >
+                  Upgrade to Pro
+                </Button>
               )}
               <div onClick={() => setFormExpanded(!formExpanded)} className="cursor-pointer">
                 {formExpanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
@@ -1321,7 +1369,14 @@ export default function DriverPage() {
               ) : (
                 <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-rider-offers">
                   {displayOffers.map((offer) => (
-                    <div key={offer.id} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '160px', maxWidth: '200px' }} data-testid={`card-offer-${offer.id}`}>
+                    <div key={offer.id} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start relative" style={{ width: 'calc(50% - 4px)', minWidth: '160px', maxWidth: '200px' }} data-testid={`card-offer-${offer.id}`}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); hideOffer(offer.id); }}
+                        className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center transition-colors z-10"
+                        data-testid={`button-hide-offer-${offer.id}`}
+                      >
+                        <X className="h-2.5 w-2.5 text-white" />
+                      </button>
                       <div className="flex items-center gap-2 mb-1">
                         <Avatar className="h-6 w-6">
                           <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${offer.riderId}`} />
@@ -1570,9 +1625,16 @@ export default function DriverPage() {
                     return (
                       <div 
                         key={route.id} 
-                        className={`flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start transition-all ${isExpanded ? 'w-[280px] min-w-[280px]' : 'w-[160px] min-w-[160px]'}`}
+                        className={`flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start transition-all relative ${isExpanded ? 'w-[280px] min-w-[280px]' : 'w-[160px] min-w-[160px]'}`}
                         data-testid={`card-my-route-${route.id}`}
                       >
+                        <button
+                          onClick={(e) => { e.stopPropagation(); cancelRouteMutation.mutate(route.id); }}
+                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/30 hover:bg-red-500/80 flex items-center justify-center transition-colors z-10"
+                          data-testid={`button-cancel-route-${route.id}`}
+                        >
+                          <X className="h-2.5 w-2.5 text-white" />
+                        </button>
                         <div 
                           className="cursor-pointer"
                           onClick={() => setExpandedRouteId(isExpanded ? null : route.id)}

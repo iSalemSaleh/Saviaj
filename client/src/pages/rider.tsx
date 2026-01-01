@@ -186,6 +186,36 @@ export default function RiderPage() {
   const [negotiateMessage, setNegotiateMessage] = useState("");
   const [isNegotiating, setIsNegotiating] = useState(false);
 
+  // Hidden items state (persisted in localStorage)
+  const [hiddenRoutes, setHiddenRoutes] = useState<Set<number>>(() => {
+    try {
+      const saved = localStorage.getItem('hiddenRoutes');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [hiddenDrivers, setHiddenDrivers] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('hiddenDrivers');
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  const hideRoute = (routeId: number) => {
+    setHiddenRoutes(prev => {
+      const next = new Set(prev).add(routeId);
+      localStorage.setItem('hiddenRoutes', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
+  const hideDriver = (driverId: string) => {
+    setHiddenDrivers(prev => {
+      const next = new Set(prev).add(driverId);
+      localStorage.setItem('hiddenDrivers', JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   // Auto-minimize payment banner after 3 seconds if not hovered
   useEffect(() => {
     if (paymentBannerOpen && !bannerHovered) {
@@ -657,6 +687,7 @@ export default function RiderPage() {
     const twentyFourHoursLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     
     let filtered = driverRoutes.filter(route => {
+      if (hiddenRoutes.has(route.id)) return false;
       const departureTime = new Date(route.departureTime);
       if (departureTime < now) return false;
       if (!showFutureDates && departureTime > twentyFourHoursLater) return false;
@@ -686,7 +717,11 @@ export default function RiderPage() {
     });
     
     return filtered;
-  }, [driverRoutes, userLocation, showFutureDates, currentTime]);
+  }, [driverRoutes, userLocation, showFutureDates, currentTime, hiddenRoutes]);
+
+  const visibleNearbyDrivers = useMemo(() => {
+    return nearbyDrivers.filter(driver => !hiddenDrivers.has(driver.id));
+  }, [nearbyDrivers, hiddenDrivers]);
 
   const nearbyRoutes = useMemo(() => {
     if (!pickupCoords || !dropoffCoords) return [];
@@ -855,7 +890,7 @@ export default function RiderPage() {
         <RiderLocationMap
           userLocation={userLocation}
           destination={dropoffCoords ? { lat: dropoffCoords.lat, lng: dropoffCoords.lon } : undefined}
-          nearbyDrivers={nearbyDrivers}
+          nearbyDrivers={visibleNearbyDrivers}
           showRoute={!!dropoffCoords}
           onRouteInfo={(distance, duration) => setRouteInfo({ distance, duration })}
           centerTrigger={centerTrigger}
@@ -1045,16 +1080,16 @@ export default function RiderPage() {
             <div className="flex items-center gap-2">
               <Crown className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium">Nearby Drivers</span>
-              {nearbyDrivers.length > 0 && <Badge className="bg-primary text-white text-xs">{nearbyDrivers.length}</Badge>}
+              {visibleNearbyDrivers.length > 0 && <Badge className="bg-primary text-white text-xs">{visibleNearbyDrivers.length}</Badge>}
             </div>
             {driversCardOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
           
           {/* Preview when collapsed - show nearest driver */}
-          {!driversCardOpen && nearbyDrivers.length > 0 && (
+          {!driversCardOpen && visibleNearbyDrivers.length > 0 && (
             <div className="px-3 pb-2">
               {(() => {
-                const driver = nearbyDrivers[0];
+                const driver = visibleNearbyDrivers[0];
                 const estimatedCost = getEstimatedCost(driver);
                 return (
                   <div className="flex items-center gap-3 p-2 bg-white/20 dark:bg-white/5 rounded-lg">
@@ -1078,7 +1113,7 @@ export default function RiderPage() {
               })()}
             </div>
           )}
-          {!driversCardOpen && nearbyDrivers.length === 0 && !nearbyDriversLoading && (
+          {!driversCardOpen && visibleNearbyDrivers.length === 0 && !nearbyDriversLoading && (
             <div className="px-3 pb-2">
               <p className="text-xs text-muted-foreground text-center py-1">No Pro drivers nearby</p>
             </div>
@@ -1091,16 +1126,23 @@ export default function RiderPage() {
                 <div className="text-center py-4">
                   <Loader2 className="h-5 w-5 text-primary mx-auto animate-spin" />
                 </div>
-              ) : nearbyDrivers.length === 0 ? (
+              ) : visibleNearbyDrivers.length === 0 ? (
                 <div className="text-center py-3">
                   <p className="text-xs text-muted-foreground">No Pro drivers nearby</p>
                 </div>
               ) : (
                 <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-nearby-drivers">
-                  {nearbyDrivers.map((driver) => {
+                  {visibleNearbyDrivers.map((driver) => {
                     const estimatedCost = getEstimatedCost(driver);
                     return (
-                      <div key={driver.id} className="flex-shrink-0 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '140px', maxWidth: '180px' }} data-testid={`card-pro-driver-${driver.id}`}>
+                      <div key={driver.id} className="flex-shrink-0 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10 snap-start relative" style={{ width: 'calc(50% - 4px)', minWidth: '160px', maxWidth: '200px' }} data-testid={`card-pro-driver-${driver.id}`}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); hideDriver(driver.id); }}
+                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center transition-colors z-10"
+                          data-testid={`button-hide-driver-${driver.id}`}
+                        >
+                          <X className="h-2.5 w-2.5 text-white" />
+                        </button>
                         <Link href={`/driver/${driver.id}`} className="block" data-testid={`link-pro-driver-${driver.id}`}>
                           <div className="flex items-center gap-2 mb-1">
                             <Avatar className="h-6 w-6">
@@ -1208,7 +1250,14 @@ export default function RiderPage() {
               ) : (
                 <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-nearby-routes">
                   {filteredAndSortedRoutes.map((route) => (
-                    <div key={route.id} className="flex-shrink-0 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '140px', maxWidth: '180px' }} data-testid={`card-route-${route.id}`}>
+                    <div key={route.id} className="flex-shrink-0 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10 snap-start relative" style={{ width: 'calc(50% - 4px)', minWidth: '160px', maxWidth: '200px' }} data-testid={`card-route-${route.id}`}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); hideRoute(route.id); }}
+                        className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/30 hover:bg-black/50 flex items-center justify-center transition-colors z-10"
+                        data-testid={`button-hide-route-${route.id}`}
+                      >
+                        <X className="h-2.5 w-2.5 text-white" />
+                      </button>
                       <Link href={`/driver/${route.driverId}`} className="block" data-testid={`link-driver-profile-${route.id}`}>
                         <div className="flex items-center gap-2 mb-1">
                           <Avatar className="h-5 w-5">
@@ -1315,7 +1364,7 @@ export default function RiderPage() {
               ) : (
                 <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-my-routes">
                   {myPendingOffers.slice(0, 10).map((offer) => (
-                    <div key={offer.id} className="flex-shrink-0 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10 snap-start" style={{ width: 'calc(50% - 4px)', minWidth: '140px', maxWidth: '180px' }} data-testid={`my-route-${offer.id}`}>
+                    <div key={offer.id} className="flex-shrink-0 p-2 bg-white/30 dark:bg-white/10 rounded-lg border border-white/10 snap-start relative" style={{ width: 'calc(50% - 4px)', minWidth: '160px', maxWidth: '200px' }} data-testid={`my-route-${offer.id}`}>
                       <div className="flex items-start justify-between gap-1 mb-1">
                         <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-medium truncate">{offer.pickupLocation}</p>
