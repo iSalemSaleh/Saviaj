@@ -723,8 +723,8 @@ export default function DriverPage() {
       </div>
 
       {pendingRequests.length > 0 && (
-        <div className="fixed top-11 right-2 z-40 w-64 sm:w-72">
-          <div className="bg-amber-500/95 backdrop-blur-md rounded-xl shadow-lg border border-amber-400 p-3">
+        <div className="fixed top-14 right-2 z-[9990] w-64 sm:w-72">
+          <div className="bg-amber-500/95 backdrop-blur-md rounded-xl shadow-2xl border border-amber-400 p-3 ring-2 ring-amber-300/50">
             <div className="flex items-center gap-2 mb-2">
               <Bell className="h-4 w-4 animate-bounce text-white" />
               <span className="text-sm font-semibold text-white">Incoming Requests</span>
@@ -782,8 +782,8 @@ export default function DriverPage() {
 
       {/* Pending Negotiations */}
       {pendingNegotiations.length > 0 && (
-        <div className={`fixed ${pendingRequests.length > 0 ? 'top-64' : 'top-11'} right-2 z-40 w-64 sm:w-72`}>
-          <div className="bg-primary/95 backdrop-blur-md rounded-xl shadow-lg border border-primary/50 p-3">
+        <div className={`fixed ${pendingRequests.length > 0 ? 'top-64' : 'top-14'} right-2 z-[9990] w-64 sm:w-72`}>
+          <div className="bg-primary/95 backdrop-blur-md rounded-xl shadow-2xl border border-primary/50 p-3 ring-2 ring-primary/30">
             <div className="flex items-center gap-2 mb-2">
               <PoundSterling className="h-4 w-4 text-white" />
               <span className="text-sm font-semibold text-white">Price Negotiations</span>
