@@ -2467,7 +2467,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         }
       );
       
-      // Create the ride
+      // Create the ride - Pro negotiations are immediate rides, so scheduledTime is now
       const ride = await storage.createRide({
         riderId: negotiation.riderId,
         driverId: negotiation.driverId,
@@ -2477,7 +2477,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         pickupLng: negotiation.pickupLng,
         dropoffLat: negotiation.dropoffLat,
         dropoffLng: negotiation.dropoffLng,
-        agreedPrice: agreedPrice.toString(),
+        agreedPrice: agreedPrice.toFixed(2),
+        scheduledTime: new Date(),
         status: 'pending_payment',
         paymentIntentId: paymentIntent.id,
       });
