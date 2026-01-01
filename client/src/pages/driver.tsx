@@ -83,6 +83,17 @@ interface Ride {
   driverRouteId?: number;
 }
 
+interface DriverRoute {
+  id: number;
+  driverId: string;
+  startLocation: string;
+  endLocation: string;
+  departureTime: string;
+  availableSeats: number;
+  pricePerSeat: string;
+  status: string;
+}
+
 interface UserLocation {
   lat: number;
   lng: number;
@@ -418,6 +429,25 @@ export default function DriverPage() {
     enabled: !!user,
     refetchInterval: 5000,
   });
+  
+  // Fetch driver's own posted routes
+  const { data: myPostedRoutes = [], isLoading: myRoutesLoading } = useQuery<DriverRoute[]>({
+    queryKey: ["/api/driver-routes/mine"],
+    enabled: !!user,
+    refetchInterval: 5000,
+  });
+  
+  // Fetch seat requests (rides) for driver's routes
+  const { data: routeSeatRequests = [] } = useQuery<Ride[]>({
+    queryKey: ["/api/rides"],
+    enabled: !!user,
+    refetchInterval: 5000,
+    select: (rides) => rides.filter(r => 
+      r.driverId === user?.id && 
+      r.driverRouteId && 
+      (r.status === 'pending_driver_confirmation' || r.status === 'pending_payment')
+    ),
+  });
 
   // Filter to only pending negotiations where driver needs to respond
   const pendingNegotiations = [
@@ -447,6 +477,58 @@ export default function DriverPage() {
     ...myNegotiations.filter((n: any) => n.status === 'pending' && n.lastOfferBy === 'driver'),
     ...myProNegotiations.filter((n: any) => n.status === 'pending' && n.lastOfferBy === 'driver'),
   ];
+  
+  // Filter active posted routes (not departed yet)
+  const activePostedRoutes = useMemo(() => {
+    const now = new Date();
+    return myPostedRoutes.filter(route => {
+      if (route.status !== 'active') return false;
+      const departureTime = new Date(route.departureTime);
+      return departureTime >= now;
+    });
+  }, [myPostedRoutes]);
+  
+  // Group route negotiations by route ID
+  const routeNegotiationsByRoute = useMemo(() => {
+    const map = new Map<number, any[]>();
+    myNegotiations.forEach((n: any) => {
+      if (n.driverRouteId) {
+        const existing = map.get(n.driverRouteId) || [];
+        existing.push(n);
+        map.set(n.driverRouteId, existing);
+      }
+    });
+    return map;
+  }, [myNegotiations]);
+  
+  // Group seat requests by route ID
+  const seatRequestsByRoute = useMemo(() => {
+    const map = new Map<number, Ride[]>();
+    routeSeatRequests.forEach((r) => {
+      if (r.driverRouteId) {
+        const existing = map.get(r.driverRouteId) || [];
+        existing.push(r);
+        map.set(r.driverRouteId, existing);
+      }
+    });
+    return map;
+  }, [routeSeatRequests]);
+  
+  // Count total activity for My Offers badge (routes with pending requests/negotiations)
+  const myOffersActivityCount = useMemo(() => {
+    let count = 0;
+    activePostedRoutes.forEach(route => {
+      const requests = seatRequestsByRoute.get(route.id) || [];
+      const negotiations = routeNegotiationsByRoute.get(route.id) || [];
+      const pendingReqs = requests.filter(r => r.status === 'pending_driver_confirmation');
+      const pendingNegs = negotiations.filter((n: any) => n.status === 'pending' && n.lastOfferBy === 'rider');
+      count += pendingReqs.length + pendingNegs.length;
+    });
+    return count;
+  }, [activePostedRoutes, seatRequestsByRoute, routeNegotiationsByRoute]);
+  
+  // State for expanded route cards
+  const [expandedRouteId, setExpandedRouteId] = useState<number | null>(null);
 
   const [negotiationLoading, setNegotiationLoading] = useState<number | null>(null);
 
@@ -1416,107 +1498,174 @@ export default function DriverPage() {
           )}
         </div>
 
-        {/* My Offers Card - Driver's bids and negotiations */}
+        {/* My Offers Card - Driver's posted routes with rider requests */}
         <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
           <div
             className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
             onClick={() => handleCardToggle('myOffers')}
           >
             <div className="flex items-center gap-2">
-              <PoundSterling className="h-4 w-4 text-primary" />
+              <Route className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">My Offers</span>
-              {(myPendingBids.length + myPendingNegotiationOffers.length) > 0 && (
+              {activePostedRoutes.length > 0 && (
                 <Badge className="bg-primary text-white text-xs">
-                  {myPendingBids.length + myPendingNegotiationOffers.length}
+                  {activePostedRoutes.length}
+                </Badge>
+              )}
+              {myOffersActivityCount > 0 && (
+                <Badge className="bg-amber-500 text-white text-xs">
+                  {myOffersActivityCount} new
                 </Badge>
               )}
             </div>
             {myOffersCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
           </div>
 
-          {!myOffersCardOpen && (myPendingBids.length > 0 || myPendingNegotiationOffers.length > 0) && (
+          {!myOffersCardOpen && activePostedRoutes.length > 0 && (
             <div className="px-2 pb-2">
               <div className="flex items-center gap-2 text-xs bg-muted/50 rounded-lg p-2">
-                <PoundSterling className="h-4 w-4 text-primary" />
+                <Route className="h-4 w-4 text-primary" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">
-                    {myPendingBids.length > 0 
-                      ? myPendingBids[0].offer?.pickupLocation || 'Pending bid'
-                      : myPendingNegotiationOffers[0]?.route?.startLocation || myPendingNegotiationOffers[0]?.pickupLocation || 'Pending offer'}
-                  </p>
-                  <p className="text-muted-foreground">Waiting for response</p>
+                  <p className="font-medium truncate">{activePostedRoutes[0].startLocation}</p>
+                  <p className="text-muted-foreground truncate">→ {activePostedRoutes[0].endLocation}</p>
                 </div>
-                <Badge variant="outline" className="text-primary">Pending</Badge>
+                <Badge variant="outline" className="text-primary">{activePostedRoutes[0].availableSeats} seats</Badge>
               </div>
             </div>
           )}
 
-          {!myOffersCardOpen && myPendingBids.length === 0 && myPendingNegotiationOffers.length === 0 && (
+          {!myOffersCardOpen && activePostedRoutes.length === 0 && (
             <div className="px-2 pb-2">
-              <p className="text-xs text-muted-foreground text-center py-2">No pending offers</p>
+              <p className="text-xs text-muted-foreground text-center py-2">No posted routes</p>
             </div>
           )}
 
           {myOffersCardOpen && (
             <div className="px-2 pb-2">
-              {bidsLoading ? (
+              {myRoutesLoading ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
-              ) : myPendingBids.length === 0 && myPendingNegotiationOffers.length === 0 ? (
+              ) : activePostedRoutes.length === 0 ? (
                 <div className="text-center py-6">
-                  <PoundSterling className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No pending offers</p>
-                  <p className="text-xs text-muted-foreground mt-1">Bid on rider offers or negotiate on routes</p>
+                  <Route className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No posted routes</p>
+                  <p className="text-xs text-muted-foreground mt-1">Post a route above to share your journey</p>
                 </div>
               ) : (
                 <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide" data-testid="scroll-my-offers">
-                  {/* Bids */}
-                  {myPendingBids.map((bid: any) => (
-                    <div key={`bid-${bid.id}`} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start w-[160px] min-w-[160px]" data-testid={`card-my-bid-${bid.id}`}>
-                      <div className="flex items-center gap-2 mb-1">
-                        <Avatar className="h-5 w-5">
-                          <AvatarImage src={bid.rider?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${bid.offer?.id}`} />
-                          <AvatarFallback className="text-[10px]">R</AvatarFallback>
-                        </Avatar>
-                        <span className="text-[10px] font-medium truncate flex-1">{bid.rider?.firstName || 'Rider'}</span>
-                        <Badge variant="outline" className="text-[10px] text-amber-600">Bid</Badge>
-                      </div>
-                      <p className="text-[10px] font-medium truncate">{bid.offer?.pickupLocation}</p>
-                      <p className="text-[10px] text-muted-foreground truncate mb-1">→ {bid.offer?.dropoffLocation}</p>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-muted-foreground">Your bid:</span>
-                        <Badge className="bg-primary text-white text-[10px] px-1">£{bid.bidPrice}</Badge>
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span>Original:</span>
-                        <span>£{bid.offer?.offerPrice}</span>
-                      </div>
-                    </div>
-                  ))}
-                  {/* Negotiations */}
-                  {myPendingNegotiationOffers.map((neg: any) => {
-                    const isRouteNeg = !!neg.driverRouteId;
+                  {activePostedRoutes.map((route) => {
+                    const requests = seatRequestsByRoute.get(route.id) || [];
+                    const negotiations = routeNegotiationsByRoute.get(route.id) || [];
+                    const pendingReqs = requests.filter(r => r.status === 'pending_driver_confirmation');
+                    const pendingNegs = negotiations.filter((n: any) => n.status === 'pending');
+                    const hasActivity = pendingReqs.length > 0 || pendingNegs.length > 0;
+                    const isExpanded = expandedRouteId === route.id;
+                    
                     return (
-                      <div key={`neg-${neg.id}-${isRouteNeg}`} className="flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start w-[160px] min-w-[160px]" data-testid={`card-my-negotiation-${neg.id}`}>
-                        <div className="flex items-center gap-2 mb-1">
-                          <Avatar className="h-5 w-5">
-                            <AvatarImage src={neg.rider?.profileImageUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${neg.riderId}`} />
-                            <AvatarFallback className="text-[10px]">R</AvatarFallback>
-                          </Avatar>
-                          <span className="text-[10px] font-medium truncate flex-1">{neg.rider?.firstName || 'Rider'}</span>
-                          <Badge variant="outline" className="text-[10px] text-blue-600">Nego</Badge>
+                      <div 
+                        key={route.id} 
+                        className={`flex-shrink-0 bg-muted/30 rounded-lg p-2 snap-start transition-all ${isExpanded ? 'w-[280px] min-w-[280px]' : 'w-[160px] min-w-[160px]'}`}
+                        data-testid={`card-my-route-${route.id}`}
+                      >
+                        <div 
+                          className="cursor-pointer"
+                          onClick={() => setExpandedRouteId(isExpanded ? null : route.id)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <Badge variant="outline" className="text-[10px] text-green-600">Active</Badge>
+                            <div className="flex gap-1">
+                              {hasActivity && (
+                                <Badge className="bg-amber-500 text-white text-[10px] px-1">
+                                  {pendingReqs.length + pendingNegs.length}
+                                </Badge>
+                              )}
+                              <Badge className="bg-primary text-white text-[10px] px-1">£{route.pricePerSeat}/seat</Badge>
+                            </div>
+                          </div>
+                          <p className="text-[10px] font-medium truncate">{route.startLocation}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">→ {route.endLocation}</p>
+                          <p className="text-[10px] text-muted-foreground mb-1">{formatDate(route.departureTime)} {formatTime(route.departureTime)}</p>
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-muted-foreground">Available:</span>
+                            <span className="font-medium">{route.availableSeats} seats</span>
+                          </div>
                         </div>
-                        <p className="text-[10px] font-medium truncate">
-                          {isRouteNeg ? neg.route?.startLocation : neg.pickupLocation}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground truncate mb-1">
-                          → {isRouteNeg ? neg.route?.endLocation : neg.dropoffLocation}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] text-muted-foreground">Latest:</span>
-                          <Badge className="bg-primary text-white text-[10px] px-1">£{neg.latestOffer?.amount || '0'}</Badge>
-                        </div>
+                        
+                        {/* Expanded view: show rider requests/negotiations */}
+                        {isExpanded && (pendingReqs.length > 0 || pendingNegs.length > 0) && (
+                          <div className="mt-2 pt-2 border-t border-white/10 space-y-2">
+                            <p className="text-[10px] font-semibold text-primary">Rider Requests:</p>
+                            {pendingReqs.map((req) => (
+                              <div key={`req-${req.id}`} className="bg-amber-50 dark:bg-amber-900/20 rounded p-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[10px] font-medium">{req.seatsRequested || 1} seat(s)</span>
+                                  <Badge className="bg-amber-500 text-white text-[10px]">Pending</Badge>
+                                </div>
+                                {req.tripMessage && (
+                                  <p className="text-[10px] text-muted-foreground mb-1">"{req.tripMessage}"</p>
+                                )}
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    className="h-5 text-[10px] flex-1 bg-green-600 hover:bg-green-700"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      respondToRequestMutation.mutate({ rideId: req.id, action: 'accept' });
+                                    }}
+                                    data-testid={`button-accept-route-req-${req.id}`}
+                                  >
+                                    <Check className="h-3 w-3 mr-1" /> Accept
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-5 text-[10px] flex-1"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      respondToRequestMutation.mutate({ rideId: req.id, action: 'decline' });
+                                    }}
+                                    data-testid={`button-decline-route-req-${req.id}`}
+                                  >
+                                    <X className="h-3 w-3 mr-1" /> Decline
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                            {pendingNegs.map((neg: any) => (
+                              <div key={`neg-${neg.id}`} className="bg-blue-50 dark:bg-blue-900/20 rounded p-2">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[10px] font-medium">Negotiation</span>
+                                  <Badge className="bg-blue-500 text-white text-[10px]">
+                                    £{neg.latestOffer?.amount || '0'}
+                                  </Badge>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mb-1">
+                                  {neg.lastOfferBy === 'rider' ? 'Awaiting your response' : 'Waiting for rider'}
+                                </p>
+                                {neg.lastOfferBy === 'rider' && (
+                                  <Button
+                                    size="sm"
+                                    className="h-5 text-[10px] w-full"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/negotiate/route/${neg.id}`);
+                                    }}
+                                    data-testid={`button-view-neg-${neg.id}`}
+                                  >
+                                    View & Respond
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {isExpanded && pendingReqs.length === 0 && pendingNegs.length === 0 && (
+                          <div className="mt-2 pt-2 border-t border-white/10">
+                            <p className="text-[10px] text-muted-foreground text-center">No pending requests</p>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
