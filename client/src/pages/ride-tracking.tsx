@@ -152,6 +152,13 @@ export default function RideTrackingPage() {
     refetchInterval: 200, // Refresh every 0.2 seconds for real-time status updates
   });
 
+  // Sync paymentSuccess with ride.paymentStatus from backend to prevent going back to payment after it's done
+  useEffect(() => {
+    if (ride?.paymentStatus === 'paid' || ride?.paymentStatus === 'completed') {
+      setPaymentSuccess(true);
+    }
+  }, [ride?.paymentStatus]);
+
   // Fetch driver details to get vehicle color for the map
   const { data: driverInfo } = useQuery<{
     id: string;
@@ -344,14 +351,17 @@ export default function RideTrackingPage() {
     onChatMessage: handleChatMessage,
   });
 
+  // Use actual coordinates from ride data - don't default to London
+  const hasValidCoordinates = ride?.pickupLat && ride?.pickupLng && ride?.dropoffLat && ride?.dropoffLng;
+  
   const pickupLocation = {
-    lat: parseFloat(ride?.pickupLat || "51.5074"),
-    lng: parseFloat(ride?.pickupLng || "-0.1278"),
+    lat: parseFloat(ride?.pickupLat || "0"),
+    lng: parseFloat(ride?.pickupLng || "0"),
   };
 
   const dropoffLocation = {
-    lat: parseFloat(ride?.dropoffLat || "51.5174"),
-    lng: parseFloat(ride?.dropoffLng || "-0.1378"),
+    lat: parseFloat(ride?.dropoffLat || "0"),
+    lng: parseFloat(ride?.dropoffLng || "0"),
   };
 
   const getStatusColor = (status: string) => {
@@ -422,17 +432,27 @@ export default function RideTrackingPage() {
     <div className="h-screen w-screen overflow-hidden relative">
       {/* Full-screen Map Background */}
       <div className="fixed inset-0 z-0">
-        <RideMap
-          pickupLocation={pickupLocation}
-          dropoffLocation={dropoffLocation}
-          driverLocation={driverLocation}
-          riderLocation={riderLocation}
-          driverVehicleColor={driverInfo?.vehicleColor || null}
-          showRoute={true}
-          onEtaUpdate={setEta}
-          onDistanceUpdate={setDistance}
-          className="w-full h-full"
-        />
+        {hasValidCoordinates ? (
+          <RideMap
+            pickupLocation={pickupLocation}
+            dropoffLocation={dropoffLocation}
+            driverLocation={driverLocation}
+            riderLocation={riderLocation}
+            driverVehicleColor={driverInfo?.vehicleColor || null}
+            showRoute={true}
+            onEtaUpdate={setEta}
+            onDistanceUpdate={setDistance}
+            className="w-full h-full"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-muted/50">
+            <div className="text-center text-muted-foreground">
+              <AlertCircle className="h-12 w-12 mx-auto mb-2" />
+              <p className="text-sm">Map coordinates unavailable</p>
+              <p className="text-xs">Route information could not be loaded</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Navbar */}
@@ -616,7 +636,8 @@ export default function RideTrackingPage() {
         )}
 
         {/* Payment Section for Riders - Inline */}
-        {(ride.status === 'pending_payment' || ride.status === 'completed' || ride.status === 'in_progress') && userType === 'rider' && !paymentSuccess && (
+        {/* Only show payment button if: status requires payment AND payment not already completed */}
+        {ride.status === 'pending_payment' && ride.paymentStatus !== 'paid' && ride.paymentStatus !== 'completed' && userType === 'rider' && !paymentSuccess && (
           <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 p-2">
             <div className="flex items-center gap-2 mb-1.5">
               <CreditCard className="h-3.5 w-3.5 text-primary" />
