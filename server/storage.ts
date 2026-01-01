@@ -1417,13 +1417,16 @@ export class DatabaseStorage implements IStorage {
 
   async getExpiredScheduledRides(): Promise<Ride[]> {
     const now = new Date();
-    const activeStatuses = ['scheduled', 'matched', 'en_route_pickup', 'arrived_pickup'];
+    // Only expire rides that are still pending payment or pending driver confirmation
+    // Once payment is confirmed (status becomes 'scheduled' or later), 
+    // rides should NEVER expire automatically - only manual cancellation by a party is allowed
+    const unpaidStatuses = ['pending_payment', 'pending_driver_confirmation'];
     return await db
       .select()
       .from(rides)
       .where(
         and(
-          inArray(rides.status, activeStatuses),
+          inArray(rides.status, unpaidStatuses),
           lt(rides.scheduledTime, now)
         )
       );
