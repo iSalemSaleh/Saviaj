@@ -1494,10 +1494,24 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         });
       }
       
+      console.log("[DEBUG] Driver route creation - req.body:", JSON.stringify({
+        startLat: req.body.startLat,
+        startLng: req.body.startLng,
+        endLat: req.body.endLat,
+        endLng: req.body.endLng,
+      }));
+      
       const validatedData = insertDriverRouteSchema.parse({
         ...req.body,
         driverId: userId,
       });
+      
+      console.log("[DEBUG] Driver route creation - validatedData:", JSON.stringify({
+        startLat: validatedData.startLat,
+        startLng: validatedData.startLng,
+        endLat: validatedData.endLat,
+        endLng: validatedData.endLng,
+      }));
       
       const route = await storage.createDriverRoute(validatedData);
       res.status(201).json(route);
