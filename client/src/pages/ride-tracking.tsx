@@ -351,17 +351,25 @@ export default function RideTrackingPage() {
     onChatMessage: handleChatMessage,
   });
 
-  // Use actual coordinates from ride data - don't default to London
-  const hasValidCoordinates = ride?.pickupLat && ride?.pickupLng && ride?.dropoffLat && ride?.dropoffLng;
+  // Use actual coordinates from ride data
+  // Check for valid coordinates - must exist and be parseable as finite numbers
+  const pickupLat = ride?.pickupLat ? parseFloat(ride.pickupLat) : null;
+  const pickupLng = ride?.pickupLng ? parseFloat(ride.pickupLng) : null;
+  const dropoffLat = ride?.dropoffLat ? parseFloat(ride.dropoffLat) : null;
+  const dropoffLng = ride?.dropoffLng ? parseFloat(ride.dropoffLng) : null;
+  
+  // Use Number.isFinite to accept 0 as valid (equator/prime meridian)
+  const hasValidCoordinates = Number.isFinite(pickupLat) && Number.isFinite(pickupLng) &&
+                               Number.isFinite(dropoffLat) && Number.isFinite(dropoffLng);
   
   const pickupLocation = {
-    lat: parseFloat(ride?.pickupLat || "0"),
-    lng: parseFloat(ride?.pickupLng || "0"),
+    lat: pickupLat ?? 0,
+    lng: pickupLng ?? 0,
   };
 
   const dropoffLocation = {
-    lat: parseFloat(ride?.dropoffLat || "0"),
-    lng: parseFloat(ride?.dropoffLng || "0"),
+    lat: dropoffLat ?? 0,
+    lng: dropoffLng ?? 0,
   };
 
   const getStatusColor = (status: string) => {
