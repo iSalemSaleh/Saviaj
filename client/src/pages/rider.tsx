@@ -1117,13 +1117,18 @@ export default function RiderPage() {
                             {estimatedCost && <Badge className="bg-primary text-white text-[10px] px-1">£{estimatedCost}</Badge>}
                           </div>
                         </Link>
-                        <div className="flex gap-1 mt-1">
-                          <Button size="sm" className="flex-1 h-6 text-[10px]" onClick={() => handleRequestProDriver(driver)} disabled={requestingDriverId === driver.id || !dropoffCoords} data-testid={`button-request-pro-driver-${driver.id}`}>
-                            {requestingDriverId === driver.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Request'}
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleNegotiateProDriver(driver)} disabled={!dropoffCoords} data-testid={`button-negotiate-pro-driver-${driver.id}`}>
-                            Negotiate
-                          </Button>
+                        <div className="flex flex-col gap-1 mt-1">
+                          {!dropoffCoords && (
+                            <p className="text-[9px] text-orange-500 text-center">Enter destination above</p>
+                          )}
+                          <div className="flex gap-1">
+                            <Button size="sm" className="flex-1 h-6 text-[10px]" onClick={() => handleRequestProDriver(driver)} disabled={requestingDriverId === driver.id || !dropoffCoords} data-testid={`button-request-pro-driver-${driver.id}`}>
+                              {requestingDriverId === driver.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Request'}
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleNegotiateProDriver(driver)} disabled={!dropoffCoords} data-testid={`button-negotiate-pro-driver-${driver.id}`}>
+                              Negotiate
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
