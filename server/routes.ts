@@ -2228,8 +2228,12 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(404).json({ message: "Driver not found" });
       }
       
-      if (!driver.isCommercialDriver || !driver.commercialStatusVerified) {
+      if (!driver.isCommercialDriver) {
         return res.status(400).json({ message: "This driver is not a Pro driver" });
+      }
+      
+      if (!driver.isOnlineForHire) {
+        return res.status(400).json({ message: "This driver is not currently available for hire" });
       }
       
       if (driverId === riderId) {
