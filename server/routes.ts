@@ -3282,6 +3282,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       const { driverId, pickupLocation, dropoffLocation, pickupLat, pickupLng, dropoffLat, dropoffLng, estimatedPrice, scheduledTime } = req.body;
       
+      // Validate required fields
+      if (!pickupLocation || !dropoffLocation) {
+        return res.status(400).json({ message: "Pickup and dropoff locations are required" });
+      }
+      
+      // agreedPrice is required - ensure it's a valid number
+      const price = parseFloat(estimatedPrice);
+      if (isNaN(price) || price < 0) {
+        return res.status(400).json({ message: "Valid price is required" });
+      }
+      
       // Verify driver is online for hire
       const driver = await storage.getUser(driverId);
       if (!driver || !driver.isOnlineForHire || !driver.isCommercialDriver) {
@@ -3301,7 +3312,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         pickupLng,
         dropoffLat,
         dropoffLng,
-        agreedPrice: estimatedPrice,
+        agreedPrice: price.toFixed(2),
         scheduledTime: rideTime,
         status: 'pending_driver_confirmation',
       });
