@@ -353,29 +353,49 @@ export default function RideTrackingPage() {
 
   // Use actual coordinates from ride data
   // Parse coordinates - handle both string and number types from API
+  // Drizzle returns decimal as string, so we must parse them
   const parseCoord = (val: string | number | null | undefined): number | null => {
     if (val === null || val === undefined) return null;
-    const num = typeof val === 'number' ? val : parseFloat(val);
+    // Handle both string and number (Drizzle returns decimal as string)
+    const num = typeof val === 'number' ? val : parseFloat(String(val));
     return Number.isFinite(num) ? num : null;
   };
   
-  const pickupLat = parseCoord(ride?.pickupLat);
-  const pickupLng = parseCoord(ride?.pickupLng);
-  const dropoffLat = parseCoord(ride?.dropoffLat);
-  const dropoffLng = parseCoord(ride?.dropoffLng);
+  // Debug: log what we're receiving from the API
+  console.log('[DEBUG] Ride coordinates from API:', {
+    pickupLat: ride?.pickupLat,
+    pickupLng: ride?.pickupLng,
+    dropoffLat: ride?.dropoffLat,
+    dropoffLng: ride?.dropoffLng,
+    rideId: ride?.id,
+  });
+  
+  const pickupLatParsed = parseCoord(ride?.pickupLat);
+  const pickupLngParsed = parseCoord(ride?.pickupLng);
+  const dropoffLatParsed = parseCoord(ride?.dropoffLat);
+  const dropoffLngParsed = parseCoord(ride?.dropoffLng);
+  
+  console.log('[DEBUG] Parsed coordinates:', {
+    pickupLatParsed,
+    pickupLngParsed,
+    dropoffLatParsed,
+    dropoffLngParsed,
+  });
   
   // Valid if all coordinates are finite numbers
-  const hasValidCoordinates = pickupLat !== null && pickupLng !== null &&
-                               dropoffLat !== null && dropoffLng !== null;
+  const hasValidCoordinates = pickupLatParsed !== null && pickupLngParsed !== null &&
+                               dropoffLatParsed !== null && dropoffLngParsed !== null;
+  
+  console.log('[DEBUG] hasValidCoordinates:', hasValidCoordinates);
   
   const pickupLocation = {
-    lat: pickupLat ?? 51.5074, // Default to London only for map display fallback
-    lng: pickupLng ?? -0.1278,
+    lat: pickupLatParsed ?? 51.5074, // Default to London only for map display fallback
+    lng: pickupLngParsed ?? -0.1278,
   };
 
   const dropoffLocation = {
-    lat: dropoffLat ?? 51.5174,
-    lng: dropoffLng ?? -0.1378,
+    lat: dropoffLatParsed ?? 51.5174,
+    lng: dropoffLngParsed ?? -0.1378,
   };
 
   const getStatusColor = (status: string) => {
