@@ -751,6 +751,10 @@ export default function DriverPage() {
       maxDetourMiles: detourInMiles,
       availableSeats: seats,
       pricePerSeat: price,
+      startLat: startCoords?.lat?.toString(),
+      startLng: startCoords?.lon?.toString(),
+      endLat: endCoords?.lat?.toString(),
+      endLng: endCoords?.lon?.toString(),
     });
   };
 
