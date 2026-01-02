@@ -1649,7 +1649,11 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(users.isCommercialDriver, true),
           eq(users.isOnlineForHire, true),
-          eq(users.driverVerified, true),
+          // Allow visibility if either driverVerified OR commercialStatusVerified is true
+          or(
+            eq(users.driverVerified, true),
+            eq(users.commercialStatusVerified, true)
+          ),
           sql`${users.currentLat} IS NOT NULL`,
           sql`${users.currentLng} IS NOT NULL`
         )
