@@ -64,6 +64,101 @@ function validateUkAccountNumber(accountNumber: string): { valid: boolean; error
 const PRIVATE_DRIVER_RIDE_LIMIT = 5;
 const PRIVATE_DRIVER_EARNINGS_LIMIT = 99.99;
 
+// Helper to mask sensitive user data before sending to client (for own profile only)
+// This is for when a user views their OWN profile - still strips password, masks bank details
+function maskSensitiveUserData(user: any) {
+  if (!user) return user;
+  return {
+    ...user,
+    // Security: Never expose password hash
+    passwordHash: undefined,
+    // Mask bank details (show last digits only)
+    bankAccountNumber: user.bankAccountNumber ? '****' + user.bankAccountNumber.slice(-4) : null,
+    bankSortCode: user.bankSortCode ? '**-**-' + user.bankSortCode.slice(-2) : null,
+    // Convert license URLs to authenticated paths for the user's own viewing
+    driverLicenseUrl: user.driverLicenseUrl ? user.driverLicenseUrl.replace('/uploads/licenses/', '/api/uploads/licenses/') : null,
+    privateHireLicenseUrl: user.privateHireLicenseUrl ? user.privateHireLicenseUrl.replace('/uploads/licenses/', '/api/uploads/licenses/') : null,
+    phvLicenseUrl: user.phvLicenseUrl ? user.phvLicenseUrl.replace('/uploads/licenses/', '/api/uploads/licenses/') : null,
+  };
+}
+
+// Helper to create minimal user info for embedding in other responses (e.g., rider offers, rides)
+// Use this when including user info in responses visible to OTHER users (not the user themselves)
+function getMinimalUserInfo(user: any) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    profileImageUrl: user.profileImageUrl,
+    riderRating: user.riderRating,
+    driverRating: user.driverRating,
+    totalRatingsAsRider: user.totalRatingsAsRider,
+    totalRatingsAsDriver: user.totalRatingsAsDriver,
+  };
+}
+
+// Helper to create public driver profile (safe for exposure to other users)
+// Use for driver listings, nearby drivers, etc. - excludes all PII
+function getPublicDriverProfile(driver: any) {
+  if (!driver) return null;
+  return {
+    id: driver.id,
+    firstName: driver.firstName,
+    lastName: driver.lastName,
+    profileImageUrl: driver.profileImageUrl,
+    driverRating: driver.driverRating,
+    totalRatingsAsDriver: driver.totalRatingsAsDriver,
+    vehicleMake: driver.vehicleMake,
+    vehicleModel: driver.vehicleModel,
+    vehicleYear: driver.vehicleYear,
+    vehicleColor: driver.vehicleColor,
+    vehicleRegistration: driver.vehicleRegistration,
+    isCommercialDriver: driver.isCommercialDriver,
+    ratePerMile: driver.ratePerMile,
+    driverTagline: driver.driverTagline,
+    currentLat: driver.currentLat,
+    currentLng: driver.currentLng,
+    isAvailable: driver.isAvailable,
+    isOnlineForHire: driver.isOnlineForHire,
+  };
+}
+
+// Helper to get driver info for a ride (includes vehicle details needed during ride)
+function getDriverInfoForRide(driver: any) {
+  if (!driver) return null;
+  return {
+    id: driver.id,
+    firstName: driver.firstName,
+    lastName: driver.lastName,
+    profileImageUrl: driver.profileImageUrl,
+    driverRating: driver.driverRating,
+    totalRatingsAsDriver: driver.totalRatingsAsDriver,
+    phoneNumber: driver.phoneNumber, // Riders need to contact driver during active ride
+    vehicleMake: driver.vehicleMake,
+    vehicleModel: driver.vehicleModel,
+    vehicleYear: driver.vehicleYear,
+    vehicleColor: driver.vehicleColor,
+    vehicleRegistration: driver.vehicleRegistration,
+    currentLat: driver.currentLat,
+    currentLng: driver.currentLng,
+  };
+}
+
+// Helper to get rider info for a ride (driver needs contact during active ride)
+function getRiderInfoForRide(rider: any) {
+  if (!rider) return null;
+  return {
+    id: rider.id,
+    firstName: rider.firstName,
+    lastName: rider.lastName,
+    profileImageUrl: rider.profileImageUrl,
+    riderRating: rider.riderRating,
+    totalRatingsAsRider: rider.totalRatingsAsRider,
+    phoneNumber: rider.phoneNumber, // Drivers need to contact rider during active ride
+  };
+}
+
 async function checkPrivateDriverLimits(userId: string): Promise<{ allowed: boolean; message?: string }> {
   const user = await storage.getUser(userId);
   
@@ -201,15 +296,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Setup WebSocket for real-time location tracking on the main server
   setupWebSocket(httpServer);
 
-  // Serve uploaded files statically (profile images need to be publicly accessible)
-  const uploadsDir = path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+  // Serve uploaded profile images statically (only profiles - NOT licenses which contain PII)
+  // Licenses are served through the protected /api/uploads/licenses/:filename endpoint
+  const profilesDir = path.join(process.cwd(), 'uploads', 'profiles');
+  if (!fs.existsSync(profilesDir)) {
+    fs.mkdirSync(profilesDir, { recursive: true });
   }
   
   // Import express for static file serving
   const express = await import('express');
-  app.use('/uploads', express.default.static(uploadsDir));
+  // SECURITY: Only serve profile images statically. License files require authentication.
+  app.use('/uploads/profiles', express.default.static(profilesDir));
 
   // Phone OTP verification endpoints (unauthenticated - for pre-registration)
   app.post('/api/auth/otp/request', async (req, res) => {
@@ -965,7 +1062,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         };
         res.json(maskedUser);
       } else {
-        res.json(user);
+        res.json(maskSensitiveUserData(user));
       }
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -1001,7 +1098,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const { isDriver, driverLicenseUrl } = req.body;
       
       const user = await storage.updateUserDriverStatus(userId, isDriver, driverLicenseUrl);
-      res.json(user);
+      res.json(maskSensitiveUserData(user));
     } catch (error) {
       console.error("Error updating driver status:", error);
       res.status(500).json({ message: "Failed to update driver status" });
@@ -1294,7 +1391,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         .where(eq(users.id, userId))
         .returning();
       
-      res.json(user);
+      res.json(maskSensitiveUserData(user));
     } catch (error) {
       console.error("Error upgrading to commercial:", error);
       res.status(500).json({ message: "Failed to upgrade to commercial status" });
@@ -1353,9 +1450,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       const user = await storage.getUser(userId);
       const filename = req.params.filename;
+      const expectedPath = `/uploads/licenses/${filename}`;
       
-      // Only allow users to view their own license
-      if (user?.driverLicenseUrl !== `/uploads/licenses/${filename}`) {
+      // Only allow users to view their own licenses (check all license fields)
+      const isOwner = (
+        user?.driverLicenseUrl === expectedPath ||
+        user?.privateHireLicenseUrl === expectedPath ||
+        user?.phvLicenseUrl === expectedPath
+      );
+      
+      if (!isOwner) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -3316,7 +3420,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       const { activeMode, isAvailable, lat, lng } = req.body;
       const user = await storage.updateUserAvailability(userId, activeMode, isAvailable, lat, lng);
-      res.json(user);
+      res.json(maskSensitiveUserData(user));
     } catch (error) {
       console.error("Error updating availability:", error);
       res.status(500).json({ message: "Failed to update availability" });
@@ -3326,7 +3430,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   app.get('/api/users/available-drivers', async (req, res) => {
     try {
       const drivers = await storage.getAvailableDrivers();
-      res.json(drivers);
+      // Only expose public driver profiles to protect sensitive data
+      const publicDrivers = drivers.map(getPublicDriverProfile);
+      res.json(publicDrivers);
     } catch (error) {
       console.error("Error fetching available drivers:", error);
       res.status(500).json({ message: "Failed to fetch available drivers" });
@@ -3358,7 +3464,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       
       const updatedUser = await storage.updateDriverOnlineStatus(userId, isOnlineForHire, ratePerMile, driverTagline, lat, lng);
-      res.json(updatedUser);
+      res.json(maskSensitiveUserData(updatedUser));
     } catch (error) {
       console.error("Error updating online status:", error);
       res.status(500).json({ message: "Failed to update online status" });
@@ -4005,7 +4111,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         postcode,
       });
       
-      res.json(updatedUser);
+      res.json(maskSensitiveUserData(updatedUser));
     } catch (error) {
       console.error("Error updating profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
