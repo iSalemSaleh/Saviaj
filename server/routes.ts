@@ -2712,9 +2712,21 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     try {
       const id = parseInt(req.params.id);
       const { status } = req.body;
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
-      const ride = await storage.updateRideStatus(id, status);
-      res.json(ride);
+      // Verify user is part of this ride before allowing status update
+      const ride = await storage.getRideById(id);
+      if (!ride) {
+        return res.status(404).json({ message: "Ride not found" });
+      }
+      
+      if (ride.riderId !== userId && ride.driverId !== userId) {
+        return res.status(403).json({ message: "You are not authorized to update this ride" });
+      }
+      
+      const updatedRide = await storage.updateRideStatus(id, status);
+      res.json(updatedRide);
     } catch (error) {
       console.error("Error updating ride status:", error);
       res.status(500).json({ message: "Failed to update ride status" });
