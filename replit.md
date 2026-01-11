@@ -235,3 +235,22 @@ npx cap sync android
 - Move login rate limiting to Redis for multi-instance deployments
 - Add IP-based throttling for distributed attack protection
 - Consider CAPTCHA for login after N failed attempts
+
+## Security Audit (Phase 2 - Payments)
+
+### Payment Security Measures
+- **Amount Validation**: Payment amounts sourced from database (`ride.agreedPrice`), never from client input
+- **Double-Charge Prevention**: Checks `paymentStatus === 'paid'` before creating new payment intents; reuses existing valid payment intents
+- **Webhook Verification**: Stripe webhooks verified via stripe-replit-sync with signature validation
+- **Webhook Order**: Raw body handler registered BEFORE `express.json()` middleware to preserve Buffer payload
+- **Metadata Validation**: Checkout session metadata verified against ride ID to prevent session hijacking
+- **Authorization Checks**: All payment endpoints verify `ride.riderId === userId`; ride status updates require user to be rider or driver
+- **Refund Handling**: Automatic refunds on cancellation; blocked once ride is `arrived_pickup`, `in_progress`, or `completed`
+- **Payment Cleanup**: Stale pending payments auto-cancelled (15min for Pro drivers, 30min for standard)
+- **Stripe API Version**: Using `2025-11-17.clover` (current stable)
+- **Secure Key Management**: Stripe credentials fetched via Replit connector, never exposed to client
+
+### Driver Earnings Protection
+- **Activity Tracking**: Driver daily activity tracked at ride COMPLETION, not acceptance (prevents cancelled rides counting toward limits)
+- **Private Driver Limits**: 5 rides/day and £99.99 daily earnings cap enforced server-side
+- **Commercial Driver Bypass**: `isCommercialDriver` flag checked before applying limits
