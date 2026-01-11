@@ -66,8 +66,9 @@ export function watchPosition(
 ): { clearWatch: () => void } {
   if (isNativePlatform()) {
     let watchId: string | null = null;
+    let cleared = false;
     
-    Geolocation.watchPosition(
+    const watchPromise = Geolocation.watchPosition(
       {
         enableHighAccuracy: options?.enableHighAccuracy ?? true,
         timeout: options?.timeout ?? 10000,
@@ -80,12 +81,18 @@ export function watchPosition(
           successCallback(convertPosition(position));
         }
       }
-    ).then((id) => {
+    );
+    
+    watchPromise.then((id) => {
       watchId = id;
+      if (cleared && watchId) {
+        Geolocation.clearWatch({ id: watchId });
+      }
     });
 
     return {
       clearWatch: () => {
+        cleared = true;
         if (watchId) {
           Geolocation.clearWatch({ id: watchId });
         }

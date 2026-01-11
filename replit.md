@@ -197,10 +197,11 @@ npx cap sync android
 - `@capacitor/cli`: Build tooling
 - `@capacitor/android`: Android platform
 - `@capacitor/assets`: Icon/splash generation
+- `@capacitor/geolocation`: Native GPS tracking
+- `@capacitor/push-notifications`: Push notification support
 
 ### Next Steps for Store Deployment
-1. Install native plugins (`@capacitor/geolocation`, `@capacitor/push-notifications`)
-2. Configure app signing for release builds
-3. Create Google Play Console account ($25 one-time)
-4. Generate signed release APK
-5. Prepare store listing (screenshots, description)
+1. Configure app signing for release builds
+2. Create Google Play Console account ($25 one-time)
+3. Generate signed release APK
+4. Prepare store listing (screenshots, description)
