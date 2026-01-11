@@ -5,13 +5,32 @@ import { z } from "zod";
 
 const SALT_ROUNDS = 12;
 
-// In-memory rate limiting for login attempts
+// In-memory rate limiting for login attempts with memory protection
 const loginAttempts = new Map<string, { count: number; lastAttempt: number; lockedUntil: number }>();
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 const ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const MAX_TRACKED_IDS = 10000; // Cap to prevent memory exhaustion
+const CLEANUP_INTERVAL = 5 * 60 * 1000; // Cleanup every 5 minutes
+
+// Periodic cleanup of expired entries to prevent memory buildup
+let lastCleanup = Date.now();
+function cleanupExpiredEntries(): void {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL) return;
+  
+  lastCleanup = now;
+  for (const [key, record] of loginAttempts.entries()) {
+    // Remove entries that are outside the attempt window and not locked
+    if (now - record.lastAttempt > ATTEMPT_WINDOW && record.lockedUntil < now) {
+      loginAttempts.delete(key);
+    }
+  }
+}
 
 function checkLoginRateLimit(identifier: string): { allowed: boolean; waitSeconds?: number } {
+  cleanupExpiredEntries();
+  
   const normalizedId = identifier.toLowerCase().trim();
   const now = Date.now();
   const record = loginAttempts.get(normalizedId);
@@ -37,6 +56,25 @@ function checkLoginRateLimit(identifier: string): { allowed: boolean; waitSecond
   return { allowed: true };
 }
 
+function evictOldestEntry(): void {
+  // Find and remove the oldest non-locked entry to make room
+  let oldestKey: string | null = null;
+  let oldestTime = Infinity;
+  const now = Date.now();
+  
+  for (const [key, record] of loginAttempts.entries()) {
+    // Prefer evicting unlocked expired entries first
+    if (record.lockedUntil < now && record.lastAttempt < oldestTime) {
+      oldestTime = record.lastAttempt;
+      oldestKey = key;
+    }
+  }
+  
+  if (oldestKey) {
+    loginAttempts.delete(oldestKey);
+  }
+}
+
 function recordLoginAttempt(identifier: string, success: boolean): void {
   const normalizedId = identifier.toLowerCase().trim();
   const now = Date.now();
@@ -44,6 +82,16 @@ function recordLoginAttempt(identifier: string, success: boolean): void {
   if (success) {
     loginAttempts.delete(normalizedId);
     return;
+  }
+  
+  // Enforce size cap to prevent memory exhaustion from bogus identifiers
+  if (loginAttempts.size >= MAX_TRACKED_IDS && !loginAttempts.has(normalizedId)) {
+    // At capacity - run cleanup first
+    cleanupExpiredEntries();
+    // If still at capacity, evict the oldest entry to make room
+    if (loginAttempts.size >= MAX_TRACKED_IDS) {
+      evictOldestEntry();
+    }
   }
   
   const record = loginAttempts.get(normalizedId);

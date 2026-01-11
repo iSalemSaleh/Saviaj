@@ -217,3 +217,21 @@ npx cap sync android
 2. Create Google Play Console account ($25 one-time)
 3. Generate signed release APK
 4. Prepare store listing (screenshots, description)
+
+## Security Audit (Phase 1 - Authentication)
+
+### Security Measures in Place
+- **Password Hashing**: bcrypt with 12 salt rounds
+- **Session Security**: httpOnly, secure, sameSite:'lax' cookies, 7-day expiry, PostgreSQL-backed
+- **OTP Protection**: 3 attempts max (phone), 5 attempts max (email), 60-second resend cooldown
+- **OTP Storage**: Hashed with bcrypt, 5-minute expiry
+- **Email Verification Tokens**: 30-minute validity, invalidated after use
+- **Phone Validation**: E.164 international format enforced
+- **Login Rate Limiting**: 5 failed attempts triggers 15-minute lockout (in-memory with eviction)
+- **Password Requirements**: Minimum 8 characters
+- **Error Messages**: Non-revealing ("Invalid credentials" instead of "User not found")
+
+### Future Improvements (for high-traffic deployment)
+- Move login rate limiting to Redis for multi-instance deployments
+- Add IP-based throttling for distributed attack protection
+- Consider CAPTCHA for login after N failed attempts
