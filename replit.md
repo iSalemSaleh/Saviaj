@@ -200,6 +200,18 @@ npx cap sync android
 - `@capacitor/geolocation`: Native GPS tracking
 - `@capacitor/push-notifications`: Push notification support
 
+### Mobile UI Optimizations
+- **Safe Area Handling**: CSS classes for notched devices (safe-area-top, safe-area-bottom, etc.)
+- **Touch Targets**: 44px minimum button/link sizes on mobile for accessibility
+- **Input Handling**: 16px font size on mobile inputs to prevent iOS zoom
+- **Pull-to-Refresh**: Custom hook (usePullToRefresh) integrated into History page
+- **Active State Feedback**: Visual feedback on touch for buttons
+
+### Key Mobile Files
+- `client/src/hooks/usePullToRefresh.ts`: Pull-to-refresh gesture handling
+- `client/src/components/ui/pull-to-refresh.tsx`: Refresh indicator component
+- `client/src/lib/nativeGeolocation.ts`: Native GPS wrapper with platform detection
+
 ### Next Steps for Store Deployment
 1. Configure app signing for release builds
 2. Create Google Play Console account ($25 one-time)
