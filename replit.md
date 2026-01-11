@@ -154,3 +154,53 @@ The server automatically detects the hosting environment:
 - Azure: Uses `WEBSITE_HOSTNAME` environment variable
 
 This allows Stripe webhooks to work correctly in both environments.
+
+## Mobile App Deployment (Capacitor)
+
+The app is configured for native mobile deployment using Capacitor (Android-first approach).
+
+### Mobile Configuration
+- **Framework**: Capacitor 8.x with React
+- **Bundle ID**: `com.atlasride.app`
+- **Web Directory**: `dist/public`
+- **Target SDK**: Android 35 (minimum SDK 23)
+
+### Key Files
+- `capacitor.config.ts`: Main Capacitor configuration
+- `android/`: Native Android project (Gradle-based)
+- `resources/icon.png`: Source icon for asset generation
+- `script/cap-build.sh`: Build script for Android APKs
+
+### Build Commands
+```bash
+# Sync web assets to Android
+npx cap sync android
+
+# Build debug APK
+./script/cap-build.sh debug
+
+# Build release APK
+./script/cap-build.sh release
+```
+
+### Native Permissions (AndroidManifest.xml)
+- `INTERNET`: API communication
+- `ACCESS_NETWORK_STATE`: Network connectivity check
+- `ACCESS_FINE_LOCATION`: GPS for ride tracking
+- `ACCESS_COARSE_LOCATION`: Approximate location
+- `ACCESS_BACKGROUND_LOCATION`: Background GPS for active rides
+- `FOREGROUND_SERVICE`: Foreground service for ride tracking
+- `FOREGROUND_SERVICE_LOCATION`: Location-type foreground service (Android 14+)
+
+### Capacitor Plugins Installed
+- `@capacitor/core`: Core runtime
+- `@capacitor/cli`: Build tooling
+- `@capacitor/android`: Android platform
+- `@capacitor/assets`: Icon/splash generation
+
+### Next Steps for Store Deployment
+1. Install native plugins (`@capacitor/geolocation`, `@capacitor/push-notifications`)
+2. Configure app signing for release builds
+3. Create Google Play Console account ($25 one-time)
+4. Generate signed release APK
+5. Prepare store listing (screenshots, description)
