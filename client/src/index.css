@@ -266,25 +266,8 @@
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Touch-friendly minimum sizes for mobile */
+/* Touch interaction improvements for mobile */
 @media (max-width: 768px) {
-  /* Larger touch targets for buttons */
-  button, 
-  [role="button"],
-  .btn,
-  a[href] {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  /* Larger input fields */
-  input,
-  select,
-  textarea {
-    min-height: 48px;
-    font-size: 16px !important; /* Prevents iOS zoom on focus */
-  }
-  
   /* Better spacing for cards */
   .card {
     touch-action: manipulation;
@@ -297,6 +280,13 @@
     -webkit-user-select: none;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Prevent iOS zoom on input focus */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
   }
 }
 
