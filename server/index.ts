@@ -109,6 +109,7 @@ async function initStripe() {
 
   app.use(
     express.json({
+      limit: '1mb', // Prevent large payload DoS attacks
       verify: (req, _res, buf) => {
         req.rawBody = buf;
       },
@@ -116,6 +117,21 @@ async function initStripe() {
   );
 
   app.use(express.urlencoded({ extended: false }));
+
+  // Security headers middleware
+  app.use((req, res, next) => {
+    // Prevent clickjacking attacks
+    res.setHeader('X-Frame-Options', 'DENY');
+    // Prevent MIME type sniffing
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    // Enable XSS filter in browsers
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    // Control referrer information
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    // Permissions policy (restrict sensitive APIs)
+    res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
+    next();
+  });
 
   app.use((req, res, next) => {
     const start = Date.now();

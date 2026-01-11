@@ -64,6 +64,41 @@ function validateUkAccountNumber(accountNumber: string): { valid: boolean; error
 const PRIVATE_DRIVER_RIDE_LIMIT = 5;
 const PRIVATE_DRIVER_EARNINGS_LIMIT = 99.99;
 
+// Input validation helper - parse and validate integer ID from request params
+function parseIntId(value: string): { valid: true; id: number } | { valid: false; error: string } {
+  const id = parseInt(value, 10);
+  if (isNaN(id) || id < 1) {
+    return { valid: false, error: "Invalid ID" };
+  }
+  return { valid: true, id };
+}
+
+// Input validation helper - parse and validate number from request body/params
+function parseNumber(value: any, fieldName: string, min?: number, max?: number): { valid: true; value: number } | { valid: false; error: string } {
+  const num = typeof value === 'number' ? value : parseFloat(value);
+  if (isNaN(num)) {
+    return { valid: false, error: `Invalid ${fieldName}` };
+  }
+  if (min !== undefined && num < min) {
+    return { valid: false, error: `${fieldName} must be at least ${min}` };
+  }
+  if (max !== undefined && num > max) {
+    return { valid: false, error: `${fieldName} must be at most ${max}` };
+  }
+  return { valid: true, value: num };
+}
+
+// Input validation helper - validate string input
+function validateString(value: any, fieldName: string, maxLength: number = 1000): { valid: true; value: string } | { valid: false; error: string } {
+  if (typeof value !== 'string') {
+    return { valid: false, error: `${fieldName} must be a string` };
+  }
+  if (value.length > maxLength) {
+    return { valid: false, error: `${fieldName} exceeds maximum length of ${maxLength}` };
+  }
+  return { valid: true, value: value.trim() };
+}
+
 // Helper to mask sensitive user data before sending to client (for own profile only)
 // This is for when a user views their OWN profile - still strips password, masks bank details
 function maskSensitiveUserData(user: any) {
@@ -1518,8 +1553,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.get('/api/rider-offers/:id', async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const offer = await storage.getRiderOfferById(id);
+      const parsed = parseIntId(req.params.id);
+      if (!parsed.valid) {
+        return res.status(400).json({ message: parsed.error });
+      }
+      const offer = await storage.getRiderOfferById(parsed.id);
       
       if (!offer) {
         return res.status(404).json({ message: "Offer not found" });
@@ -1534,7 +1572,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.patch('/api/rider-offers/:id/accept', isAuthenticated, isProfileComplete, async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const parsed = parseIntId(req.params.id);
+      if (!parsed.valid) {
+        return res.status(400).json({ message: parsed.error });
+      }
+      const id = parsed.id;
       const driverId = req.session?.userId || req.user?.claims?.sub;
       if (!driverId) { return res.status(401).json({ message: "Unauthorized" }); }
       
@@ -1623,7 +1665,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.patch('/api/rider-offers/:id/cancel', isAuthenticated, async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const parsed = parseIntId(req.params.id);
+      if (!parsed.valid) {
+        return res.status(400).json({ message: parsed.error });
+      }
+      const id = parsed.id;
       const userId = req.session?.userId || req.user?.claims?.sub;
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       
@@ -2771,7 +2817,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.get('/api/rides/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const parsed = parseIntId(req.params.id);
+      if (!parsed.valid) {
+        return res.status(400).json({ message: parsed.error });
+      }
+      const id = parsed.id;
       const ride = await storage.getRideById(id);
       
       if (!ride) {
@@ -2814,7 +2864,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
   app.patch('/api/rides/:id/status', isAuthenticated, async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const parsed = parseIntId(req.params.id);
+      if (!parsed.valid) {
+        return res.status(400).json({ message: parsed.error });
+      }
+      const id = parsed.id;
       const { status } = req.body;
       const userId = req.session?.userId || req.user?.claims?.sub;
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
@@ -2840,7 +2894,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Payment Intent for Google Pay / Apple Pay
   app.post('/api/rides/:id/create-payment-intent', isAuthenticated, async (req: any, res) => {
     try {
-      const rideId = parseInt(req.params.id);
+      const parsed = parseIntId(req.params.id);
+      if (!parsed.valid) {
+        return res.status(400).json({ message: parsed.error });
+      }
+      const rideId = parsed.id;
       const userId = req.session?.userId || req.user?.claims?.sub;
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
       

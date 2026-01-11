@@ -144,3 +144,46 @@ Preferred communication style: Simple, everyday language.
 - Consider encrypting license files at rest
 - Add audit logging for sensitive data access
 - Implement data retention policies for deleted accounts
+
+## Security Audit (Phase 4 - Input Validation & API Security)
+
+### Input Validation
+- **Zod Schema Validation**: All major endpoints use Zod schemas (registerSchema, loginSchema, insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema)
+- **Helper Functions**: `parseIntId()`, `parseNumber()`, and `validateString()` helper functions used in route handlers for consistent validation
+- **Price Validation**: Offer prices validated with min (0.30) and max (500) constraints
+- **Coordinate Validation**: Lat/lng values coerced and validated as numbers
+- **Date Validation**: Request times coerced to proper Date objects
+- **ID Validation**: Key endpoints (rider-offers/:id, rides/:id, payment routes) use parseIntId() with proper NaN checks and error responses
+
+### SQL Injection Prevention
+- **Drizzle ORM**: All database queries use Drizzle's parameterized query builder
+- **Template Literals**: Raw SQL uses Drizzle's `sql`` template literals which auto-parameterize values
+- **No String Concatenation**: No direct SQL string concatenation found in codebase
+
+### XSS Prevention
+- **React Default Escaping**: React automatically escapes values in JSX
+- **Limited dangerouslySetInnerHTML**: Only used in chart.tsx for CSS styling (controlled config values, not user input)
+- **No eval() Usage**: No dynamic code execution from user input
+
+### API Security Headers
+- **X-Frame-Options**: Set to DENY (prevents clickjacking)
+- **X-Content-Type-Options**: Set to nosniff (prevents MIME sniffing)
+- **X-XSS-Protection**: Enabled with mode=block
+- **Referrer-Policy**: Set to strict-origin-when-cross-origin
+- **Permissions-Policy**: Restricts geolocation to self, blocks camera/microphone
+
+### Request Size Limits
+- **JSON Body Limit**: 1MB maximum (prevents payload-based DoS)
+- **File Upload Limits**: 10MB for licenses, 5MB for profile images
+
+### Rate Limiting Coverage
+- **Login Endpoint**: 5 attempts before 15-minute lockout (in-memory with eviction)
+- **Phone OTP**: Rate limited to 1 request per 60 seconds per number
+- **Email OTP**: Rate limited to 1 request per 60 seconds per email
+- **Password Reset**: Rate limited to 1 request per 60 seconds per email
+
+### Future Improvements (Phase 4)
+- Add global API rate limiting middleware (express-rate-limit)
+- Implement IP-based throttling for unauthenticated endpoints
+- Add request ID logging for audit trail
+- Consider CAPTCHA for registration and password reset
