@@ -259,7 +259,7 @@ export default function ForgotPassword() {
                 </div>
                 <CardTitle className="text-2xl">Create New Password</CardTitle>
                 <CardDescription>
-                  Enter a new password for your account. Make it at least 6 characters long.
+                  Enter a new password for your account. Make it at least 8 characters long.
                 </CardDescription>
               </CardHeader>
               <CardContent>

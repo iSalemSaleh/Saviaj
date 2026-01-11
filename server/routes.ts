@@ -836,8 +836,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       
       // Validate password strength
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      if (newPassword.length < 8) {
+        return res.status(400).json({ message: "Password must be at least 8 characters" });
       }
       
       const normalizedEmail = email.toLowerCase().trim();
@@ -869,9 +869,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Reset token has expired. Please request a new code." });
       }
       
-      // Hash the new password
+      // Hash the new password (12 salt rounds matches registration)
       const bcrypt = await import("bcrypt");
-      const passwordHash = await bcrypt.default.hash(newPassword, 10);
+      const passwordHash = await bcrypt.default.hash(newPassword, 12);
       
       // Use transaction to update password and mark token as used atomically
       await db.transaction(async (tx) => {
