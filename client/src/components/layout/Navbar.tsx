@@ -271,8 +271,8 @@ export default function Navbar() {
   );
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex h-10 items-center justify-between px-3">
+    <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 safe-area-top">
+      <div className="container mx-auto flex h-12 md:h-10 items-center justify-between px-3">
         <Link href="/" className="flex items-center gap-1.5 font-display text-lg font-bold text-primary">
           <img 
             src={atlasRideLogo} 
