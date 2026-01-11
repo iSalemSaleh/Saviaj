@@ -5,6 +5,64 @@ import { z } from "zod";
 
 const SALT_ROUNDS = 12;
 
+// In-memory rate limiting for login attempts
+const loginAttempts = new Map<string, { count: number; lastAttempt: number; lockedUntil: number }>();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
+
+function checkLoginRateLimit(identifier: string): { allowed: boolean; waitSeconds?: number } {
+  const normalizedId = identifier.toLowerCase().trim();
+  const now = Date.now();
+  const record = loginAttempts.get(normalizedId);
+  
+  if (!record) {
+    return { allowed: true };
+  }
+  
+  // Check if locked out
+  if (record.lockedUntil > now) {
+    return { 
+      allowed: false, 
+      waitSeconds: Math.ceil((record.lockedUntil - now) / 1000) 
+    };
+  }
+  
+  // Reset if outside attempt window
+  if (now - record.lastAttempt > ATTEMPT_WINDOW) {
+    loginAttempts.delete(normalizedId);
+    return { allowed: true };
+  }
+  
+  return { allowed: true };
+}
+
+function recordLoginAttempt(identifier: string, success: boolean): void {
+  const normalizedId = identifier.toLowerCase().trim();
+  const now = Date.now();
+  
+  if (success) {
+    loginAttempts.delete(normalizedId);
+    return;
+  }
+  
+  const record = loginAttempts.get(normalizedId);
+  
+  if (!record || now - record.lastAttempt > ATTEMPT_WINDOW) {
+    loginAttempts.set(normalizedId, { count: 1, lastAttempt: now, lockedUntil: 0 });
+    return;
+  }
+  
+  const newCount = record.count + 1;
+  const lockedUntil = newCount >= MAX_LOGIN_ATTEMPTS ? now + LOCKOUT_DURATION : 0;
+  
+  loginAttempts.set(normalizedId, { 
+    count: newCount, 
+    lastAttempt: now, 
+    lockedUntil 
+  });
+}
+
 const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
 
 const registerSchema = z.object({
@@ -200,6 +258,15 @@ export function setupLocalAuth(app: Express) {
     try {
       const validatedData = loginSchema.parse(req.body);
       
+      // Check rate limiting before processing
+      const rateCheck = checkLoginRateLimit(validatedData.identifier);
+      if (!rateCheck.allowed) {
+        return res.status(429).json({ 
+          message: "Too many login attempts. Please try again later.",
+          waitSeconds: rateCheck.waitSeconds
+        });
+      }
+      
       // Check if identifier is an email or username
       const isEmail = validatedData.identifier.includes('@');
       let user;
@@ -211,13 +278,18 @@ export function setupLocalAuth(app: Express) {
       }
       
       if (!user || !user.passwordHash) {
+        recordLoginAttempt(validatedData.identifier, false);
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       const isValidPassword = await bcrypt.compare(validatedData.password, user.passwordHash);
       if (!isValidPassword) {
+        recordLoginAttempt(validatedData.identifier, false);
         return res.status(401).json({ message: "Invalid credentials" });
       }
+
+      // Successful login - clear rate limit record
+      recordLoginAttempt(validatedData.identifier, true);
 
       (req.session as any).userId = user.id;
       (req.session as any).user = {
