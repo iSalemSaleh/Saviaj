@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
+import { getCurrentPosition, isNativePlatform, requestPermissions } from "@/lib/nativeGeolocation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -209,35 +210,34 @@ export default function DriverPage() {
   const prevNegotiationsCount = useRef(0);
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          setUserLocation({ lat, lng });
-          setStartCoords({ lat, lon: lng });
-          
-          try {
-            const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${lat}&lon=${lng}`);
-            const data = await response.json();
-            if (data.address) {
-              setStartLocation(data.address);
-            } else {
-              // Fallback to coordinates if address resolution fails
-              setStartLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-            }
-          } catch (error) {
-            console.log("Reverse geocode error:", error);
-            // Fallback to coordinates on error
+    const getLocation = async () => {
+      try {
+        if (isNativePlatform()) {
+          await requestPermissions();
+        }
+        const position = await getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setUserLocation({ lat, lng });
+        setStartCoords({ lat, lon: lng });
+        
+        try {
+          const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${lat}&lon=${lng}`);
+          const data = await response.json();
+          if (data.address) {
+            setStartLocation(data.address);
+          } else {
             setStartLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
           }
-        },
-        (error) => {
-          console.log("Geolocation error:", error.message);
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    }
+        } catch (error) {
+          console.log("Reverse geocode error:", error);
+          setStartLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        }
+      } catch (error: any) {
+        console.log("Geolocation error:", error?.message);
+      }
+    };
+    getLocation();
   }, []);
 
   useEffect(() => {
@@ -279,11 +279,12 @@ export default function DriverPage() {
       let lat: number | undefined;
       let lng: number | undefined;
       
-      if (newOnlineStatus && navigator.geolocation) {
+      if (newOnlineStatus) {
         try {
-          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 5000 });
-          });
+          if (isNativePlatform()) {
+            await requestPermissions();
+          }
+          const position = await getCurrentPosition({ enableHighAccuracy: true, timeout: 5000 });
           lat = position.coords.latitude;
           lng = position.coords.longitude;
         } catch (geoError) {
@@ -334,45 +335,36 @@ export default function DriverPage() {
   };
 
   const useCurrentLocation = useCallback(async () => {
-    if (!navigator.geolocation) {
-      toast({
-        title: "Geolocation not supported",
-        description: "Your browser doesn't support location services.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsGettingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        setStartCoords({ lat: latitude, lon: longitude });
-        setUserLocation({ lat: latitude, lng: longitude });
-        
-        try {
-          const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${latitude}&lon=${longitude}`);
-          if (response.ok) {
-            const data = await response.json();
-            setStartLocation(data.address || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-          } else {
-            setStartLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-          }
-        } catch {
+    try {
+      if (isNativePlatform()) {
+        await requestPermissions();
+      }
+      const position = await getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+      const { latitude, longitude } = position.coords;
+      setStartCoords({ lat: latitude, lon: longitude });
+      setUserLocation({ lat: latitude, lng: longitude });
+      
+      try {
+        const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${latitude}&lon=${longitude}`);
+        if (response.ok) {
+          const data = await response.json();
+          setStartLocation(data.address || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        } else {
           setStartLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
         }
-        setIsGettingLocation(false);
-      },
-      (error) => {
-        setIsGettingLocation(false);
-        toast({
-          title: "Location Error",
-          description: error.message || "Unable to get your current location.",
-          variant: "destructive",
-        });
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+      } catch {
+        setStartLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      }
+      setIsGettingLocation(false);
+    } catch (error: any) {
+      setIsGettingLocation(false);
+      toast({
+        title: "Location Error",
+        description: error?.message || "Unable to get your current location.",
+        variant: "destructive",
+      });
+    }
   }, [toast]);
 
   const { data: riderOffers = [], isLoading: offersLoading } = useQuery<RiderOffer[]>({

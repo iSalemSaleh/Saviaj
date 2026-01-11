@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { watchPosition, isNativePlatform, requestPermissions, GeolocationResult } from '@/lib/nativeGeolocation';
 
 interface Location {
   lat: number;
@@ -60,7 +61,6 @@ export function useLocationTracking({
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const watchIdRef = useRef<number | null>(null);
   const previousLocationRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const sendLocation = useCallback((location: Location) => {
@@ -154,27 +154,26 @@ export function useLocationTracking({
       return;
     }
     
-    if (!navigator.geolocation) {
+    if (!isNativePlatform() && !navigator.geolocation) {
       setError('Location services unavailable. Please use a modern browser with HTTPS.');
       return;
     }
 
-    const handlePosition = (position: GeolocationPosition) => {
+    let watchHandle: { clearWatch: () => void } | null = null;
+
+    const handlePosition = (position: GeolocationResult) => {
       setError(null);
       
-      // Calculate heading from movement if GPS heading not available
       let heading = position.coords.heading ?? undefined;
       const currentPos = { lat: position.coords.latitude, lng: position.coords.longitude };
       
       if (heading === undefined || heading === null) {
         if (previousLocationRef.current) {
-          // Calculate bearing from previous position to current
           const distance = Math.sqrt(
             Math.pow(currentPos.lat - previousLocationRef.current.lat, 2) +
             Math.pow(currentPos.lng - previousLocationRef.current.lng, 2)
           );
-          // Only calculate heading if moved a meaningful distance (avoid jitter)
-          if (distance > 0.00005) { // ~5 meters
+          if (distance > 0.00005) {
             heading = calculateBearing(previousLocationRef.current, currentPos);
           }
         }
@@ -184,45 +183,62 @@ export function useLocationTracking({
       const newLocation: Location = {
         lat: position.coords.latitude,
         lng: position.coords.longitude,
-        heading: heading, // GPS heading or calculated bearing
-        speed: position.coords.speed ?? undefined, // Speed in m/s
+        heading: heading,
+        speed: position.coords.speed ?? undefined,
         timestamp: position.timestamp,
       };
       setMyLocation(newLocation);
       sendLocation(newLocation);
     };
 
-    const handleError = (err: GeolocationPositionError) => {
+    const handleError = (err: any) => {
       let errorMessage = 'Location error';
-      switch (err.code) {
-        case err.PERMISSION_DENIED:
-          errorMessage = 'Location access denied. Please enable location in your browser settings.';
-          break;
-        case err.POSITION_UNAVAILABLE:
-          errorMessage = 'Location unavailable. Please check your GPS or network connection.';
-          break;
-        case err.TIMEOUT:
-          errorMessage = 'Location request timed out. Please try again.';
-          break;
-        default:
-          errorMessage = err.message || 'Unable to get location';
+      if (err?.code !== undefined) {
+        switch (err.code) {
+          case 1:
+            errorMessage = 'Location access denied. Please enable location in your device settings.';
+            break;
+          case 2:
+            errorMessage = 'Location unavailable. Please check your GPS or network connection.';
+            break;
+          case 3:
+            errorMessage = 'Location request timed out. Please try again.';
+            break;
+          default:
+            errorMessage = err.message || 'Unable to get location';
+        }
+      } else {
+        errorMessage = err?.message || 'Unable to get location';
       }
       setError(errorMessage);
     };
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      handlePosition,
-      handleError,
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 5000,
+    const startWatching = async () => {
+      if (isNativePlatform()) {
+        try {
+          await requestPermissions();
+        } catch (e) {
+          setError('Location permission denied');
+          return;
+        }
       }
-    );
+      
+      watchHandle = watchPosition(
+        handlePosition,
+        handleError,
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 5000,
+        }
+      );
+    };
+
+    startWatching();
 
     return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
+      if (watchHandle) {
+        watchHandle.clearWatch();
       }
     };
   }, [enableTracking, sendLocation]);

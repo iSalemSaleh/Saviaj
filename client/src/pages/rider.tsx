@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
+import { getCurrentPosition, isNativePlatform, requestPermissions } from "@/lib/nativeGeolocation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -227,40 +228,37 @@ export default function RiderPage() {
   }, [paymentBannerOpen, bannerHovered]);
 
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          setUserLocation({ lat, lng });
-          setPickupCoords({ lat, lon: lng });
-          setIsCurrentLocationPickup(true);
-          setLocationLoading(false);
-          
-          try {
-            const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${lat}&lon=${lng}`);
-            const data = await response.json();
-            if (data.address) {
-              setPickupLocation(data.address);
-            } else {
-              // Fallback to coordinates if address resolution fails
-              setPickupLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-            }
-          } catch (error) {
-            console.log("Reverse geocode error:", error);
-            // Fallback to coordinates on error
+    const getLocation = async () => {
+      try {
+        if (isNativePlatform()) {
+          await requestPermissions();
+        }
+        const position = await getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setUserLocation({ lat, lng });
+        setPickupCoords({ lat, lon: lng });
+        setIsCurrentLocationPickup(true);
+        setLocationLoading(false);
+        
+        try {
+          const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${lat}&lon=${lng}`);
+          const data = await response.json();
+          if (data.address) {
+            setPickupLocation(data.address);
+          } else {
             setPickupLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
           }
-        },
-        (error) => {
-          console.log("Geolocation error:", error.message);
-          setLocationLoading(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    } else {
-      setLocationLoading(false);
-    }
+        } catch (error) {
+          console.log("Reverse geocode error:", error);
+          setPickupLocation(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+        }
+      } catch (error: any) {
+        console.log("Geolocation error:", error?.message);
+        setLocationLoading(false);
+      }
+    };
+    getLocation();
   }, []);
 
   const handlePickupChange = (value: string, lat?: number, lon?: number) => {
