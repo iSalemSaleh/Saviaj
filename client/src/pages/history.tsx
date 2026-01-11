@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/layout/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { PullToRefreshIndicator } from "@/components/ui/pull-to-refresh";
 
 interface RiderOffer {
   id: number;
@@ -151,10 +153,27 @@ export default function HistoryPage() {
   const hasHistory = completedRides.length > 0 || cancelledRides.length > 0 || expiredRides.length > 0;
   const isDriver = user && (user as any).isDriver;
 
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["/api/rider-offers/mine"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/rides"] }),
+      queryClient.invalidateQueries({ queryKey: ["/api/driver-routes/mine"] }),
+    ]);
+  }, [queryClient]);
+
+  const { isRefreshing, pullDistance, containerProps } = usePullToRefresh({
+    onRefresh: handleRefresh,
+    disabled: offersLoading || ridesLoading || routesLoading,
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <Navbar />
-      <main className="container mx-auto py-8 px-4">
+      <main 
+        className="container mx-auto py-8 px-4 relative mobile-scroll safe-area-bottom"
+        {...containerProps}
+      >
+        <PullToRefreshIndicator isRefreshing={isRefreshing} pullDistance={pullDistance} />
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-primary mb-2">History</h1>
