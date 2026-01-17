@@ -152,6 +152,7 @@ async function syncDriverCommercial(userId: string, data: {
   commercialStatusVerified?: boolean;
   ratePerMile?: string;
   driverTagline?: string;
+  serviceCategories?: string[];
   dvlaCheckCode?: string;
 }) {
   const filtered = filterDefined(data);
@@ -258,6 +259,7 @@ async function getNormalizedUserById(userId: string): Promise<NormalizedUser | n
       commercialStatusVerified: commercial.commercialStatusVerified,
       ratePerMile: commercial.ratePerMile,
       driverTagline: commercial.driverTagline,
+      serviceCategories: commercial.serviceCategories,
     } : null,
     
     vehicle: vehicle ? {
@@ -1621,6 +1623,7 @@ export class DatabaseStorage implements IStorage {
     vehicleRegistration: string | null;
     ratePerMile: string | null;
     driverTagline: string | null;
+    serviceCategories: string[] | null;
     distanceFromPickup: number;
     currentLat: string | null;
     currentLng: string | null;
@@ -1641,6 +1644,7 @@ export class DatabaseStorage implements IStorage {
         vehicleRegistration: users.vehicleRegistration,
         ratePerMile: users.ratePerMile,
         driverTagline: users.driverTagline,
+        serviceCategories: users.serviceCategories,
         currentLat: users.currentLat,
         currentLng: users.currentLng,
       })
@@ -1736,6 +1740,7 @@ export class DatabaseStorage implements IStorage {
         await syncDriverCommercial(id, {
           ratePerMile: ratePerMile !== undefined ? ratePerMile.toFixed(2) : undefined,
           driverTagline,
+          serviceCategories,
         });
       }
     }

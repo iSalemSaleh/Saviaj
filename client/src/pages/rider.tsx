@@ -110,6 +110,7 @@ interface NearbyDriver {
   vehicleRegistration: string | null;
   ratePerMile: string | null;
   driverTagline: string | null;
+  serviceCategories: string[] | null;
   distanceFromPickup: number;
   currentLat: string | null;
   currentLng: string | null;
@@ -1160,6 +1161,18 @@ export default function RiderPage() {
                             <span className="text-[10px] text-muted-foreground">£{driver.ratePerMile}/mi</span>
                             {estimatedCost && <Badge className="bg-primary text-white text-[10px] px-1">£{estimatedCost}</Badge>}
                           </div>
+                          {driver.serviceCategories && driver.serviceCategories.length > 0 && (
+                            <div className="flex flex-wrap gap-0.5 mt-1">
+                              {driver.serviceCategories.slice(0, 2).map((cat) => (
+                                <span key={cat} className="text-[8px] px-1 py-0.5 bg-primary/10 text-primary rounded capitalize">
+                                  {cat}
+                                </span>
+                              ))}
+                              {driver.serviceCategories.length > 2 && (
+                                <span className="text-[8px] text-muted-foreground">+{driver.serviceCategories.length - 2}</span>
+                              )}
+                            </div>
+                          )}
                         </Link>
                         <div className="flex flex-col gap-1 mt-1">
                           {!dropoffCoords && (

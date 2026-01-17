@@ -169,6 +169,7 @@ interface NearbyDriver {
   vehicleModel: string | null;
   vehicleColor: string | null;
   ratePerMile: string | null;
+  serviceCategories: string[] | null;
   distanceFromPickup: number;
   currentLat: string | null;
   currentLng: string | null;
@@ -487,6 +488,15 @@ export function RiderLocationMap({
                 {driver.ratePerMile && (
                   <div className="font-medium text-green-600 mt-1">
                     £{parseFloat(driver.ratePerMile).toFixed(2)}/mile
+                  </div>
+                )}
+                {driver.serviceCategories && driver.serviceCategories.length > 0 && (
+                  <div className="flex flex-wrap gap-0.5 mt-1">
+                    {driver.serviceCategories.map((cat) => (
+                      <span key={cat} className="text-[9px] px-1 py-0.5 bg-primary/10 text-primary rounded capitalize">
+                        {cat}
+                      </span>
+                    ))}
                   </div>
                 )}
                 <div className="text-xs text-muted-foreground">

@@ -47,6 +47,7 @@ Preferred communication style: Simple, everyday language.
 - **User-driven marketplace**: Riders set prices, drivers accept or offer routes.
 - **Real-time Tracking & Chat**: WebSocket-based for live ride updates and in-app communication.
 - **Driver Types**: Private (limited) and Commercial (unlimited, "online for hire" status).
+- **Service Categories**: Pro drivers can select up to 3 service categories (standard, premium, team, eco, business, budget) visible to riders.
 - **Flexible Ride Options**: Post own route, browse driver routes, or find nearby commercial drivers.
 - **Secure Payments**: Stripe integration with robust security measures for amount validation, webhook verification, and driver earnings protection.
 - **Comprehensive Signup & Driver Onboarding**: Multi-step flow including email verification, personal info, license, vehicle, and bank details.

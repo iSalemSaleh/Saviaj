@@ -240,6 +240,7 @@ export const driverCommercial = pgTable("driver_commercial", {
   commercialStatusVerified: boolean("commercial_status_verified").default(false),
   ratePerMile: decimal("rate_per_mile", { precision: 5, scale: 2 }),
   driverTagline: varchar("driver_tagline", { length: 100 }),
+  serviceCategories: text("service_categories").array(),
   dvlaCheckCode: varchar("dvla_check_code"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -362,6 +363,7 @@ export interface NormalizedUser {
     commercialStatusVerified: boolean | null;
     ratePerMile: string | null;
     driverTagline: string | null;
+    serviceCategories: string[] | null;
   } | null;
   
   // Primary vehicle (from vehicles)

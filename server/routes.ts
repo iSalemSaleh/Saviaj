@@ -152,6 +152,7 @@ function getPublicDriverProfile(driver: any) {
     isCommercialDriver: driver.isCommercialDriver,
     ratePerMile: driver.ratePerMile,
     driverTagline: driver.driverTagline,
+    serviceCategories: driver.serviceCategories,
     currentLat: driver.currentLat,
     currentLng: driver.currentLng,
     isAvailable: driver.isAvailable,
@@ -3802,6 +3803,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         vehicleYear: user.vehicleYear,
         vehicleColor: user.vehicleColor,
         driverVerified: user.driverVerified,
+        serviceCategories: user.serviceCategories,
+        ratePerMile: user.ratePerMile,
+        driverTagline: user.driverTagline,
         createdAt: user.createdAt,
       };
       
