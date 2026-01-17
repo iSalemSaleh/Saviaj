@@ -1,8 +1,167 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import carIconImage from '../../assets/car-icon.png';
+
+// Smooth heading interpolation - finds shortest rotation path
+function interpolateHeading(from: number, to: number, t: number): number {
+  let diff = to - from;
+  // Normalize to -180 to 180 for shortest path
+  while (diff > 180) diff -= 360;
+  while (diff < -180) diff += 360;
+  return (from + diff * t + 360) % 360;
+}
+
+// Smoothly animate a marker's position and rotation
+function AnimatedDriverMarker({
+  position,
+  heading,
+  vehicleColor,
+  animationDuration = 1000,
+}: {
+  position: { lat: number; lng: number };
+  heading: number | null;
+  vehicleColor: string | null;
+  animationDuration?: number;
+}) {
+  const map = useMap();
+  const markerRef = useRef<L.Marker | null>(null);
+  const animationRef = useRef<number | null>(null);
+  const currentPosRef = useRef<{ lat: number; lng: number }>(position);
+  const currentHeadingRef = useRef<number>(heading ?? 0);
+  const targetPosRef = useRef<{ lat: number; lng: number }>(position);
+  const targetHeadingRef = useRef<number>(heading ?? 0);
+  const lastHeadingUpdateRef = useRef<number>(Date.now());
+  const hasReceivedValidHeadingRef = useRef<boolean>(heading !== null);
+  const colorFilter = getColorFilter(vehicleColor);
+
+  // Create marker once with popup
+  useEffect(() => {
+    const icon = L.divIcon({
+      className: 'animated-car-marker',
+      html: `<div class="car-icon-wrapper" style="
+        width: 56px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        filter: drop-shadow(0 3px 8px rgba(0,0,0,0.5));
+        transform: rotate(${currentHeadingRef.current}deg);
+        will-change: transform;
+      ">
+        <img 
+          src="${carIconImage}" 
+          alt="Driver" 
+          style="
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            ${colorFilter ? `filter: ${colorFilter};` : ''}
+          "
+        />
+      </div>`,
+      iconSize: [56, 56],
+      iconAnchor: [28, 28],
+    });
+
+    const marker = L.marker([position.lat, position.lng], { icon, zIndexOffset: 1000 });
+    marker.bindPopup('<strong>Driver Location</strong>');
+    marker.addTo(map);
+    markerRef.current = marker;
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      if (markerRef.current) {
+        markerRef.current.remove();
+      }
+    };
+  }, [map]);
+
+  // Update color filter when vehicle color changes
+  useEffect(() => {
+    if (markerRef.current) {
+      const el = markerRef.current.getElement();
+      if (el) {
+        const img = el.querySelector('img');
+        if (img) {
+          img.style.filter = colorFilter || '';
+        }
+      }
+    }
+  }, [colorFilter]);
+
+  // Animate to new position and heading
+  useEffect(() => {
+    targetPosRef.current = position;
+    
+    // Heading update logic:
+    // - Always accept the first valid heading immediately
+    // - After that, only update if changed significantly (> 5 degrees) or enough time passed
+    // This prevents jittery rotation when stationary or moving slowly
+    if (heading !== null) {
+      const isFirstValidHeading = !hasReceivedValidHeadingRef.current;
+      const headingDiff = Math.abs(heading - targetHeadingRef.current);
+      const normalizedDiff = headingDiff > 180 ? 360 - headingDiff : headingDiff;
+      const timeSinceLastUpdate = Date.now() - lastHeadingUpdateRef.current;
+      
+      if (isFirstValidHeading || normalizedDiff > 5 || timeSinceLastUpdate > 2000) {
+        targetHeadingRef.current = heading;
+        lastHeadingUpdateRef.current = Date.now();
+        hasReceivedValidHeadingRef.current = true;
+      }
+    }
+
+    const startPos = { ...currentPosRef.current };
+    const startHeading = currentHeadingRef.current;
+    const startTime = performance.now();
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / animationDuration, 1);
+      
+      // Easing function for smooth deceleration
+      const eased = 1 - Math.pow(1 - progress, 3);
+      
+      // Interpolate position
+      const newLat = startPos.lat + (targetPosRef.current.lat - startPos.lat) * eased;
+      const newLng = startPos.lng + (targetPosRef.current.lng - startPos.lng) * eased;
+      
+      // Interpolate heading with shortest path
+      const newHeading = interpolateHeading(startHeading, targetHeadingRef.current, eased);
+      
+      currentPosRef.current = { lat: newLat, lng: newLng };
+      currentHeadingRef.current = newHeading;
+      
+      // Update marker position
+      if (markerRef.current) {
+        markerRef.current.setLatLng([newLat, newLng]);
+        
+        // Update rotation via DOM
+        const el = markerRef.current.getElement();
+        if (el) {
+          const wrapper = el.querySelector('.car-icon-wrapper') as HTMLElement;
+          if (wrapper) {
+            wrapper.style.transform = `rotate(${newHeading}deg)`;
+          }
+        }
+      }
+      
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      }
+    };
+
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    animationRef.current = requestAnimationFrame(animate);
+  }, [position.lat, position.lng, heading, animationDuration]);
+
+  return null;
+}
 
 // Convert vehicle color name to CSS hue-rotate value
 // The base car image has cyan/teal color (~180deg hue)
@@ -273,9 +432,6 @@ export function RideMap({
 
   const pickupIcon = useMemo(() => createIcon('pickup'), []);
   const dropoffIcon = useMemo(() => createIcon('dropoff'), []);
-  // Use heading from driverLocation if available, otherwise from prop
-  const heading = driverLocation?.heading ?? driverHeading ?? null;
-  const driverIcon = useMemo(() => createDriverCarIcon(driverVehicleColor, heading), [driverVehicleColor, heading]);
   const riderIcon = useMemo(() => createIcon('rider'), []);
 
   const fetchRoute = useCallback(async () => {
@@ -368,11 +524,12 @@ export function RideMap({
       </Marker>
 
       {driverLocation && (
-        <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverIcon}>
-          <Popup>
-            <strong>Driver Location</strong>
-          </Popup>
-        </Marker>
+        <AnimatedDriverMarker
+          position={{ lat: driverLocation.lat, lng: driverLocation.lng }}
+          heading={driverLocation.heading ?? driverHeading ?? null}
+          vehicleColor={driverVehicleColor ?? null}
+          animationDuration={800}
+        />
       )}
 
       {riderLocation && (
