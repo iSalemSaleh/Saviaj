@@ -41,6 +41,21 @@ import { DriverMarkerController } from './DriverMarkerController';
 import carIconImage from '../../assets/car-icon.png';
 
 // ============================================================
+// Constants
+// ============================================================
+
+/**
+ * Minimum distance change (in degrees) required to trigger a bounds update.
+ * Approximately 50 meters at mid-latitudes.
+ */
+const BOUNDS_UPDATE_THRESHOLD = 0.0005;
+
+/**
+ * Minimum time (ms) between bounds updates to prevent excessive re-renders.
+ */
+const BOUNDS_UPDATE_THROTTLE_MS = 2000;
+
+// ============================================================
 // Type Definitions
 // ============================================================
 
@@ -214,10 +229,30 @@ function createStaticIcon(type: 'rider' | 'pickup' | 'dropoff'): L.DivIcon {
 // ============================================================
 
 /**
+ * Calculates the maximum position change from previous positions.
+ * Used to determine if a bounds update is needed.
+ */
+function getMaxPositionChange(
+  current: { lat: number; lng: number },
+  previous: { lat: number; lng: number } | null
+): number {
+  if (!previous) return Infinity; // First update always triggers
+  return Math.max(
+    Math.abs(current.lat - previous.lat),
+    Math.abs(current.lng - previous.lng)
+  );
+}
+
+/**
  * Component that adjusts map bounds to fit all markers.
  * 
  * Automatically adjusts the map viewport when locations change
  * to ensure all markers are visible with appropriate padding.
+ * 
+ * Optimization:
+ * - Throttled to update at most every 2 seconds
+ * - Only updates if position changed by more than ~50 meters
+ * - Initial fit is always performed immediately
  * 
  * Behavior:
  * - Creates bounds from pickup and dropoff
@@ -237,7 +272,53 @@ function MapBoundsUpdater({
 }) {
   const map = useMap();
   
+  // Track previous positions for change detection
+  const prevPickupRef = useRef<{ lat: number; lng: number } | null>(null);
+  const prevDropoffRef = useRef<{ lat: number; lng: number } | null>(null);
+  const prevDriverRef = useRef<{ lat: number; lng: number } | null>(null);
+  const prevRiderRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
+  const hasInitialFitRef = useRef<boolean>(false);
+  
   useEffect(() => {
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastUpdateTimeRef.current;
+    
+    // Check if pickup or dropoff changed (new trip should always refit)
+    const pickupChange = getMaxPositionChange(pickupLocation, prevPickupRef.current);
+    const dropoffChange = getMaxPositionChange(dropoffLocation, prevDropoffRef.current);
+    const tripChanged = pickupChange > BOUNDS_UPDATE_THRESHOLD || dropoffChange > BOUNDS_UPDATE_THRESHOLD;
+    
+    // Always update refs for pickup/dropoff
+    prevPickupRef.current = { lat: pickupLocation.lat, lng: pickupLocation.lng };
+    prevDropoffRef.current = { lat: dropoffLocation.lat, lng: dropoffLocation.lng };
+    
+    // If trip changed, always update bounds immediately
+    if (tripChanged) {
+      // Reset hasInitialFit so we do a fresh fit for the new trip
+      hasInitialFitRef.current = false;
+    }
+    
+    // Check if we should skip this update (throttling)
+    if (hasInitialFitRef.current && timeSinceLastUpdate < BOUNDS_UPDATE_THROTTLE_MS) {
+      return;
+    }
+    
+    // Check if positions have changed significantly
+    const driverChange = driverLocation
+      ? getMaxPositionChange(driverLocation, prevDriverRef.current)
+      : 0;
+    const riderChange = riderLocation
+      ? getMaxPositionChange(riderLocation, prevRiderRef.current)
+      : 0;
+    
+    const maxChange = Math.max(driverChange, riderChange);
+    
+    // Skip update if change is below threshold (unless first update or trip changed)
+    if (hasInitialFitRef.current && maxChange < BOUNDS_UPDATE_THRESHOLD) {
+      return;
+    }
+    
     // Create bounds from pickup and dropoff
     const bounds = L.latLngBounds([
       [pickupLocation.lat, pickupLocation.lng],
@@ -247,15 +328,21 @@ function MapBoundsUpdater({
     // Extend bounds to include driver if present
     if (driverLocation) {
       bounds.extend([driverLocation.lat, driverLocation.lng]);
+      prevDriverRef.current = { lat: driverLocation.lat, lng: driverLocation.lng };
     }
     
     // Extend bounds to include rider if present
     if (riderLocation) {
       bounds.extend([riderLocation.lat, riderLocation.lng]);
+      prevRiderRef.current = { lat: riderLocation.lat, lng: riderLocation.lng };
     }
     
     // Fit map to bounds with padding
     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    
+    // Mark that we've done the initial fit and record update time
+    hasInitialFitRef.current = true;
+    lastUpdateTimeRef.current = now;
   }, [map, pickupLocation, dropoffLocation, driverLocation, riderLocation]);
   
   return null;
