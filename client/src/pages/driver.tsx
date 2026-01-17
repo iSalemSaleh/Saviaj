@@ -595,10 +595,7 @@ export default function DriverPage() {
         description: "Your route has been published!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/driver-routes"] });
-      setStartLocation("");
-      setStartCoords(null);
-      setEndLocation("");
-      setEndCoords(null);
+      // Keep start/end locations - only reset trip-specific fields
       setDepartureTime("");
       setMaxDetour("");
       setDetourUnit("miles");

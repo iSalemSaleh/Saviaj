@@ -760,38 +760,15 @@ export default function RiderPage() {
       const response = await apiRequest("POST", "/api/rider-offers", data);
       return response.json();
     },
-    onSuccess: async () => {
+    onSuccess: () => {
       toast({
         title: "Success",
         description: "Your ride request has been posted!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/rider-offers/mine"] });
-      setDropoffLocation("");
-      setDropoffCoords(null);
+      // Keep pickup/dropoff locations - only reset trip-specific fields
       setRequestedTime("");
       setOfferPrice("");
-      
-      if (userLocation) {
-        setPickupCoords({ lat: userLocation.lat, lon: userLocation.lng });
-        setIsCurrentLocationPickup(true);
-        try {
-          const response = await fetch(`/api/azure-maps/reverse-geocode?lat=${userLocation.lat}&lon=${userLocation.lng}`);
-          const data = await response.json();
-          if (data.address) {
-            setPickupLocation(data.address);
-          } else {
-            // Fallback to coordinates if address resolution fails
-            setPickupLocation(`${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`);
-          }
-        } catch {
-          // Fallback to coordinates on error
-          setPickupLocation(`${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)}`);
-        }
-      } else {
-        setPickupLocation("");
-        setPickupCoords(null);
-        setIsCurrentLocationPickup(false);
-      }
     },
     onError: (error: Error) => {
       toast({
