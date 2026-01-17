@@ -1,256 +1,330 @@
+/**
+ * Location Tracking Hook
+ * 
+ * This hook orchestrates real-time location tracking for rides.
+ * It coordinates the WebSocketRideClient and LocationTracker classes
+ * to provide a clean interface for ride tracking components.
+ * 
+ * Architecture:
+ * - WebSocketRideClient: Manages real-time WebSocket communication
+ * - LocationTracker: Handles GPS tracking with heading estimation
+ * 
+ * Responsibilities:
+ * - Connects to WebSocket for real-time updates
+ * - Tracks device location and sends updates
+ * - Receives location updates from the other party
+ * - Handles chat message delivery
+ * 
+ * @module useLocationTracking
+ */
+
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { watchPosition, isNativePlatform, requestPermissions, GeolocationResult } from '@/lib/nativeGeolocation';
+import {
+  WebSocketRideClient,
+  ConnectionState,
+  Location,
+  ChatMessage,
+} from '@/lib/WebSocketRideClient';
+import { LocationTracker, TrackedLocation } from '@/lib/LocationTracker';
 
-interface Location {
-  lat: number;
-  lng: number;
-  heading?: number; // Direction in degrees (0-360, 0 = North)
-  speed?: number; // Speed in m/s
-  timestamp: number;
-}
-
-interface ChatMessage {
-  id?: number;
-  rideId: number;
-  senderId: string;
-  receiverId: string;
-  message: string;
-  createdAt?: Date;
-  read?: boolean;
-}
-
+/**
+ * Options for configuring location tracking.
+ */
 interface UseLocationTrackingOptions {
+  /**
+   * The ride ID to track.
+   */
   rideId: number;
+  
+  /**
+   * Whether the current user is a rider or driver.
+   */
   userType: 'rider' | 'driver';
+  
+  /**
+   * The current user's ID.
+   */
   userId?: string;
+  
+  /**
+   * Whether to enable tracking (set false to disable).
+   * @default true
+   */
   enableTracking?: boolean;
+  
+  /**
+   * Callback for incoming chat messages.
+   */
   onChatMessage?: (message: ChatMessage) => void;
 }
 
-interface LocationMessage {
-  type: 'location_update' | 'join_ride' | 'leave_ride' | 'chat_message';
-  rideId: number;
-  userType: 'rider' | 'driver';
-  userId?: string;
-  location?: Location;
+/**
+ * Return type of the useLocationTracking hook.
+ */
+interface UseLocationTrackingResult {
+  /**
+   * The user's own current location.
+   */
+  myLocation: TrackedLocation | null;
+  
+  /**
+   * The other party's current location.
+   */
+  otherLocation: Location | null;
+  
+  /**
+   * Whether WebSocket is connected.
+   */
+  isConnected: boolean;
+  
+  /**
+   * Error message if something went wrong.
+   */
+  error: string | null;
+  
+  /**
+   * Driver's location (alias based on user type).
+   * For riders: this is the other party (driver)
+   * For drivers: this is their own location
+   */
+  driverLocation: Location | TrackedLocation | null;
+  
+  /**
+   * Rider's location (alias based on user type).
+   * For drivers: this is the other party (rider)
+   * For riders: this is their own location
+   */
+  riderLocation: Location | TrackedLocation | null;
+  
+  /**
+   * Function to send a chat message.
+   * @param receiverId - The recipient's user ID
+   * @param message - The message content
+   */
+  sendChatMessage: (receiverId: string, message: string) => void;
+  
+  /**
+   * Reference to the WebSocket client (for advanced use cases).
+   * @deprecated Prefer using the exposed methods instead
+   */
+  wsRef: React.MutableRefObject<WebSocketRideClient | null>;
 }
 
-// Calculate bearing between two points (returns degrees 0-360, 0 = North)
-function calculateBearing(from: { lat: number; lng: number }, to: { lat: number; lng: number }): number {
-  const lat1 = from.lat * Math.PI / 180;
-  const lat2 = to.lat * Math.PI / 180;
-  const dLon = (to.lng - from.lng) * Math.PI / 180;
-  
-  const y = Math.sin(dLon) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-  
-  let bearing = Math.atan2(y, x) * 180 / Math.PI;
-  bearing = (bearing + 360) % 360; // Normalize to 0-360
-  return bearing;
-}
-
+/**
+ * React hook for real-time ride location tracking.
+ * 
+ * This hook manages:
+ * 1. WebSocket connection for real-time updates
+ * 2. GPS location tracking with heading estimation
+ * 3. Sending own location to the server
+ * 4. Receiving the other party's location
+ * 5. Chat message handling
+ * 
+ * @param options - Configuration options
+ * @returns Location tracking state and functions
+ * 
+ * @example
+ * // Basic usage in a ride tracking page
+ * function RideTrackingPage({ rideId }) {
+ *   const { user } = useAuth();
+ *   
+ *   const {
+ *     driverLocation,
+ *     riderLocation,
+ *     isConnected,
+ *     error,
+ *     sendChatMessage,
+ *   } = useLocationTracking({
+ *     rideId,
+ *     userType: 'rider',
+ *     userId: user.id,
+ *     enableTracking: true,
+ *     onChatMessage: (msg) => addMessageToChat(msg),
+ *   });
+ *   
+ *   if (error) {
+ *     return <ErrorDisplay message={error} />;
+ *   }
+ *   
+ *   return (
+ *     <RideMap
+ *       driverLocation={driverLocation}
+ *       riderLocation={riderLocation}
+ *     />
+ *   );
+ * }
+ */
 export function useLocationTracking({
   rideId,
   userType,
   userId,
   enableTracking = true,
   onChatMessage,
-}: UseLocationTrackingOptions) {
-  const [myLocation, setMyLocation] = useState<Location | null>(null);
+}: UseLocationTrackingOptions): UseLocationTrackingResult {
+  // ============================================================
+  // State Management
+  // ============================================================
+  
+  const [myLocation, setMyLocation] = useState<TrackedLocation | null>(null);
   const [otherLocation, setOtherLocation] = useState<Location | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const previousLocationRef = useRef<{ lat: number; lng: number } | null>(null);
-
-  const sendLocation = useCallback((location: Location) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const message: LocationMessage = {
-        type: 'location_update',
-        rideId,
-        userType,
-        location,
-      };
-      wsRef.current.send(JSON.stringify(message));
-    }
-  }, [rideId, userType]);
-
+  
+  // ============================================================
+  // Refs for Class Instances
+  // These persist across renders and hold our service classes
+  // ============================================================
+  
+  const wsClientRef = useRef<WebSocketRideClient | null>(null);
+  const locationTrackerRef = useRef<LocationTracker | null>(null);
+  
+  // Stable ref for chat callback (avoids recreating effects)
+  const onChatMessageRef = useRef(onChatMessage);
+  onChatMessageRef.current = onChatMessage;
+  
+  // ============================================================
+  // Public Methods
+  // ============================================================
+  
+  /**
+   * Sends a chat message to the specified recipient.
+   * 
+   * The message is sent via WebSocket and will be delivered
+   * to the other party in real-time.
+   */
   const sendChatMessage = useCallback((receiverId: string, message: string) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN && userId) {
-      const chatMessage = {
-        type: 'chat_message',
-        rideId,
-        senderId: userId,
-        receiverId,
-        message,
-      };
-      wsRef.current.send(JSON.stringify(chatMessage));
+    wsClientRef.current?.sendChatMessage(receiverId, message);
+  }, []);
+  
+  // ============================================================
+  // Effect: WebSocket Connection Management
+  // ============================================================
+  
+  useEffect(() => {
+    // Skip if tracking is disabled or no user ID
+    if (!enableTracking || !userId) {
+      return;
     }
-  }, [rideId, userId]);
-
-  useEffect(() => {
-    if (!enableTracking) return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-
-    wsRef.current = new WebSocket(wsUrl);
-
-    wsRef.current.onopen = () => {
-      setIsConnected(true);
-      setError(null);
-      
-      const joinMessage: LocationMessage & { userId?: string } = {
-        type: 'join_ride',
-        rideId,
-        userType,
-        userId,
-      };
-      wsRef.current?.send(JSON.stringify(joinMessage));
-    };
-
-    wsRef.current.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'location_update' && data.userType !== userType) {
-          setOtherLocation(data.location);
-        } else if (data.type === 'chat_message' || data.type === 'chat_message_sent') {
-          if (onChatMessage) {
-            onChatMessage(data);
-          }
-        }
-      } catch (err) {
-        console.error('Error parsing WebSocket message:', err);
+    
+    // Create WebSocket client with default options
+    const wsClient = new WebSocketRideClient();
+    wsClientRef.current = wsClient;
+    
+    // Subscribe to connection state changes
+    const unsubConnection = wsClient.onConnectionStateChange((state) => {
+      setIsConnected(state === ConnectionState.CONNECTED);
+      if (state === ConnectionState.DISCONNECTED) {
+        // Clear error on clean disconnect
+        setError(null);
       }
-    };
-
-    wsRef.current.onclose = () => {
-      setIsConnected(false);
-    };
-
-    wsRef.current.onerror = () => {
-      setError('Connection error');
-      setIsConnected(false);
-    };
-
+    });
+    
+    // Subscribe to location updates from the other party
+    const unsubLocation = wsClient.onLocationUpdate((location) => {
+      setOtherLocation(location);
+    });
+    
+    // Subscribe to chat messages
+    const unsubChat = wsClient.onChatMessage((message) => {
+      onChatMessageRef.current?.(message);
+    });
+    
+    // Subscribe to errors
+    const unsubError = wsClient.onError((err) => {
+      setError(err);
+    });
+    
+    // Establish connection
+    wsClient.connect(rideId, userType, userId).catch((err) => {
+      setError(err.message || 'Failed to connect');
+    });
+    
+    // Cleanup function
     return () => {
-      if (wsRef.current) {
-        const leaveMessage: LocationMessage = {
-          type: 'leave_ride',
-          rideId,
-          userType,
-        };
-        if (wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(JSON.stringify(leaveMessage));
-        }
-        wsRef.current.close();
-      }
+      unsubConnection();
+      unsubLocation();
+      unsubChat();
+      unsubError();
+      wsClient.disconnect();
+      wsClientRef.current = null;
     };
-  }, [rideId, userType, userId, enableTracking, onChatMessage]);
-
+  }, [rideId, userType, userId, enableTracking]);
+  
+  // ============================================================
+  // Effect: GPS Location Tracking
+  // ============================================================
+  
   useEffect(() => {
+    // Skip if tracking is disabled
     if (!enableTracking) {
       return;
     }
     
-    if (!isNativePlatform() && !navigator.geolocation) {
-      setError('Location services unavailable. Please use a modern browser with HTTPS.');
-      return;
-    }
-
-    let watchHandle: { clearWatch: () => void } | null = null;
-
-    const handlePosition = (position: GeolocationResult) => {
-      setError(null);
+    // Create location tracker with high accuracy
+    const tracker = new LocationTracker({
+      enableHighAccuracy: true,
+      maximumAge: 5000,
+      timeout: 10000,
+    });
+    locationTrackerRef.current = tracker;
+    
+    // Subscribe to location updates
+    const unsubLocation = tracker.onLocationUpdate((location) => {
+      setMyLocation(location);
+      setError(null); // Clear any previous error
       
-      let heading = position.coords.heading ?? undefined;
-      const currentPos = { lat: position.coords.latitude, lng: position.coords.longitude };
-      
-      if (heading === undefined || heading === null) {
-        if (previousLocationRef.current) {
-          const distance = Math.sqrt(
-            Math.pow(currentPos.lat - previousLocationRef.current.lat, 2) +
-            Math.pow(currentPos.lng - previousLocationRef.current.lng, 2)
-          );
-          if (distance > 0.00005) {
-            heading = calculateBearing(previousLocationRef.current, currentPos);
-          }
-        }
+      // Send location to server if connected
+      if (wsClientRef.current?.isConnected()) {
+        wsClientRef.current.sendLocation({
+          lat: location.lat,
+          lng: location.lng,
+          heading: location.heading,
+          speed: location.speed,
+          timestamp: location.timestamp,
+        });
       }
-      previousLocationRef.current = currentPos;
-      
-      const newLocation: Location = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-        heading: heading,
-        speed: position.coords.speed ?? undefined,
-        timestamp: position.timestamp,
-      };
-      setMyLocation(newLocation);
-      sendLocation(newLocation);
-    };
-
-    const handleError = (err: any) => {
-      let errorMessage = 'Location error';
-      if (err?.code !== undefined) {
-        switch (err.code) {
-          case 1:
-            errorMessage = 'Location access denied. Please enable location in your device settings.';
-            break;
-          case 2:
-            errorMessage = 'Location unavailable. Please check your GPS or network connection.';
-            break;
-          case 3:
-            errorMessage = 'Location request timed out. Please try again.';
-            break;
-          default:
-            errorMessage = err.message || 'Unable to get location';
-        }
-      } else {
-        errorMessage = err?.message || 'Unable to get location';
-      }
-      setError(errorMessage);
-    };
-
-    const startWatching = async () => {
-      if (isNativePlatform()) {
-        try {
-          await requestPermissions();
-        } catch (e) {
-          setError('Location permission denied');
-          return;
-        }
-      }
-      
-      watchHandle = watchPosition(
-        handlePosition,
-        handleError,
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 5000,
-        }
-      );
-    };
-
-    startWatching();
-
+    });
+    
+    // Subscribe to errors
+    const unsubError = tracker.onError((err) => {
+      setError(err);
+    });
+    
+    // Start GPS tracking
+    tracker.start().catch((err) => {
+      setError(err.message || 'Failed to start location tracking');
+    });
+    
+    // Cleanup function
     return () => {
-      if (watchHandle) {
-        watchHandle.clearWatch();
-      }
+      unsubLocation();
+      unsubError();
+      tracker.stop();
+      locationTrackerRef.current = null;
     };
-  }, [enableTracking, sendLocation]);
-
+  }, [enableTracking]);
+  
+  // ============================================================
+  // Computed Values
+  // ============================================================
+  
+  // Determine driver/rider locations based on user type
+  // This provides a convenient API for consumers
+  const driverLocation = userType === 'rider' ? otherLocation : myLocation;
+  const riderLocation = userType === 'driver' ? otherLocation : myLocation;
+  
+  // ============================================================
+  // Return Value
+  // ============================================================
+  
   return {
     myLocation,
     otherLocation,
     isConnected,
     error,
-    driverLocation: userType === 'rider' ? otherLocation : myLocation,
-    riderLocation: userType === 'driver' ? otherLocation : myLocation,
+    driverLocation,
+    riderLocation,
     sendChatMessage,
-    wsRef,
+    wsRef: wsClientRef,
   };
 }
