@@ -45,6 +45,7 @@ export default function PostcodeSearch({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +53,8 @@ export default function PostcodeSearch({
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
+        setIsEditing(false);
+        setQuery("");
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -89,6 +92,12 @@ export default function PostcodeSearch({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setQuery(newValue);
+    setIsEditing(true);
+    
+    // When user clears the input, also clear the parent value
+    if (newValue === "") {
+      onChange("", undefined, undefined);
+    }
     
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -102,11 +111,17 @@ export default function PostcodeSearch({
   const handleSuggestionClick = (suggestion: Suggestion) => {
     onChange(suggestion.address, suggestion.position.lat, suggestion.position.lon);
     setQuery("");
+    setIsEditing(false);
     setSuggestions([]);
     setShowSuggestions(false);
   };
 
   const handleFocus = () => {
+    // When focusing, if there's a value, start editing with that value
+    if (value && !isEditing) {
+      setQuery(value);
+      setIsEditing(true);
+    }
     if (suggestions.length > 0) {
       setShowSuggestions(true);
     }
@@ -131,7 +146,7 @@ export default function PostcodeSearch({
         <Input
           placeholder={placeholder}
           className={`${compact ? 'pl-7 h-8 text-sm' : 'pl-9 h-11'} bg-white dark:bg-slate-900 border-gray-200 ${inputClassName}`}
-          value={query || value}
+          value={isEditing ? query : value}
           onChange={handleInputChange}
           onFocus={handleFocus}
           data-testid={testId}
@@ -162,7 +177,7 @@ export default function PostcodeSearch({
         )}
       </div>
       
-      {value && !query && !compact && (
+      {value && !isEditing && !compact && (
         <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
           <MapPin className="h-3 w-3" />
           {value}
