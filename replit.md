@@ -45,7 +45,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Core Features
 - **User-driven marketplace**: Riders set prices, drivers accept or offer routes.
-- **Real-time Tracking & Chat**: WebSocket-based for live ride updates and in-app communication.
+- **Real-time Tracking & Chat**: WebSocket-based for live ride updates and in-app communication. Smooth animated driver marker with heading interpolation and position easing for fluid tracking experience.
 - **Driver Types**: Private (limited) and Commercial (unlimited, "online for hire" status).
 - **Service Categories**: Pro drivers can select up to 3 service categories (standard, premium, team, eco, business, budget) visible to riders.
 - **Flexible Ride Options**: Post own route, browse driver routes, or find nearby commercial drivers.
