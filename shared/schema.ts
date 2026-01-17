@@ -78,6 +78,7 @@ export const users = pgTable("users", {
   // Commercial driver rates
   ratePerMile: decimal("rate_per_mile", { precision: 5, scale: 2 }), // Rate in GBP per mile for commercial drivers
   driverTagline: varchar("driver_tagline", { length: 100 }), // Short message to advertise service
+  serviceCategories: text("service_categories").array(), // Driver service categories (up to 3): standard, premium, team, eco, business, budget
   // Availability states
   activeMode: varchar("active_mode", { length: 20 }), // 'rider', 'driver', or null (inactive)
   isAvailable: boolean("is_available").default(false), // true when actively searching/available

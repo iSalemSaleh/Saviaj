@@ -154,7 +154,18 @@ export default function DriverPage() {
   const [isOnlineForHire, setIsOnlineForHire] = useState(false);
   const [ratePerMile, setRatePerMile] = useState("");
   const [driverTagline, setDriverTagline] = useState("");
+  const [serviceCategories, setServiceCategories] = useState<string[]>([]);
   const [isUpdatingOnlineStatus, setIsUpdatingOnlineStatus] = useState(false);
+  
+  // Service category definitions
+  const SERVICE_CATEGORIES = [
+    { id: 'standard', label: 'Standard', description: 'Daily rides for everyday travel' },
+    { id: 'premium', label: 'Premium', description: 'Luxury vehicles for special occasions' },
+    { id: 'team', label: 'Team', description: 'Group transportation for parties' },
+    { id: 'eco', label: 'Eco', description: 'Electric or hybrid vehicles' },
+    { id: 'business', label: 'Business', description: 'Professional rides for corporate users' },
+    { id: 'budget', label: 'Budget', description: 'Shared rides at lower cost' },
+  ];
   
   // Request banner state (matches rider pending payment banner behavior)
   const [requestBannerOpen, setRequestBannerOpen] = useState(true);
@@ -249,6 +260,9 @@ export default function DriverPage() {
       if (user.driverTagline) {
         setDriverTagline(user.driverTagline);
       }
+      if (user.serviceCategories && Array.isArray(user.serviceCategories)) {
+        setServiceCategories(user.serviceCategories);
+      }
     }
   }, [user]);
 
@@ -296,6 +310,7 @@ export default function DriverPage() {
         isOnlineForHire: newOnlineStatus,
         ratePerMile: parseFloat(ratePerMile),
         driverTagline: driverTagline.trim(),
+        serviceCategories,
         lat,
         lng,
       });
@@ -1131,6 +1146,85 @@ export default function DriverPage() {
                             data-testid="input-driver-tagline"
                           />
                         </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-medium">Service Categories (up to 3)</label>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {SERVICE_CATEGORIES.map((cat) => {
+                              const isSelected = serviceCategories.includes(cat.id);
+                              const isDisabled = !isSelected && serviceCategories.length >= 3;
+                              return (
+                                <div
+                                  key={cat.id}
+                                  className={`flex items-center gap-1.5 p-1.5 rounded border cursor-pointer transition-colors ${
+                                    isSelected 
+                                      ? 'bg-primary/10 border-primary' 
+                                      : isDisabled 
+                                        ? 'bg-muted/50 border-muted cursor-not-allowed opacity-50' 
+                                        : 'border-border hover:border-primary/50'
+                                  }`}
+                                  onClick={() => {
+                                    if (isDisabled) return;
+                                    if (isSelected) {
+                                      setServiceCategories(prev => prev.filter(c => c !== cat.id));
+                                    } else {
+                                      setServiceCategories(prev => [...prev, cat.id]);
+                                    }
+                                  }}
+                                  data-testid={`checkbox-category-${cat.id}`}
+                                >
+                                  <div className={`h-3.5 w-3.5 rounded border flex items-center justify-center ${
+                                    isSelected ? 'bg-primary border-primary' : 'border-muted-foreground'
+                                  }`}>
+                                    {isSelected && <Check className="h-2.5 w-2.5 text-white" />}
+                                  </div>
+                                  <span className="text-[10px] font-medium flex-1">{cat.label}</span>
+                                  <div className="group relative">
+                                    <span className="text-[9px] text-muted-foreground cursor-help">i</span>
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-32 p-1.5 bg-popover border rounded shadow-lg z-50">
+                                      <p className="text-[9px] text-muted-foreground">{cat.description}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {serviceCategories.length > 0 && (
+                            <p className="text-[9px] text-muted-foreground">{serviceCategories.length}/3 selected</p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full h-8 text-xs"
+                          onClick={async () => {
+                            try {
+                              const response = await apiRequest("POST", "/api/driver/online-status", {
+                                isOnlineForHire,
+                                ratePerMile: parseFloat(ratePerMile) || 0,
+                                driverTagline: driverTagline.trim(),
+                                serviceCategories,
+                              });
+                              if (response.ok) {
+                                queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+                                toast({
+                                  title: "Settings Saved",
+                                  description: "Your driver settings have been updated.",
+                                });
+                              } else {
+                                const error = await response.json();
+                                throw new Error(error.message);
+                              }
+                            } catch (error: any) {
+                              toast({
+                                title: "Error",
+                                description: error.message || "Failed to save settings.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          data-testid="button-save-driver-settings"
+                        >
+                          Save Settings
+                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>

@@ -3504,7 +3504,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      const { isOnlineForHire, ratePerMile, driverTagline, lat, lng } = req.body;
+      const { isOnlineForHire, ratePerMile, driverTagline, serviceCategories, lat, lng } = req.body;
       
       // Verify user is a commercial driver
       const user = await storage.getUser(userId);
@@ -3521,7 +3521,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Rate per mile is required when going online" });
       }
       
-      const updatedUser = await storage.updateDriverOnlineStatus(userId, isOnlineForHire, ratePerMile, driverTagline, lat, lng);
+      // Validate service categories (max 3, valid values only)
+      const validCategories = ['standard', 'premium', 'team', 'eco', 'business', 'budget'];
+      let validatedCategories: string[] | undefined;
+      if (serviceCategories && Array.isArray(serviceCategories)) {
+        validatedCategories = serviceCategories
+          .filter((cat: string) => validCategories.includes(cat))
+          .slice(0, 3);
+      }
+      
+      const updatedUser = await storage.updateDriverOnlineStatus(userId, isOnlineForHire, ratePerMile, driverTagline, lat, lng, validatedCategories);
       res.json(maskSensitiveUserData(updatedUser));
     } catch (error) {
       console.error("Error updating online status:", error);

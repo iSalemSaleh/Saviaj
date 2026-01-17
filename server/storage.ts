@@ -503,7 +503,7 @@ export interface IStorage {
     currentLat: string | null;
     currentLng: string | null;
   }>>;
-  updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number): Promise<User>;
+  updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number, serviceCategories?: string[]): Promise<User>;
   
   // Settings and account management operations
   updateUserProfile(id: string, data: {
@@ -1693,7 +1693,7 @@ export class DatabaseStorage implements IStorage {
     return degrees * (Math.PI / 180);
   }
 
-  async updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number): Promise<User> {
+  async updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number, serviceCategories?: string[]): Promise<User> {
     const updateData: any = {
       isOnlineForHire,
       updatedAt: new Date(),
@@ -1705,6 +1705,10 @@ export class DatabaseStorage implements IStorage {
     
     if (driverTagline !== undefined) {
       updateData.driverTagline = driverTagline;
+    }
+    
+    if (serviceCategories !== undefined) {
+      updateData.serviceCategories = serviceCategories;
     }
     
     if (lat !== undefined && lng !== undefined) {
