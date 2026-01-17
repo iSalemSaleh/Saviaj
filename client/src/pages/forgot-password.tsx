@@ -29,7 +29,7 @@ export default function ForgotPassword() {
   const requestOtpMutation = useMutation({
     mutationFn: async (data: { email: string }) => {
       const response = await apiRequest("POST", "/api/auth/password-reset/request", data);
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       if (data.continuationToken) {
@@ -37,11 +37,11 @@ export default function ForgotPassword() {
         setCodeLength(data.codeLength || 8);
         setStep("verify");
         setError("");
-        setSuccessMessage("");
+        setSuccessMessage(`A verification code has been sent to ${email}`);
       } else {
-        // Email doesn't exist or generic success - don't reveal which
+        // Email doesn't exist - use generic message to prevent account enumeration
         setError("");
-        setSuccessMessage("If an account exists with this email, a verification code has been sent.");
+        setSuccessMessage("If an account exists with this email, a verification code has been sent. Please check your inbox.");
       }
     },
     onError: (error: any) => {
@@ -53,7 +53,7 @@ export default function ForgotPassword() {
   const verifyOtpMutation = useMutation({
     mutationFn: async (data: { email: string; code: string; continuationToken: string }) => {
       const response = await apiRequest("POST", "/api/auth/password-reset/verify", data);
-      return response;
+      return response.json();
     },
     onSuccess: (data: any) => {
       setResetToken(data.resetToken);
@@ -68,7 +68,7 @@ export default function ForgotPassword() {
   const resetPasswordMutation = useMutation({
     mutationFn: async (data: { email: string; resetToken: string; newPassword: string }) => {
       const response = await apiRequest("POST", "/api/auth/password-reset/complete", data);
-      return response;
+      return response.json();
     },
     onSuccess: () => {
       setStep("success");
