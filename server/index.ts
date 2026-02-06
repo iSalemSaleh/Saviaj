@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
+import businessRoutes from "./businessRoutes";
 
 const app = express();
 const httpServer = createServer(app);
@@ -160,6 +161,9 @@ async function initStripe() {
   });
 
   await registerRoutes(app, httpServer);
+
+  // Mount business module routes (fully isolated from existing routes)
+  app.use('/api/business', businessRoutes);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

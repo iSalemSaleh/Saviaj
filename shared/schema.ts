@@ -927,3 +927,184 @@ export const insertProHireNegotiationOfferSchema = createInsertSchema(proHireNeg
 });
 export type InsertProHireNegotiationOffer = z.infer<typeof insertProHireNegotiationOfferSchema>;
 export type ProHireNegotiationOffer = typeof proHireNegotiationOffers.$inferSelect;
+
+// ============================================================
+// BUSINESS MODULE - Small Business / Fleet Management
+// ============================================================
+
+// Organizations - Business accounts that manage multiple drivers and vehicles
+export const organizations = pgTable("organizations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  ownerUserId: varchar("owner_user_id").notNull().references(() => users.id),
+  name: varchar("name", { length: 200 }).notNull(),
+  businessType: varchar("business_type", { length: 50 }).notNull(),
+  registrationNumber: varchar("registration_number", { length: 50 }),
+  vatNumber: varchar("vat_number", { length: 30 }),
+  businessAddress: text("business_address"),
+  businessCity: varchar("business_city", { length: 100 }),
+  businessPostcode: varchar("business_postcode", { length: 15 }),
+  businessPhone: varchar("business_phone", { length: 20 }),
+  businessEmail: varchar("business_email", { length: 255 }),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  stripeAccountId: varchar("stripe_account_id"),
+  logoUrl: varchar("logo_url"),
+  description: text("description"),
+  maxDrivers: integer("max_drivers").default(20),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_org_owner").on(table.ownerUserId),
+  index("idx_org_status").on(table.status),
+]);
+
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [organizations.ownerUserId],
+    references: [users.id],
+  }),
+  members: many(orgMembers),
+  vehicles: many(orgVehicles),
+  documents: many(orgDocuments),
+  invitations: many(orgInvitations),
+}));
+
+export const insertOrganizationSchema = createInsertSchema(organizations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  status: true,
+  stripeAccountId: true,
+});
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type Organization = typeof organizations.$inferSelect;
+
+// Organization Members - Links drivers to businesses with roles
+export const orgMembers = pgTable("org_members", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  orgId: integer("org_id").notNull().references(() => organizations.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  role: varchar("role", { length: 20 }).notNull().default("driver"),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_orgmember_org").on(table.orgId),
+  index("idx_orgmember_user").on(table.userId),
+  index("idx_orgmember_status").on(table.status),
+]);
+
+export const orgMembersRelations = relations(orgMembers, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [orgMembers.orgId],
+    references: [organizations.id],
+  }),
+  user: one(users, {
+    fields: [orgMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertOrgMemberSchema = createInsertSchema(orgMembers).omit({
+  id: true,
+  joinedAt: true,
+  updatedAt: true,
+});
+export type InsertOrgMember = z.infer<typeof insertOrgMemberSchema>;
+export type OrgMember = typeof orgMembers.$inferSelect;
+
+// Organization Vehicles - Vehicles owned by the business
+export const orgVehicles = pgTable("org_vehicles", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  orgId: integer("org_id").notNull().references(() => organizations.id),
+  assignedDriverUserId: varchar("assigned_driver_user_id").references(() => users.id),
+  make: varchar("make", { length: 50 }).notNull(),
+  model: varchar("model", { length: 50 }).notNull(),
+  year: integer("year").notNull(),
+  color: varchar("color", { length: 30 }),
+  licensePlate: varchar("license_plate", { length: 20 }).notNull(),
+  vehicleType: varchar("vehicle_type", { length: 30 }).default("sedan"),
+  seats: integer("seats").default(4),
+  insuranceExpiryDate: varchar("insurance_expiry_date"),
+  motExpiryDate: varchar("mot_expiry_date"),
+  status: varchar("status", { length: 20 }).notNull().default("active"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_orgvehicle_org").on(table.orgId),
+  index("idx_orgvehicle_driver").on(table.assignedDriverUserId),
+  index("idx_orgvehicle_status").on(table.status),
+]);
+
+export const orgVehiclesRelations = relations(orgVehicles, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [orgVehicles.orgId],
+    references: [organizations.id],
+  }),
+  assignedDriver: one(users, {
+    fields: [orgVehicles.assignedDriverUserId],
+    references: [users.id],
+  }),
+}));
+
+export const insertOrgVehicleSchema = createInsertSchema(orgVehicles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  assignedDriverUserId: true,
+  status: true,
+});
+export type InsertOrgVehicle = z.infer<typeof insertOrgVehicleSchema>;
+export type OrgVehicle = typeof orgVehicles.$inferSelect;
+
+// Organization Invitations - Invite drivers to join a business
+export const orgInvitations = pgTable("org_invitations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  orgId: integer("org_id").notNull().references(() => organizations.id),
+  email: varchar("email", { length: 255 }).notNull(),
+  role: varchar("role", { length: 20 }).notNull().default("driver"),
+  token: varchar("token", { length: 100 }).notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  invitedByUserId: varchar("invited_by_user_id").notNull().references(() => users.id),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_orginvite_org").on(table.orgId),
+  index("idx_orginvite_email").on(table.email),
+  index("idx_orginvite_token").on(table.token),
+  index("idx_orginvite_status").on(table.status),
+]);
+
+export const orgInvitationsRelations = relations(orgInvitations, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [orgInvitations.orgId],
+    references: [organizations.id],
+  }),
+  invitedBy: one(users, {
+    fields: [orgInvitations.invitedByUserId],
+    references: [users.id],
+  }),
+}));
+
+export const insertOrgInvitationSchema = createInsertSchema(orgInvitations).omit({
+  id: true,
+  createdAt: true,
+  token: true,
+  status: true,
+});
+export type InsertOrgInvitation = z.infer<typeof insertOrgInvitationSchema>;
+export type OrgInvitation = typeof orgInvitations.$inferSelect;
+
+// Organization Documents - Business registration certificates, licenses, etc.
+export const orgDocuments = pgTable("org_documents", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  orgId: integer("org_id").notNull().references(() => organizations.id),
+  documentType: varchar("document_type", { length: 50 }).notNull(),
+  documentUrl: varchar("document_url").notNull(),
+  fileName: varchar("file_name", { length: 255 }),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
+  uploadedByUserId: varchar("uploaded_by_user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_orgdoc_org").on(table.orgId),
+  index("idx_orgdoc_type").on(table.documentType),
+]);
