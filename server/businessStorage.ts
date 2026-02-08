@@ -116,6 +116,11 @@ export async function getOrgMember(orgId: number, userId: string): Promise<OrgMe
   return member || null;
 }
 
+export async function getOrgMemberById(id: number): Promise<OrgMember | null> {
+  const [member] = await db.select().from(orgMembers).where(eq(orgMembers.id, id)).limit(1);
+  return member || null;
+}
+
 export async function addOrgMember(data: InsertOrgMember): Promise<OrgMember> {
   const [member] = await db.insert(orgMembers).values(data as any).returning();
   return member;
@@ -255,6 +260,11 @@ export async function updateInvitationStatus(id: number, status: string): Promis
 export async function addOrgDocument(data: { orgId: number; documentType: string; documentUrl: string; fileName: string; uploadedByUserId: string }): Promise<typeof orgDocuments.$inferSelect> {
   const [doc] = await db.insert(orgDocuments).values(data).returning();
   return doc;
+}
+
+export async function getOrgDocumentByUrl(url: string): Promise<(typeof orgDocuments.$inferSelect) | null> {
+  const [doc] = await db.select().from(orgDocuments).where(eq(orgDocuments.documentUrl, url)).limit(1);
+  return doc || null;
 }
 
 export async function getOrgDocuments(orgId: number): Promise<(typeof orgDocuments.$inferSelect)[]> {

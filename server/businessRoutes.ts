@@ -1,9 +1,12 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import * as bizStorage from './businessStorage';
-import { insertOrganizationSchema, insertOrgVehicleSchema } from '@shared/schema';
+import { insertOrganizationSchema, insertOrgVehicleSchema, users } from '@shared/schema';
 import { z } from 'zod';
+import { db } from './db';
+import { eq } from 'drizzle-orm';
 
 const router = Router();
 
@@ -23,14 +26,27 @@ const businessDocUpload = multer({
 });
 
 function requireAuth(req: Request, res: Response, next: Function) {
-  if (!(req as any).user) {
+  const r = req as any;
+  const userId = r.session?.userId || r.user?.claims?.sub;
+  if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   next();
 }
 
 function getUserId(req: Request): string {
-  return (req as any).user?.id;
+  const r = req as any;
+  return r.session?.userId || r.user?.claims?.sub;
+}
+
+async function requireAdmin(req: Request, res: Response, next: Function) {
+  const userId = getUserId(req);
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user || !user.isAdmin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
 }
 
 // ============================================================
@@ -46,7 +62,7 @@ router.post('/organizations', requireAuth, async (req: Request, res: Response) =
     }
 
     const parsed = insertOrganizationSchema.parse({ ...req.body, ownerUserId: userId });
-    const org = await bizStorage.createOrganization(parsed);
+    const org = await bizStorage.createOrganization({ ...parsed, ownerUserId: userId });
     res.status(201).json(org);
   } catch (err: any) {
     if (err instanceof z.ZodError) {
@@ -90,6 +106,20 @@ router.get('/organizations/:id', requireAuth, async (req: Request, res: Response
   }
 });
 
+const updateOrgSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  businessType: z.string().max(50).optional(),
+  registrationNumber: z.string().max(50).optional().nullable(),
+  vatNumber: z.string().max(50).optional().nullable(),
+  businessAddress: z.string().max(255).optional().nullable(),
+  businessCity: z.string().max(100).optional().nullable(),
+  businessPostcode: z.string().max(20).optional().nullable(),
+  businessPhone: z.string().max(30).optional().nullable(),
+  businessEmail: z.string().email().optional().nullable(),
+  description: z.string().max(500).optional().nullable(),
+  maxDrivers: z.number().int().min(1).max(500).optional().nullable(),
+}).strict();
+
 router.patch('/organizations/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
@@ -101,9 +131,13 @@ router.patch('/organizations/:id', requireAuth, async (req: Request, res: Respon
       return res.status(403).json({ error: 'Only owners and admins can update the organization' });
     }
 
-    const org = await bizStorage.updateOrganization(id, req.body);
+    const validated = updateOrgSchema.parse(req.body);
+    const org = await bizStorage.updateOrganization(id, validated);
     res.json(org);
-  } catch (err) {
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid data', details: err.errors });
+    }
     console.error('Error updating organization:', err);
     res.status(500).json({ error: 'Failed to update organization' });
   }
@@ -142,6 +176,15 @@ router.patch('/organizations/:orgId/members/:memberId/role', requireAuth, async 
       return res.status(403).json({ error: 'Only the owner can change roles' });
     }
 
+    const targetMember = await bizStorage.getOrgMemberById(memberId);
+    if (!targetMember || targetMember.orgId !== orgId) {
+      return res.status(404).json({ error: 'Member not found in this organization' });
+    }
+
+    if (targetMember.role === 'owner') {
+      return res.status(400).json({ error: 'Cannot change the owner role' });
+    }
+
     const { role } = req.body;
     if (!['admin', 'driver'].includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
@@ -165,6 +208,15 @@ router.delete('/organizations/:orgId/members/:memberId', requireAuth, async (req
     const requester = await bizStorage.getOrgMember(orgId, userId);
     if (!requester || !['owner', 'admin'].includes(requester.role)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    const targetMember = await bizStorage.getOrgMemberById(memberId);
+    if (!targetMember || targetMember.orgId !== orgId) {
+      return res.status(404).json({ error: 'Member not found in this organization' });
+    }
+
+    if (targetMember.role === 'owner') {
+      return res.status(400).json({ error: 'Cannot remove the organization owner' });
     }
 
     await bizStorage.removeOrgMember(memberId);
@@ -219,6 +271,18 @@ router.post('/organizations/:id/vehicles', requireAuth, async (req: Request, res
   }
 });
 
+const updateVehicleSchema = z.object({
+  make: z.string().min(1).max(50).optional(),
+  model: z.string().min(1).max(50).optional(),
+  year: z.number().int().min(1990).max(2030).optional(),
+  color: z.string().max(30).optional().nullable(),
+  licensePlate: z.string().min(1).max(20).optional(),
+  vehicleType: z.string().max(30).optional(),
+  seats: z.number().int().min(1).max(50).optional(),
+  insuranceExpiryDate: z.string().optional().nullable(),
+  motExpiryDate: z.string().optional().nullable(),
+}).strict();
+
 router.patch('/organizations/:orgId/vehicles/:vehicleId', requireAuth, async (req: Request, res: Response) => {
   try {
     const orgId = parseInt(req.params.orgId);
@@ -231,9 +295,18 @@ router.patch('/organizations/:orgId/vehicles/:vehicleId', requireAuth, async (re
       return res.status(403).json({ error: 'Only owners and admins can update vehicles' });
     }
 
-    const vehicle = await bizStorage.updateOrgVehicle(vehicleId, req.body);
+    const existingVehicle = await bizStorage.getOrgVehicleById(vehicleId);
+    if (!existingVehicle || existingVehicle.orgId !== orgId) {
+      return res.status(404).json({ error: 'Vehicle not found in this organization' });
+    }
+
+    const validated = updateVehicleSchema.parse(req.body);
+    const vehicle = await bizStorage.updateOrgVehicle(vehicleId, validated);
     res.json(vehicle);
-  } catch (err) {
+  } catch (err: any) {
+    if (err instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Invalid data', details: err.errors });
+    }
     console.error('Error updating vehicle:', err);
     res.status(500).json({ error: 'Failed to update vehicle' });
   }
@@ -249,6 +322,11 @@ router.patch('/organizations/:orgId/vehicles/:vehicleId/assign', requireAuth, as
     const member = await bizStorage.getOrgMember(orgId, userId);
     if (!member || !['owner', 'admin'].includes(member.role)) {
       return res.status(403).json({ error: 'Only owners and admins can assign vehicles' });
+    }
+
+    const existingVehicle = await bizStorage.getOrgVehicleById(vehicleId);
+    if (!existingVehicle || existingVehicle.orgId !== orgId) {
+      return res.status(404).json({ error: 'Vehicle not found in this organization' });
     }
 
     const { driverUserId } = req.body;
@@ -277,6 +355,11 @@ router.delete('/organizations/:orgId/vehicles/:vehicleId', requireAuth, async (r
     const member = await bizStorage.getOrgMember(orgId, userId);
     if (!member || !['owner', 'admin'].includes(member.role)) {
       return res.status(403).json({ error: 'Only owners and admins can remove vehicles' });
+    }
+
+    const existingVehicle = await bizStorage.getOrgVehicleById(vehicleId);
+    if (!existingVehicle || existingVehicle.orgId !== orgId) {
+      return res.status(404).json({ error: 'Vehicle not found in this organization' });
     }
 
     await bizStorage.removeOrgVehicle(vehicleId);
@@ -431,7 +514,7 @@ router.post('/organizations/:id/documents', requireAuth, businessDocUpload.singl
     const doc = await bizStorage.addOrgDocument({
       orgId,
       documentType,
-      documentUrl: `/uploads/business/${req.file.filename}`,
+      documentUrl: `/api/business/documents/${req.file.filename}`,
       fileName: req.file.originalname,
       uploadedByUserId: userId,
     });
@@ -462,10 +545,48 @@ router.get('/organizations/:id/documents', requireAuth, async (req: Request, res
 });
 
 // ============================================================
+// Authenticated document access
+// ============================================================
+
+router.get('/documents/:filename', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { filename } = req.params;
+    if (!filename || filename.includes('..') || filename.includes('/')) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
+    const userId = getUserId(req);
+
+    const docRecord = await bizStorage.getOrgDocumentByUrl(`/api/business/documents/${filename}`);
+    if (!docRecord) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+
+    const member = await bizStorage.getOrgMember(docRecord.orgId, userId);
+    if (!member || !['owner', 'admin'].includes(member.role)) {
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!user?.isAdmin) {
+        return res.status(403).json({ error: 'Insufficient permissions' });
+      }
+    }
+
+    const filePath = path.join(process.cwd(), 'uploads', 'business', filename);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    res.sendFile(filePath);
+  } catch (err) {
+    console.error('Error serving document:', err);
+    res.status(500).json({ error: 'Failed to serve document' });
+  }
+});
+
+// ============================================================
 // Admin endpoints (for platform admin to approve/reject)
 // ============================================================
 
-router.get('/admin/organizations', requireAuth, async (req: Request, res: Response) => {
+router.get('/admin/organizations', requireAuth, requireAdmin as any, async (req: Request, res: Response) => {
   try {
     const orgs = await bizStorage.getAllOrganizations();
     res.json(orgs);
@@ -475,7 +596,7 @@ router.get('/admin/organizations', requireAuth, async (req: Request, res: Respon
   }
 });
 
-router.patch('/admin/organizations/:id/status', requireAuth, async (req: Request, res: Response) => {
+router.patch('/admin/organizations/:id/status', requireAuth, requireAdmin as any, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
