@@ -1,4 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
+import path from "path";
+import fs from "fs";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -162,6 +164,16 @@ async function initStripe() {
   });
 
   await registerRoutes(app, httpServer);
+
+  app.get('/api/downloads/investor-overview', (_req: Request, res: Response) => {
+    const filePath = path.join(process.cwd(), 'public', 'AtlasRide_Investor_Overview.pdf');
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    res.setHeader('Content-Disposition', 'attachment; filename="AtlasRide_Investor_Overview.pdf"');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.sendFile(filePath);
+  });
 
   // Mount business module routes (fully isolated from existing routes)
   app.use('/api/business', businessRoutes);
