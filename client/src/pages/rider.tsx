@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car, Radio, Crown, ChevronDown, ChevronUp, Crosshair, Route, Bell, CreditCard } from "lucide-react";
+import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car, Radio, Crown, ChevronDown, ChevronUp, Crosshair, Route, Bell, CreditCard, Repeat } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,6 +23,7 @@ import { apiRequest } from "@/lib/queryClient";
 import PostcodeSearch from "@/components/PostcodeSearch";
 import { DateTimePicker } from "@/components/DateTimePicker";
 import { RiderLocationMap } from "@/components/map/RiderLocationMap";
+import { RecurringScheduleManager, DayPicker } from "@/components/RecurringScheduleManager";
 
 interface DriverInfo {
   id: string;
@@ -178,6 +179,10 @@ export default function RiderPage() {
   const [seatCount, setSeatCount] = useState(1);
   const [tripMessage, setTripMessage] = useState("");
   const INITIAL_DISPLAY_COUNT = 5;
+
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringDays, setRecurringDays] = useState<number[]>([]);
+  const [recurringTime, setRecurringTime] = useState("");
 
   // Negotiation state
   const [negotiateSheetOpen, setNegotiateSheetOpen] = useState(false);
@@ -802,6 +807,36 @@ export default function RiderPage() {
     },
   });
 
+  const createRecurringMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/recurring-schedules", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/recurring-schedules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rider-offers"] });
+      setIsRecurring(false);
+      setRecurringDays([]);
+      setRecurringTime("");
+      setPickupLocation("");
+      setDropoffLocation("");
+      setOfferPrice("");
+      setPickupCoords(null);
+      setDropoffCoords(null);
+      toast({
+        title: "Recurring Schedule Created",
+        description: "Your recurring ride requests have been posted for the next 14 days",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create recurring schedule",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -810,7 +845,7 @@ export default function RiderPage() {
       return;
     }
 
-    if (!pickupLocation || !dropoffLocation || !requestedTime || !offerPrice) {
+    if (!pickupLocation || !dropoffLocation || !offerPrice) {
       toast({
         title: "Missing Information",
         description: "Please fill in all fields",
@@ -824,6 +859,50 @@ export default function RiderPage() {
       toast({
         title: "Invalid Price",
         description: "Please enter a price between £0.01 and £500",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isRecurring) {
+      if (recurringDays.length === 0) {
+        toast({
+          title: "Select Days",
+          description: "Please select at least one day for your recurring ride",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!recurringTime) {
+        toast({
+          title: "Set Time",
+          description: "Please set a departure time for your recurring ride",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      createRecurringMutation.mutate({
+        type: "rider",
+        entries: recurringDays.map(day => ({
+          dayOfWeek: day,
+          departureTime: recurringTime,
+          startLocation: pickupLocation,
+          endLocation: dropoffLocation,
+          startLat: pickupCoords?.lat,
+          startLng: pickupCoords?.lon,
+          endLat: dropoffCoords?.lat,
+          endLng: dropoffCoords?.lon,
+          offerPrice: price,
+        })),
+      });
+      return;
+    }
+
+    if (!requestedTime) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a departure time",
         variant: "destructive",
       });
       return;
@@ -902,7 +981,7 @@ export default function RiderPage() {
       </div>
       
       {/* OVERLAY: Collapsible Request Form */}
-      <div className={`fixed top-14 left-0 right-0 z-40 backdrop-blur-sm bg-background/40 border-b border-white/10 transition-all duration-300 overflow-hidden ${formCollapsed ? 'max-h-10' : 'max-h-56'}`}>
+      <div className={`fixed top-14 left-0 right-0 z-40 backdrop-blur-sm bg-background/40 border-b border-white/10 transition-all duration-300 overflow-hidden ${formCollapsed ? 'max-h-10' : isRecurring ? 'max-h-80' : 'max-h-60'}`}>
         <button
           onClick={() => setFormCollapsed(!formCollapsed)}
           className="w-full px-3 py-2 flex items-center justify-between text-xs hover:bg-white/10"
@@ -933,38 +1012,94 @@ export default function RiderPage() {
               testId="input-dropoff"
               compact
             />
-            <div className="flex gap-2">
-              <DateTimePicker
-                value={requestedTime}
-                onChange={setRequestedTime}
-                testId="input-time"
-                className="w-1/2"
-                compact
-              />
-              <div className="relative w-1/4">
-                <PoundSterling className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
-                <Input 
-                  type="number" 
-                  placeholder="Offer"
-                  min="0.30"
-                  max="500"
-                  step="0.01"
-                  className="pl-6 h-8 text-sm bg-white dark:bg-slate-900 border-gray-200"
-                  value={offerPrice}
-                  onChange={(e) => setOfferPrice(e.target.value)}
-                  aria-label="Price offer"
-                  data-testid="input-price"
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsRecurring(!isRecurring)}
+                className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-colors ${
+                  isRecurring
+                    ? "bg-primary text-white"
+                    : "bg-gray-100 dark:bg-slate-700 text-muted-foreground hover:bg-gray-200"
+                }`}
+                data-testid="button-toggle-recurring"
+              >
+                <Repeat className="h-3 w-3" />
+                {isRecurring ? "Recurring" : "Recurring"}
+              </button>
+              {isRecurring ? (
+                <>
+                  <input
+                    type="time"
+                    value={recurringTime}
+                    onChange={(e) => setRecurringTime(e.target.value)}
+                    className="h-7 text-[11px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded px-1.5 w-20"
+                    data-testid="input-recurring-time"
+                  />
+                  <div className="relative flex-1">
+                    <PoundSterling className="absolute left-1.5 top-1.5 h-3 w-3 text-muted-foreground" />
+                    <Input 
+                      type="number" 
+                      placeholder="Offer"
+                      min="0.30"
+                      max="500"
+                      step="0.01"
+                      className="pl-5 h-7 text-[11px] bg-white dark:bg-slate-900 border-gray-200"
+                      value={offerPrice}
+                      onChange={(e) => setOfferPrice(e.target.value)}
+                      data-testid="input-price"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <DateTimePicker
+                    value={requestedTime}
+                    onChange={setRequestedTime}
+                    testId="input-time"
+                    className="flex-1"
+                    compact
+                  />
+                  <div className="relative w-20">
+                    <PoundSterling className="absolute left-1.5 top-1.5 h-3 w-3 text-muted-foreground" />
+                    <Input 
+                      type="number" 
+                      placeholder="Offer"
+                      min="0.30"
+                      max="500"
+                      step="0.01"
+                      className="pl-5 h-7 text-[11px] bg-white dark:bg-slate-900 border-gray-200"
+                      value={offerPrice}
+                      onChange={(e) => setOfferPrice(e.target.value)}
+                      data-testid="input-price"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            {isRecurring && (
+              <div className="flex items-center gap-2">
+                <DayPicker
+                  selectedDays={recurringDays}
+                  onToggleDay={(day) => setRecurringDays(prev =>
+                    prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+                  )}
                 />
               </div>
-              <Button 
-                type="submit" 
-                className="h-8 w-1/4 text-xs"
-                disabled={createOfferMutation.isPending}
-                data-testid="button-post-request"
-              >
-                {createOfferMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Post"}
-              </Button>
-            </div>
+            )}
+            <Button 
+              type="submit" 
+              className="w-full h-8 text-xs"
+              disabled={createOfferMutation.isPending || createRecurringMutation.isPending}
+              data-testid="button-post-request"
+            >
+              {(createOfferMutation.isPending || createRecurringMutation.isPending) ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : isRecurring ? (
+                <><Repeat className="h-3 w-3 mr-1" /> Post Recurring Ride</>
+              ) : (
+                "Post"
+              )}
+            </Button>
           </form>
         )}
       </div>
@@ -1319,6 +1454,9 @@ export default function RiderPage() {
             </div>
           )}
         </div>
+
+        {/* Recurring Schedules Manager */}
+        <RecurringScheduleManager type="rider" />
 
         {/* Card 3: My Routes (max 10 routes, no pagination) */}
         <div className={`backdrop-blur-sm bg-background/40 rounded-xl border border-white/20 shadow-lg overflow-hidden transition-all duration-300 ${myRoutesCardOpen ? 'max-h-[50vh]' : ''}`}>

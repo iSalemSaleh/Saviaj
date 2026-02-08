@@ -40,7 +40,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM
 - **Schema**: Shared `shared/schema.ts` for frontend and backend
-- **Key Tables**: `users`, `riderOffers`, `driverRoutes`, `rides`, `bids`, `chatMessages`, `ratings`.
+- **Key Tables**: `users`, `riderOffers`, `driverRoutes`, `rides`, `bids`, `chatMessages`, `ratings`, `recurringSchedules`, `recurringScheduleEntries`.
 - **Normalization**: Ongoing migration to normalized tables (`user_profiles`, `driver_profiles`, `vehicles`, etc.) to improve performance and scalability.
 
 ### Core Features
@@ -48,6 +48,7 @@ Preferred communication style: Simple, everyday language.
 - **Real-time Tracking & Chat**: WebSocket-based for live ride updates and in-app communication. Smooth animated driver marker with heading interpolation and position easing for fluid tracking experience.
 - **Driver Types**: Private (limited) and Commercial (unlimited, "online for hire" status).
 - **Service Categories**: Pro drivers can select up to 3 service categories (standard, premium, team, eco, business, budget) visible to riders.
+- **Recurring Journeys**: Users can set up recurring ride requests or driver routes. Riders select commute days and time, drivers can specify per-day schedules with different routes and times. System auto-generates individual listings for the next 14 days with a rolling background job.
 - **Flexible Ride Options**: Post own route, browse driver routes, or find nearby commercial drivers.
 - **Secure Payments**: Stripe integration with robust security measures for amount validation, webhook verification, and driver earnings protection.
 - **Comprehensive Signup & Driver Onboarding**: Multi-step flow including email verification, personal info, license, vehicle, and bank details.

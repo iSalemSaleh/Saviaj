@@ -6,6 +6,7 @@ import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import businessRoutes from "./businessRoutes";
+import recurringRoutes from "./recurringRoutes";
 
 const app = express();
 const httpServer = createServer(app);
@@ -165,6 +166,9 @@ async function initStripe() {
   // Mount business module routes (fully isolated from existing routes)
   app.use('/api/business', businessRoutes);
 
+  // Mount recurring schedules routes
+  app.use('/api/recurring-schedules', recurringRoutes);
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -204,4 +208,19 @@ async function initStripe() {
   }, 5 * 60 * 1000); // 5 minutes
   
   log('Payment timeout and expired rides cleanup job scheduled (every 5 minutes)');
+
+  // Recurring schedule generation job (runs every 6 hours)
+  setInterval(async () => {
+    try {
+      const { generateAllActiveSchedules } = await import('./recurringSchedules');
+      const count = await generateAllActiveSchedules();
+      if (count > 0) {
+        log(`Recurring schedules: generated ${count} new listings`);
+      }
+    } catch (error) {
+      console.error('Recurring schedule generation job failed:', error);
+    }
+  }, 6 * 60 * 60 * 1000); // 6 hours
+
+  log('Recurring schedule generation job scheduled (every 6 hours)');
 })();

@@ -10,13 +10,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, Crosshair, Power, Radio, Bell, Check, X, ChevronDown, ChevronUp, Route, Users, Settings } from "lucide-react";
+import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, Crosshair, Power, Radio, Bell, Check, X, ChevronDown, ChevronUp, Route, Users, Settings, Repeat } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import PostcodeSearch from "@/components/PostcodeSearch";
 import { DateTimePicker } from "@/components/DateTimePicker";
 import { RiderLocationMap } from "@/components/map/RiderLocationMap";
+import { RecurringScheduleManager, DriverDayEntryPicker } from "@/components/RecurringScheduleManager";
 
 type DetourUnit = "miles" | "km" | "meters" | "yards";
 
@@ -125,6 +126,18 @@ export default function DriverPage() {
   const [offersCardOpen, setOffersCardOpen] = useState(false);
   const [activeRidesCardOpen, setActiveRidesCardOpen] = useState(false);
   const [myOffersCardOpen, setMyOffersCardOpen] = useState(false);
+
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringEntries, setRecurringEntries] = useState<{
+    dayOfWeek: number;
+    departureTime: string;
+    startLocation: string;
+    endLocation: string;
+    startLat?: number | null;
+    startLng?: number | null;
+    endLat?: number | null;
+    endLng?: number | null;
+  }[]>([{ dayOfWeek: 1, departureTime: "08:00", startLocation: "", endLocation: "", startLat: null, startLng: null, endLat: null, endLng: null }]);
 
   const handleStartChange = (value: string, lat?: number, lon?: number) => {
     setStartLocation(value);
@@ -720,30 +733,42 @@ export default function DriverPage() {
     }
   };
 
+  const createRecurringMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", "/api/recurring-schedules", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/recurring-schedules"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/driver-routes/mine"] });
+      setIsRecurring(false);
+      setRecurringEntries([{ dayOfWeek: 1, departureTime: "08:00", startLocation: "", endLocation: "", startLat: null, startLng: null, endLat: null, endLng: null }]);
+      setStartLocation("");
+      setEndLocation("");
+      setMaxDetour("");
+      setAvailableSeats("");
+      setPricePerSeat("");
+      setStartCoords(null);
+      setEndCoords(null);
+      toast({
+        title: "Recurring Schedule Created",
+        description: "Your recurring routes have been posted for the next 14 days",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create recurring schedule",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handlePublishRoute = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!user) {
       navigate("/auth");
-      return;
-    }
-
-    if (!startLocation || !endLocation || !departureTime) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const selectedTime = new Date(departureTime);
-    if (selectedTime <= new Date()) {
-      toast({
-        title: "Invalid Time",
-        description: "Please select a departure time in the future",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -787,6 +812,65 @@ export default function DriverPage() {
         });
         return;
       }
+    }
+
+    if (isRecurring) {
+      const validEntries = recurringEntries.map(entry => ({
+        ...entry,
+        startLocation: entry.startLocation || startLocation,
+        endLocation: entry.endLocation || endLocation,
+        startLat: entry.startLat ?? startCoords?.lat,
+        startLng: entry.startLng ?? startCoords?.lon,
+        endLat: entry.endLat ?? endCoords?.lat,
+        endLng: entry.endLng ?? endCoords?.lon,
+      }));
+
+      if (validEntries.some(e => !e.startLocation || !e.endLocation)) {
+        toast({
+          title: "Missing Information",
+          description: "Please set locations for all entries or fill in the main start/end fields",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      createRecurringMutation.mutate({
+        type: "driver",
+        entries: validEntries.map(entry => ({
+          dayOfWeek: entry.dayOfWeek,
+          departureTime: entry.departureTime,
+          startLocation: entry.startLocation,
+          endLocation: entry.endLocation,
+          startLat: entry.startLat,
+          startLng: entry.startLng,
+          endLat: entry.endLat,
+          endLng: entry.endLng,
+          maxDetourMiles: detourInMiles,
+          availableSeats: seats,
+          totalSeats: seats,
+          pricePerSeat: price,
+        })),
+      });
+      return;
+    }
+
+    if (!startLocation || !endLocation || !departureTime) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const selectedTime = new Date(departureTime);
+    if (selectedTime <= new Date()) {
+      toast({
+        title: "Invalid Time",
+        description: "Please select a departure time in the future",
+        variant: "destructive",
+      });
+      return;
     }
 
     createRouteMutation.mutate({
@@ -1286,15 +1370,30 @@ export default function DriverPage() {
                 compact
               />
 
-              <div className="grid grid-cols-2 gap-1.5">
-                <DateTimePicker
-                  value={departureTime}
-                  onChange={setDepartureTime}
-                  testId="input-departure-time"
-                  buttonClassName="bg-white dark:bg-slate-900 border-slate-200 h-7 text-xs"
-                  compact
-                />
-                <div className="grid grid-cols-2 gap-1">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsRecurring(!isRecurring)}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-colors shrink-0 ${
+                    isRecurring
+                      ? "bg-primary text-white"
+                      : "bg-gray-100 dark:bg-slate-700 text-muted-foreground hover:bg-gray-200"
+                  }`}
+                  data-testid="button-toggle-recurring"
+                >
+                  <Repeat className="h-3 w-3" />
+                  Recurring
+                </button>
+                {!isRecurring && (
+                  <DateTimePicker
+                    value={departureTime}
+                    onChange={setDepartureTime}
+                    testId="input-departure-time"
+                    buttonClassName="bg-white dark:bg-slate-900 border-slate-200 h-7 text-xs"
+                    compact
+                  />
+                )}
+                <div className="grid grid-cols-2 gap-1 flex-1">
                   <Select value={availableSeats} onValueChange={setAvailableSeats}>
                     <SelectTrigger className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-seats">
                       <SelectValue placeholder="Seats" />
@@ -1323,6 +1422,32 @@ export default function DriverPage() {
                 </div>
               </div>
 
+              {isRecurring && (
+                <DriverDayEntryPicker
+                  entries={recurringEntries}
+                  onUpdateEntry={(index, field, value) => {
+                    setRecurringEntries(prev => prev.map((entry, i) =>
+                      i === index ? { ...entry, [field]: value } : entry
+                    ));
+                  }}
+                  onAddEntry={() => {
+                    setRecurringEntries(prev => [...prev, {
+                      dayOfWeek: 1,
+                      departureTime: "08:00",
+                      startLocation: startLocation,
+                      endLocation: endLocation,
+                      startLat: startCoords?.lat,
+                      startLng: startCoords?.lon,
+                      endLat: endCoords?.lat,
+                      endLng: endCoords?.lon,
+                    }]);
+                  }}
+                  onRemoveEntry={(index) => {
+                    setRecurringEntries(prev => prev.filter((_, i) => i !== index));
+                  }}
+                />
+              )}
+
               <div className="grid grid-cols-3 gap-1.5">
                 <Input 
                   type="number" 
@@ -1348,11 +1473,13 @@ export default function DriverPage() {
                 <Button 
                   type="submit"
                   className="h-7 px-2 text-xs font-semibold"
-                  disabled={createRouteMutation.isPending}
+                  disabled={createRouteMutation.isPending || createRecurringMutation.isPending}
                   data-testid="button-publish-route"
                 >
-                  {createRouteMutation.isPending ? (
+                  {(createRouteMutation.isPending || createRecurringMutation.isPending) ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : isRecurring ? (
+                    <><Repeat className="h-3 w-3 mr-0.5" /> Post</>
                   ) : (
                     "Publish"
                   )}
@@ -1643,6 +1770,9 @@ export default function DriverPage() {
             </div>
           )}
         </div>
+
+        {/* Recurring Schedules Manager */}
+        <RecurringScheduleManager type="driver" />
 
         {/* My Offers Card - Driver's posted routes with rider requests */}
         <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">

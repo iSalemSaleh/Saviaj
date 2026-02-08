@@ -381,6 +381,89 @@ export interface NormalizedUser {
 // END NORMALIZED TABLES
 // ============================================
 
+// ============================================
+// RECURRING SCHEDULES
+// ============================================
+
+export const recurringSchedules = pgTable("recurring_schedules", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  type: varchar("type", { length: 10 }).notNull(), // 'rider' or 'driver'
+  status: varchar("status", { length: 20 }).notNull().default("active"), // active, paused, cancelled
+  lastGeneratedDate: timestamp("last_generated_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_recsched_user").on(table.userId),
+  index("idx_recsched_type").on(table.type),
+  index("idx_recsched_status").on(table.status),
+]);
+
+export const recurringScheduleEntries = pgTable("recurring_schedule_entries", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  scheduleId: integer("schedule_id").notNull().references(() => recurringSchedules.id, { onDelete: 'cascade' }),
+  dayOfWeek: integer("day_of_week").notNull(), // 0=Sunday, 1=Monday, ..., 6=Saturday
+  departureTime: varchar("departure_time", { length: 5 }).notNull(), // HH:MM format
+  startLocation: text("start_location").notNull(),
+  endLocation: text("end_location").notNull(),
+  startLat: decimal("start_lat", { precision: 10, scale: 7 }),
+  startLng: decimal("start_lng", { precision: 10, scale: 7 }),
+  endLat: decimal("end_lat", { precision: 10, scale: 7 }),
+  endLng: decimal("end_lng", { precision: 10, scale: 7 }),
+  offerPrice: decimal("offer_price", { precision: 10, scale: 2 }),
+  maxDetourMiles: decimal("max_detour_miles", { precision: 5, scale: 2 }),
+  availableSeats: integer("available_seats"),
+  totalSeats: integer("total_seats"),
+  pricePerSeat: decimal("price_per_seat", { precision: 10, scale: 2 }),
+  paymentTimeoutMinutes: integer("payment_timeout_minutes"),
+}, (table) => [
+  index("idx_recentry_schedule").on(table.scheduleId),
+  index("idx_recentry_day").on(table.dayOfWeek),
+]);
+
+export const recurringSchedulesRelations = relations(recurringSchedules, ({ one, many }) => ({
+  user: one(users, {
+    fields: [recurringSchedules.userId],
+    references: [users.id],
+  }),
+  entries: many(recurringScheduleEntries),
+}));
+
+export const recurringScheduleEntriesRelations = relations(recurringScheduleEntries, ({ one }) => ({
+  schedule: one(recurringSchedules, {
+    fields: [recurringScheduleEntries.scheduleId],
+    references: [recurringSchedules.id],
+  }),
+}));
+
+export const insertRecurringScheduleSchema = createInsertSchema(recurringSchedules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastGeneratedDate: true,
+});
+export type InsertRecurringSchedule = z.infer<typeof insertRecurringScheduleSchema>;
+export type RecurringSchedule = typeof recurringSchedules.$inferSelect;
+
+export const insertRecurringScheduleEntrySchema = createInsertSchema(recurringScheduleEntries, {
+  dayOfWeek: z.coerce.number().min(0).max(6),
+  departureTime: z.string().regex(/^\d{2}:\d{2}$/),
+  offerPrice: z.coerce.number().min(0.30).max(500).optional().nullable(),
+  startLat: z.coerce.number().optional().nullable(),
+  startLng: z.coerce.number().optional().nullable(),
+  endLat: z.coerce.number().optional().nullable(),
+  endLng: z.coerce.number().optional().nullable(),
+  maxDetourMiles: z.coerce.number().min(0.01).max(100).optional().nullable(),
+  availableSeats: z.coerce.number().min(1).max(7).optional().nullable(),
+  totalSeats: z.coerce.number().min(1).max(7).optional().nullable(),
+  pricePerSeat: z.coerce.number().min(0.01).max(100).optional().nullable(),
+  paymentTimeoutMinutes: z.coerce.number().min(1).max(30).optional().nullable(),
+}).omit({
+  id: true,
+});
+export type InsertRecurringScheduleEntry = z.infer<typeof insertRecurringScheduleEntrySchema>;
+export type RecurringScheduleEntry = typeof recurringScheduleEntries.$inferSelect;
+
 // Rider Offers - Riders post trip requests with their price offer
 export const riderOffers = pgTable("rider_offers", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -393,8 +476,9 @@ export const riderOffers = pgTable("rider_offers", {
   dropoffLng: decimal("dropoff_lng", { precision: 10, scale: 7 }),
   offerPrice: decimal("offer_price", { precision: 10, scale: 2 }).notNull(),
   requestedTime: timestamp("requested_time").notNull(),
-  status: varchar("status", { length: 50 }).default("pending"), // pending, accepted, completed, cancelled
+  status: varchar("status", { length: 50 }).default("pending"),
   acceptedDriverId: varchar("accepted_driver_id").references(() => users.id),
+  scheduleId: integer("schedule_id").references(() => recurringSchedules.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -441,7 +525,8 @@ export const driverRoutes = pgTable("driver_routes", {
   totalSeats: integer("total_seats").notNull().default(3),
   pricePerSeat: decimal("price_per_seat", { precision: 10, scale: 2 }),
   paymentTimeoutMinutes: integer("payment_timeout_minutes").default(5),
-  status: varchar("status", { length: 50 }).default("active"), // active, full, completed, cancelled
+  status: varchar("status", { length: 50 }).default("active"),
+  scheduleId: integer("schedule_id").references(() => recurringSchedules.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
