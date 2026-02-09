@@ -1371,23 +1371,23 @@ export default function DriverPage() {
               />
 
               <div className="flex items-center gap-1.5">
-                <div className="flex items-center rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
-                  <div className="px-1.5 py-0.5">
+                <div className="flex items-center h-7 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
+                  <div className="flex items-center px-1.5">
                     {!isRecurring && (
                       <DateTimePicker
                         value={departureTime}
                         onChange={setDepartureTime}
                         testId="input-departure-time"
-                        buttonClassName="h-5 text-[10px] bg-transparent border-none shadow-none px-0"
+                        buttonClassName="h-5 text-[9px] bg-transparent border-none shadow-none px-0 min-w-0"
                         compact
                       />
                     )}
                     {isRecurring && (
-                      <span className="text-[10px] text-muted-foreground px-1">Per-day times below</span>
+                      <span className="text-[9px] text-muted-foreground px-1">Per-day times below</span>
                     )}
                   </div>
-                  <div className="w-px h-4 bg-slate-300 dark:bg-slate-500" />
-                  <div className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium">
+                  <div className="w-px h-4 bg-slate-300 dark:bg-slate-500 shrink-0" />
+                  <div className="flex items-center gap-1 px-1.5 text-[10px] font-medium shrink-0">
                     <Repeat className={`h-2.5 w-2.5 ${isRecurring ? 'text-primary animate-pulse' : 'text-slate-400'}`} />
                     <span className={isRecurring ? 'text-primary' : 'text-slate-500'}>{isRecurring ? 'Recurring' : 'One-off'}</span>
                     <Switch

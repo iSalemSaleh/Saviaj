@@ -1013,14 +1013,14 @@ export default function RiderPage() {
               compact
             />
             <div className="flex items-center gap-2">
-              <div className="flex items-center rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
-                <div className="px-1.5 py-0.5">
+              <div className="flex items-center h-7 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
+                <div className="flex items-center px-1.5">
                   {isRecurring ? (
                     <input
                       type="time"
                       value={recurringTime}
                       onChange={(e) => setRecurringTime(e.target.value)}
-                      className="h-5 text-[10px] bg-transparent border-none outline-none w-16"
+                      className="h-5 text-[9px] bg-transparent border-none outline-none w-[52px]"
                       data-testid="input-recurring-time"
                     />
                   ) : (
@@ -1028,13 +1028,13 @@ export default function RiderPage() {
                       value={requestedTime}
                       onChange={setRequestedTime}
                       testId="input-time"
-                      buttonClassName="h-5 text-[10px] bg-transparent border-none shadow-none px-0"
+                      buttonClassName="h-5 text-[9px] bg-transparent border-none shadow-none px-0 min-w-0"
                       compact
                     />
                   )}
                 </div>
-                <div className="w-px h-4 bg-slate-300 dark:bg-slate-500" />
-                <div className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium">
+                <div className="w-px h-4 bg-slate-300 dark:bg-slate-500 shrink-0" />
+                <div className="flex items-center gap-1 px-1.5 text-[10px] font-medium shrink-0">
                   <Repeat className={`h-2.5 w-2.5 ${isRecurring ? 'text-primary animate-pulse' : 'text-slate-400'}`} />
                   <span className={isRecurring ? 'text-primary' : 'text-slate-500'}>{isRecurring ? 'Recurring' : 'One-off'}</span>
                   <Switch
