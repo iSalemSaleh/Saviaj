@@ -1013,33 +1013,38 @@ export default function RiderPage() {
               compact
             />
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-200 dark:bg-slate-700 shrink-0">
-                <Repeat className={`h-2.5 w-2.5 ${isRecurring ? 'text-primary animate-pulse' : 'text-slate-400'}`} />
-                <span className={isRecurring ? 'text-primary' : 'text-slate-500'}>{isRecurring ? 'Recurring' : 'One-off'}</span>
-                <Switch
-                  checked={isRecurring}
-                  onCheckedChange={setIsRecurring}
-                  className="scale-50 ml-0.5"
-                  data-testid="switch-recurring"
-                />
+              <div className="flex items-center rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shrink-0">
+                <div className="px-1.5 py-0.5">
+                  {isRecurring ? (
+                    <input
+                      type="time"
+                      value={recurringTime}
+                      onChange={(e) => setRecurringTime(e.target.value)}
+                      className="h-5 text-[10px] bg-transparent border-none outline-none w-16"
+                      data-testid="input-recurring-time"
+                    />
+                  ) : (
+                    <DateTimePicker
+                      value={requestedTime}
+                      onChange={setRequestedTime}
+                      testId="input-time"
+                      buttonClassName="h-5 text-[10px] bg-transparent border-none shadow-none px-0"
+                      compact
+                    />
+                  )}
+                </div>
+                <div className="w-px h-4 bg-slate-300 dark:bg-slate-500" />
+                <div className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium">
+                  <Repeat className={`h-2.5 w-2.5 ${isRecurring ? 'text-primary animate-pulse' : 'text-slate-400'}`} />
+                  <span className={isRecurring ? 'text-primary' : 'text-slate-500'}>{isRecurring ? 'Recurring' : 'One-off'}</span>
+                  <Switch
+                    checked={isRecurring}
+                    onCheckedChange={setIsRecurring}
+                    className="scale-50 ml-0.5"
+                    data-testid="switch-recurring"
+                  />
+                </div>
               </div>
-              {isRecurring ? (
-                <input
-                  type="time"
-                  value={recurringTime}
-                  onChange={(e) => setRecurringTime(e.target.value)}
-                  className="h-7 text-[11px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded px-1.5 w-20"
-                  data-testid="input-recurring-time"
-                />
-              ) : (
-                <DateTimePicker
-                  value={requestedTime}
-                  onChange={setRequestedTime}
-                  testId="input-time"
-                  className="flex-1"
-                  compact
-                />
-              )}
               <div className="relative flex-1 min-w-16">
                 <PoundSterling className="absolute left-1.5 top-1.5 h-3 w-3 text-muted-foreground" />
                 <Input 
