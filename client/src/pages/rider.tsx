@@ -1013,68 +1013,47 @@ export default function RiderPage() {
               compact
             />
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsRecurring(!isRecurring)}
-                className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-colors ${
-                  isRecurring
-                    ? "bg-primary text-white"
-                    : "bg-gray-100 dark:bg-slate-700 text-muted-foreground hover:bg-gray-200"
-                }`}
-                data-testid="button-toggle-recurring"
-              >
-                <Repeat className="h-3 w-3" />
-                {isRecurring ? "Recurring" : "Recurring"}
-              </button>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-200 dark:bg-slate-700 shrink-0">
+                <Repeat className={`h-2.5 w-2.5 ${isRecurring ? 'text-primary animate-pulse' : 'text-slate-400'}`} />
+                <span className={isRecurring ? 'text-primary' : 'text-slate-500'}>{isRecurring ? 'Recurring' : 'One-off'}</span>
+                <Switch
+                  checked={isRecurring}
+                  onCheckedChange={setIsRecurring}
+                  className="scale-50 ml-0.5"
+                  data-testid="switch-recurring"
+                />
+              </div>
               {isRecurring ? (
-                <>
-                  <input
-                    type="time"
-                    value={recurringTime}
-                    onChange={(e) => setRecurringTime(e.target.value)}
-                    className="h-7 text-[11px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded px-1.5 w-20"
-                    data-testid="input-recurring-time"
-                  />
-                  <div className="relative flex-1">
-                    <PoundSterling className="absolute left-1.5 top-1.5 h-3 w-3 text-muted-foreground" />
-                    <Input 
-                      type="number" 
-                      placeholder="Offer"
-                      min="0.30"
-                      max="500"
-                      step="0.01"
-                      className="pl-5 h-7 text-[11px] bg-white dark:bg-slate-900 border-gray-200"
-                      value={offerPrice}
-                      onChange={(e) => setOfferPrice(e.target.value)}
-                      data-testid="input-price"
-                    />
-                  </div>
-                </>
+                <input
+                  type="time"
+                  value={recurringTime}
+                  onChange={(e) => setRecurringTime(e.target.value)}
+                  className="h-7 text-[11px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-600 rounded px-1.5 w-20"
+                  data-testid="input-recurring-time"
+                />
               ) : (
-                <>
-                  <DateTimePicker
-                    value={requestedTime}
-                    onChange={setRequestedTime}
-                    testId="input-time"
-                    className="flex-1"
-                    compact
-                  />
-                  <div className="relative w-20">
-                    <PoundSterling className="absolute left-1.5 top-1.5 h-3 w-3 text-muted-foreground" />
-                    <Input 
-                      type="number" 
-                      placeholder="Offer"
-                      min="0.30"
-                      max="500"
-                      step="0.01"
-                      className="pl-5 h-7 text-[11px] bg-white dark:bg-slate-900 border-gray-200"
-                      value={offerPrice}
-                      onChange={(e) => setOfferPrice(e.target.value)}
-                      data-testid="input-price"
-                    />
-                  </div>
-                </>
+                <DateTimePicker
+                  value={requestedTime}
+                  onChange={setRequestedTime}
+                  testId="input-time"
+                  className="flex-1"
+                  compact
+                />
               )}
+              <div className="relative flex-1 min-w-16">
+                <PoundSterling className="absolute left-1.5 top-1.5 h-3 w-3 text-muted-foreground" />
+                <Input 
+                  type="number" 
+                  placeholder="Offer"
+                  min="0.30"
+                  max="500"
+                  step="0.01"
+                  className="pl-5 h-7 text-[11px] bg-white dark:bg-slate-900 border-gray-200"
+                  value={offerPrice}
+                  onChange={(e) => setOfferPrice(e.target.value)}
+                  data-testid="input-price"
+                />
+              </div>
             </div>
             {isRecurring && (
               <div className="flex items-center gap-2">

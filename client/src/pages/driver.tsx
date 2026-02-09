@@ -1371,19 +1371,16 @@ export default function DriverPage() {
               />
 
               <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setIsRecurring(!isRecurring)}
-                  className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium transition-colors shrink-0 ${
-                    isRecurring
-                      ? "bg-primary text-white"
-                      : "bg-gray-100 dark:bg-slate-700 text-muted-foreground hover:bg-gray-200"
-                  }`}
-                  data-testid="button-toggle-recurring"
-                >
-                  <Repeat className="h-3 w-3" />
-                  Recurring
-                </button>
+                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-slate-200 dark:bg-slate-700 shrink-0">
+                  <Repeat className={`h-2.5 w-2.5 ${isRecurring ? 'text-primary animate-pulse' : 'text-slate-400'}`} />
+                  <span className={isRecurring ? 'text-primary' : 'text-slate-500'}>{isRecurring ? 'Recurring' : 'One-off'}</span>
+                  <Switch
+                    checked={isRecurring}
+                    onCheckedChange={setIsRecurring}
+                    className="scale-50 ml-0.5"
+                    data-testid="switch-recurring"
+                  />
+                </div>
                 {!isRecurring && (
                   <DateTimePicker
                     value={departureTime}
