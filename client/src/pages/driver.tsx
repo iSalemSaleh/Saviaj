@@ -1373,7 +1373,7 @@ export default function DriverPage() {
               <div className="flex items-center gap-1.5">
                 <div className="flex items-center h-7 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0">
                   <div className="flex items-center px-1.5 min-w-0 overflow-hidden">
-                    {!isRecurring && (
+                    <div className={isRecurring ? 'hidden' : ''}>
                       <DateTimePicker
                         value={departureTime}
                         onChange={setDepartureTime}
@@ -1381,7 +1381,7 @@ export default function DriverPage() {
                         buttonClassName="h-5 text-[8px] bg-transparent border-none shadow-none px-0 min-w-0 whitespace-nowrap"
                         compact
                       />
-                    )}
+                    </div>
                     {isRecurring && (
                       <span className="text-[9px] text-muted-foreground px-1">Per-day times below</span>
                     )}

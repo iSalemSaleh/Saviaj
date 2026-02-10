@@ -1015,7 +1015,7 @@ export default function RiderPage() {
             <div className="flex items-center gap-2">
               <div className="flex items-center h-7 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0">
                 <div className="flex items-center px-1.5 min-w-0 overflow-hidden">
-                  {isRecurring ? (
+                  {isRecurring && (
                     <input
                       type="time"
                       value={recurringTime}
@@ -1023,7 +1023,8 @@ export default function RiderPage() {
                       className="h-5 text-[9px] bg-transparent border-none outline-none w-[58px] shrink-0"
                       data-testid="input-recurring-time"
                     />
-                  ) : (
+                  )}
+                  <div className={isRecurring ? 'hidden' : ''}>
                     <DateTimePicker
                       value={requestedTime}
                       onChange={setRequestedTime}
@@ -1031,7 +1032,7 @@ export default function RiderPage() {
                       buttonClassName="h-5 text-[8px] bg-transparent border-none shadow-none px-0 min-w-0 whitespace-nowrap"
                       compact
                     />
-                  )}
+                  </div>
                 </div>
                 <div className="w-px h-4 bg-slate-300 dark:bg-slate-500 shrink-0" />
                 <div className="flex items-center gap-1 px-1.5 text-[10px] font-medium shrink-0">
