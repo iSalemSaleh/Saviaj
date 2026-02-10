@@ -981,7 +981,7 @@ export default function RiderPage() {
       </div>
       
       {/* OVERLAY: Collapsible Request Form */}
-      <div className={`fixed top-14 left-0 right-0 z-40 backdrop-blur-sm bg-background/40 border-b border-white/10 transition-all duration-300 overflow-hidden ${formCollapsed ? 'max-h-10' : isRecurring ? 'max-h-80' : 'max-h-60'}`}>
+      <div className={`fixed top-14 left-0 right-0 z-40 backdrop-blur-sm bg-background/40 border-b border-white/10 transition-all duration-300 overflow-hidden ${formCollapsed ? 'max-h-10' : isRecurring ? 'max-h-72' : 'max-h-48'}`}>
         <button
           onClick={() => setFormCollapsed(!formCollapsed)}
           className="w-full px-3 py-2 flex items-center justify-between text-xs hover:bg-white/10"
@@ -1046,7 +1046,7 @@ export default function RiderPage() {
                   />
                 </div>
               </div>
-              <div className="relative flex-1 min-w-16">
+              <div className="relative w-20 shrink-0">
                 <PoundSterling className="absolute left-1.5 top-1.5 h-3 w-3 text-muted-foreground" />
                 <Input 
                   type="number" 
@@ -1060,6 +1060,20 @@ export default function RiderPage() {
                   data-testid="input-price"
                 />
               </div>
+              <Button 
+                type="submit" 
+                className="h-7 px-3 text-xs font-semibold shrink-0"
+                disabled={createOfferMutation.isPending || createRecurringMutation.isPending}
+                data-testid="button-post-request"
+              >
+                {(createOfferMutation.isPending || createRecurringMutation.isPending) ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : isRecurring ? (
+                  <><Repeat className="h-3 w-3 mr-0.5" /> Post</>
+                ) : (
+                  "Post"
+                )}
+              </Button>
             </div>
             {isRecurring && (
               <div className="flex items-center gap-2">
@@ -1071,20 +1085,6 @@ export default function RiderPage() {
                 />
               </div>
             )}
-            <Button 
-              type="submit" 
-              className="w-full h-8 text-xs"
-              disabled={createOfferMutation.isPending || createRecurringMutation.isPending}
-              data-testid="button-post-request"
-            >
-              {(createOfferMutation.isPending || createRecurringMutation.isPending) ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : isRecurring ? (
-                <><Repeat className="h-3 w-3 mr-1" /> Post Recurring Ride</>
-              ) : (
-                "Post"
-              )}
-            </Button>
           </form>
         )}
       </div>

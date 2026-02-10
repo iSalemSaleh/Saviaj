@@ -60,7 +60,7 @@ export function DateTimePicker({
         }
       }
     }
-  }, []);
+  }, [value]);
 
   const calculateDateTime = (time: string, customDate?: Date): Date | null => {
     const timeMatch = time.match(/^(\d{1,2}):(\d{2})$/);
