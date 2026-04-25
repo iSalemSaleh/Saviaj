@@ -75,8 +75,14 @@ export const users = pgTable("users", {
   phvLicenseNumber: varchar("phv_license_number"),
   phvLicenseExpiry: varchar("phv_license_expiry"),
   commercialStatusVerified: boolean("commercial_status_verified").default(false),
-  // Commercial driver rates
-  ratePerMile: decimal("rate_per_mile", { precision: 5, scale: 2 }), // Rate in GBP per mile for commercial drivers
+  // Commercial driver rates (flat rate + optional tiered pricing + base minimum)
+  ratePerMile: decimal("rate_per_mile", { precision: 5, scale: 2 }), // Flat rate in GBP per mile (used when no tiers set)
+  tier1MaxMiles: decimal("tier1_max_miles", { precision: 6, scale: 2 }),  // Max miles for tier 1 (e.g. 5)
+  tier1RatePerMile: decimal("tier1_rate_per_mile", { precision: 5, scale: 2 }), // Rate for tier 1 (e.g. 3.00)
+  tier2MaxMiles: decimal("tier2_max_miles", { precision: 6, scale: 2 }),  // Max miles for tier 2 (e.g. 15)
+  tier2RatePerMile: decimal("tier2_rate_per_mile", { precision: 5, scale: 2 }), // Rate for tier 2 (e.g. 2.00)
+  tier3RatePerMile: decimal("tier3_rate_per_mile", { precision: 5, scale: 2 }), // Rate for tier 3 (beyond tier2Max)
+  baseMinimumFare: decimal("base_minimum_fare", { precision: 6, scale: 2 }), // Minimum charge for any trip (e.g. 5.00)
   driverTagline: varchar("driver_tagline", { length: 100 }), // Short message to advertise service
   serviceCategories: text("service_categories").array(), // Driver service categories (up to 3): standard, premium, team, eco, business, budget
   // Availability states
@@ -239,6 +245,12 @@ export const driverCommercial = pgTable("driver_commercial", {
   isCommercialDriver: boolean("is_commercial_driver").default(false),
   commercialStatusVerified: boolean("commercial_status_verified").default(false),
   ratePerMile: decimal("rate_per_mile", { precision: 5, scale: 2 }),
+  tier1MaxMiles: decimal("tier1_max_miles", { precision: 6, scale: 2 }),
+  tier1RatePerMile: decimal("tier1_rate_per_mile", { precision: 5, scale: 2 }),
+  tier2MaxMiles: decimal("tier2_max_miles", { precision: 6, scale: 2 }),
+  tier2RatePerMile: decimal("tier2_rate_per_mile", { precision: 5, scale: 2 }),
+  tier3RatePerMile: decimal("tier3_rate_per_mile", { precision: 5, scale: 2 }),
+  baseMinimumFare: decimal("base_minimum_fare", { precision: 6, scale: 2 }),
   driverTagline: varchar("driver_tagline", { length: 100 }),
   serviceCategories: text("service_categories").array(),
   dvlaCheckCode: varchar("dvla_check_code"),
@@ -362,6 +374,12 @@ export interface NormalizedUser {
     isCommercialDriver: boolean | null;
     commercialStatusVerified: boolean | null;
     ratePerMile: string | null;
+    tier1MaxMiles: string | null;
+    tier1RatePerMile: string | null;
+    tier2MaxMiles: string | null;
+    tier2RatePerMile: string | null;
+    tier3RatePerMile: string | null;
+    baseMinimumFare: string | null;
     driverTagline: string | null;
     serviceCategories: string[] | null;
   } | null;

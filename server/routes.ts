@@ -3505,7 +3505,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      const { isOnlineForHire, ratePerMile, driverTagline, serviceCategories, lat, lng } = req.body;
+      const { isOnlineForHire, ratePerMile, driverTagline, serviceCategories, lat, lng, tier1MaxMiles, tier1RatePerMile, tier2MaxMiles, tier2RatePerMile, tier3RatePerMile, baseMinimumFare } = req.body;
       
       // Verify user is a commercial driver
       const user = await storage.getUser(userId);
@@ -3517,9 +3517,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(403).json({ message: "Your driver account must be verified before going online" });
       }
       
-      // Rate per mile is required when going online
-      if (isOnlineForHire && (!ratePerMile || ratePerMile <= 0)) {
-        return res.status(400).json({ message: "Rate per mile is required when going online" });
+      // Rate per mile is required when going online (either flat rate or at least tier 1 rate)
+      const hasFlatRate = ratePerMile && ratePerMile > 0;
+      const hasTier1Rate = tier1RatePerMile && tier1RatePerMile > 0;
+      if (isOnlineForHire && !hasFlatRate && !hasTier1Rate) {
+        return res.status(400).json({ message: "A rate per mile is required when going online" });
       }
       
       // Validate service categories (max 3, valid values only)
@@ -3531,7 +3533,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           .slice(0, 3);
       }
       
-      const updatedUser = await storage.updateDriverOnlineStatus(userId, isOnlineForHire, ratePerMile, driverTagline, lat, lng, validatedCategories);
+      // Build tier rates object (only include defined values)
+      const tierRates: any = {};
+      if (tier1MaxMiles !== undefined) tierRates.tier1MaxMiles = parseFloat(tier1MaxMiles);
+      if (tier1RatePerMile !== undefined) tierRates.tier1RatePerMile = parseFloat(tier1RatePerMile);
+      if (tier2MaxMiles !== undefined) tierRates.tier2MaxMiles = parseFloat(tier2MaxMiles);
+      if (tier2RatePerMile !== undefined) tierRates.tier2RatePerMile = parseFloat(tier2RatePerMile);
+      if (tier3RatePerMile !== undefined) tierRates.tier3RatePerMile = parseFloat(tier3RatePerMile);
+      if (baseMinimumFare !== undefined) tierRates.baseMinimumFare = parseFloat(baseMinimumFare);
+      
+      const updatedUser = await storage.updateDriverOnlineStatus(userId, isOnlineForHire, ratePerMile, driverTagline, lat, lng, validatedCategories, Object.keys(tierRates).length > 0 ? tierRates : undefined);
       res.json(maskSensitiveUserData(updatedUser));
     } catch (error) {
       console.error("Error updating online status:", error);

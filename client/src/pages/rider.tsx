@@ -110,6 +110,12 @@ interface NearbyDriver {
   vehicleColor: string | null;
   vehicleRegistration: string | null;
   ratePerMile: string | null;
+  tier1MaxMiles: string | null;
+  tier1RatePerMile: string | null;
+  tier2MaxMiles: string | null;
+  tier2RatePerMile: string | null;
+  tier3RatePerMile: string | null;
+  baseMinimumFare: string | null;
   driverTagline: string | null;
   serviceCategories: string[] | null;
   distanceFromPickup: number;
@@ -385,18 +391,55 @@ export default function RiderPage() {
     },
   });
 
+  // Calculate fare using tiered distance pricing (falls back to flat rate)
+  const calculateTieredFare = (driver: NearbyDriver, distanceMiles: number): number => {
+    const baseMin = parseFloat(driver.baseMinimumFare || "0");
+    const tier1Max = parseFloat(driver.tier1MaxMiles || "0");
+    const tier1Rate = parseFloat(driver.tier1RatePerMile || "0");
+    const tier2Max = parseFloat(driver.tier2MaxMiles || "0");
+    const tier2Rate = parseFloat(driver.tier2RatePerMile || "0");
+    const tier3Rate = parseFloat(driver.tier3RatePerMile || "0");
+    const hasTiers = tier1Rate > 0 && tier1Max > 0;
+
+    let total = 0;
+    if (!hasTiers) {
+      const flatRate = parseFloat(driver.ratePerMile || "0");
+      total = distanceMiles * flatRate;
+    } else if (distanceMiles <= tier1Max) {
+      total = distanceMiles * tier1Rate;
+    } else if (!tier2Max || distanceMiles <= tier2Max) {
+      total = tier1Max * tier1Rate + (distanceMiles - tier1Max) * (tier2Rate || tier1Rate);
+    } else {
+      total = tier1Max * tier1Rate + (tier2Max - tier1Max) * tier2Rate + (distanceMiles - tier2Max) * (tier3Rate || tier2Rate);
+    }
+    return Math.max(baseMin, total);
+  };
+
+  // Get rate display label (e.g. "from £1.50/mi" for tiered, "£2.50/mi" for flat)
+  const getRateLabel = (driver: NearbyDriver): string => {
+    const tier1Rate = parseFloat(driver.tier1RatePerMile || "0");
+    const hasTiers = tier1Rate > 0 && parseFloat(driver.tier1MaxMiles || "0") > 0;
+    if (hasTiers) {
+      // Show lowest rate (last tier) as the "from" price
+      const tier2Rate = parseFloat(driver.tier2RatePerMile || "0");
+      const tier3Rate = parseFloat(driver.tier3RatePerMile || "0");
+      const lowestRate = tier3Rate || tier2Rate || tier1Rate;
+      return `from £${lowestRate.toFixed(2)}/mi`;
+    }
+    return `£${parseFloat(driver.ratePerMile || "0").toFixed(2)}/mi`;
+  };
+
   // Calculate estimated cost based on driver's rate and trip distance
   const getEstimatedCost = (driver: NearbyDriver): string | null => {
-    if (!driver.ratePerMile || !pickupCoords || !dropoffCoords) return null;
+    const hasRate = driver.ratePerMile || driver.tier1RatePerMile;
+    if (!hasRate || !pickupCoords || !dropoffCoords) return null;
     const tripDistance = calculateDistance(
       pickupCoords.lat, 
       pickupCoords.lon, 
       dropoffCoords.lat, 
       dropoffCoords.lon
     );
-    const rate = parseFloat(driver.ratePerMile);
-    const estimatedCost = tripDistance * rate;
-    return estimatedCost.toFixed(2);
+    return calculateTieredFare(driver, tripDistance).toFixed(2);
   };
 
   const myPendingOffers = useMemo(() => {
@@ -1224,7 +1267,7 @@ export default function RiderPage() {
                           {driver.driverRating ? parseFloat(driver.driverRating).toFixed(1) : 'New'}
                         </div>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">£{driver.ratePerMile}/mi • {driver.distanceFromPickup.toFixed(1)} mi away</p>
+                      <p className="text-xs text-muted-foreground truncate">{getRateLabel(driver)} • {driver.distanceFromPickup.toFixed(1)} mi away</p>
                     </div>
                     {estimatedCost && <Badge className="bg-primary text-white shrink-0">£{estimatedCost}</Badge>}
                   </div>
@@ -1278,7 +1321,7 @@ export default function RiderPage() {
                           </div>
                           <p className="text-[10px] text-muted-foreground truncate mb-1">{driver.distanceFromPickup.toFixed(1)} mi away</p>
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-muted-foreground">£{driver.ratePerMile}/mi</span>
+                            <span className="text-[10px] text-muted-foreground">{getRateLabel(driver)}</span>
                             {estimatedCost && <Badge className="bg-primary text-white text-[10px] px-1">£{estimatedCost}</Badge>}
                           </div>
                           {driver.serviceCategories && driver.serviceCategories.length > 0 && (
@@ -1809,7 +1852,7 @@ export default function RiderPage() {
                   </div>
                   <Badge className="bg-amber-500 text-white text-xs">Pro Driver</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">Rate: £{negotiateDriver.ratePerMile}/mile • {negotiateDriver.distanceFromPickup.toFixed(1)} mi away</p>
+                <p className="text-xs text-muted-foreground">Rate: {getRateLabel(negotiateDriver)} • {negotiateDriver.distanceFromPickup.toFixed(1)} mi away</p>
                 <div className="mt-2 text-xs">
                   <p><span className="text-primary">●</span> {pickupLocation}</p>
                   <p><span className="text-secondary">●</span> {dropoffLocation}</p>

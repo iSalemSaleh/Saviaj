@@ -169,6 +169,14 @@ export default function DriverPage() {
   const [driverTagline, setDriverTagline] = useState("");
   const [serviceCategories, setServiceCategories] = useState<string[]>([]);
   const [isUpdatingOnlineStatus, setIsUpdatingOnlineStatus] = useState(false);
+  // Tiered rate state
+  const [useTieredRates, setUseTieredRates] = useState(false);
+  const [tier1MaxMiles, setTier1MaxMiles] = useState("");
+  const [tier1Rate, setTier1Rate] = useState("");
+  const [tier2MaxMiles, setTier2MaxMiles] = useState("");
+  const [tier2Rate, setTier2Rate] = useState("");
+  const [tier3Rate, setTier3Rate] = useState("");
+  const [baseMinimumFare, setBaseMinimumFare] = useState("");
   
   // Service category definitions
   const SERVICE_CATEGORIES = [
@@ -267,15 +275,20 @@ export default function DriverPage() {
   useEffect(() => {
     if (user?.isCommercialDriver) {
       setIsOnlineForHire(user.isOnlineForHire || false);
-      if (user.ratePerMile) {
-        setRatePerMile(user.ratePerMile);
-      }
-      if (user.driverTagline) {
-        setDriverTagline(user.driverTagline);
-      }
+      if (user.ratePerMile) setRatePerMile(user.ratePerMile);
+      if (user.driverTagline) setDriverTagline(user.driverTagline);
       if (user.serviceCategories && Array.isArray(user.serviceCategories)) {
         setServiceCategories(user.serviceCategories);
       }
+      // Restore tiered rate settings
+      const hasTiers = user.tier1RatePerMile && parseFloat(user.tier1RatePerMile) > 0;
+      setUseTieredRates(!!hasTiers);
+      if (user.tier1MaxMiles) setTier1MaxMiles(user.tier1MaxMiles);
+      if (user.tier1RatePerMile) setTier1Rate(user.tier1RatePerMile);
+      if (user.tier2MaxMiles) setTier2MaxMiles(user.tier2MaxMiles);
+      if (user.tier2RatePerMile) setTier2Rate(user.tier2RatePerMile);
+      if (user.tier3RatePerMile) setTier3Rate(user.tier3RatePerMile);
+      if (user.baseMinimumFare) setBaseMinimumFare(user.baseMinimumFare);
     }
   }, [user]);
 
@@ -319,13 +332,22 @@ export default function DriverPage() {
         }
       }
       
+      const tierPayload = useTieredRates ? {
+        tier1MaxMiles: parseFloat(tier1MaxMiles) || undefined,
+        tier1RatePerMile: parseFloat(tier1Rate) || undefined,
+        tier2MaxMiles: parseFloat(tier2MaxMiles) || undefined,
+        tier2RatePerMile: parseFloat(tier2Rate) || undefined,
+        tier3RatePerMile: parseFloat(tier3Rate) || undefined,
+        baseMinimumFare: parseFloat(baseMinimumFare) || undefined,
+      } : {};
       const response = await apiRequest("POST", "/api/driver/online-status", {
         isOnlineForHire: newOnlineStatus,
-        ratePerMile: parseFloat(ratePerMile),
+        ratePerMile: useTieredRates ? undefined : parseFloat(ratePerMile),
         driverTagline: driverTagline.trim(),
         serviceCategories,
         lat,
         lng,
+        ...tierPayload,
       });
       
       if (response.ok) {
@@ -1205,19 +1227,92 @@ export default function DriverPage() {
                         <DialogTitle className="text-sm">Pro Driver Settings</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-3 pt-2">
+                        {/* Rate mode toggle */}
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-medium">Tiered pricing</label>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-muted-foreground">{useTieredRates ? 'On' : 'Off'}</span>
+                            <Switch
+                              checked={useTieredRates}
+                              onCheckedChange={setUseTieredRates}
+                              className="scale-75"
+                              data-testid="switch-tiered-rates"
+                            />
+                          </div>
+                        </div>
+
+                        {!useTieredRates ? (
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium">Flat rate per mile (£)</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min="0.5"
+                              max="10"
+                              value={ratePerMile}
+                              onChange={(e) => setRatePerMile(e.target.value)}
+                              className="h-8 text-sm"
+                              placeholder="e.g. 1.50"
+                              data-testid="input-rate-per-mile"
+                            />
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            <p className="text-[10px] text-muted-foreground">Set different rates for short, medium and long trips. Tier 3 applies beyond tier 2's distance.</p>
+                            {/* Tier 1 */}
+                            <div className="rounded border p-2 space-y-1.5 bg-muted/30">
+                              <p className="text-[10px] font-semibold text-primary">Tier 1 — Short trips</p>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <div>
+                                  <label className="text-[10px] text-muted-foreground">Up to (miles)</label>
+                                  <Input type="number" min="1" step="0.5" value={tier1MaxMiles} onChange={(e) => setTier1MaxMiles(e.target.value)} className="h-7 text-xs" placeholder="e.g. 5" data-testid="input-tier1-max-miles" />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-muted-foreground">Rate (£/mi)</label>
+                                  <Input type="number" min="0.5" step="0.1" value={tier1Rate} onChange={(e) => setTier1Rate(e.target.value)} className="h-7 text-xs" placeholder="e.g. 3.00" data-testid="input-tier1-rate" />
+                                </div>
+                              </div>
+                            </div>
+                            {/* Tier 2 */}
+                            <div className="rounded border p-2 space-y-1.5 bg-muted/30">
+                              <p className="text-[10px] font-semibold text-primary">Tier 2 — Medium trips <span className="text-muted-foreground font-normal">(optional)</span></p>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <div>
+                                  <label className="text-[10px] text-muted-foreground">Up to (miles)</label>
+                                  <Input type="number" min="1" step="0.5" value={tier2MaxMiles} onChange={(e) => setTier2MaxMiles(e.target.value)} className="h-7 text-xs" placeholder="e.g. 15" data-testid="input-tier2-max-miles" />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-muted-foreground">Rate (£/mi)</label>
+                                  <Input type="number" min="0.5" step="0.1" value={tier2Rate} onChange={(e) => setTier2Rate(e.target.value)} className="h-7 text-xs" placeholder="e.g. 2.00" data-testid="input-tier2-rate" />
+                                </div>
+                              </div>
+                            </div>
+                            {/* Tier 3 */}
+                            <div className="rounded border p-2 space-y-1.5 bg-muted/30">
+                              <p className="text-[10px] font-semibold text-primary">Tier 3 — Long trips <span className="text-muted-foreground font-normal">(optional)</span></p>
+                              <div>
+                                <label className="text-[10px] text-muted-foreground">Rate (£/mi) — beyond tier 2</label>
+                                <Input type="number" min="0.5" step="0.1" value={tier3Rate} onChange={(e) => setTier3Rate(e.target.value)} className="h-7 text-xs" placeholder="e.g. 1.50" data-testid="input-tier3-rate" />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Base minimum fare */}
                         <div className="space-y-1">
-                          <label className="text-xs font-medium">Rate per mile (£)</label>
+                          <label className="text-xs font-medium">Minimum fare (£) <span className="text-muted-foreground font-normal">— optional</span></label>
                           <Input
                             type="number"
-                            step="0.1"
-                            min="0.5"
-                            max="10"
-                            value={ratePerMile}
-                            onChange={(e) => setRatePerMile(e.target.value)}
+                            step="0.5"
+                            min="0"
+                            max="50"
+                            value={baseMinimumFare}
+                            onChange={(e) => setBaseMinimumFare(e.target.value)}
                             className="h-8 text-sm"
-                            placeholder="e.g. 1.50"
-                            data-testid="input-rate-per-mile"
+                            placeholder="e.g. 5.00"
+                            data-testid="input-base-minimum-fare"
                           />
+                          <p className="text-[10px] text-muted-foreground">Minimum you'll charge for any trip regardless of distance.</p>
                         </div>
                         <div className="space-y-1">
                           <label className="text-xs font-medium">Tagline</label>
@@ -1281,11 +1376,20 @@ export default function DriverPage() {
                           className="w-full h-8 text-xs"
                           onClick={async () => {
                             try {
+                              const tierPayload = useTieredRates ? {
+                                tier1MaxMiles: parseFloat(tier1MaxMiles) || undefined,
+                                tier1RatePerMile: parseFloat(tier1Rate) || undefined,
+                                tier2MaxMiles: parseFloat(tier2MaxMiles) || undefined,
+                                tier2RatePerMile: parseFloat(tier2Rate) || undefined,
+                                tier3RatePerMile: parseFloat(tier3Rate) || undefined,
+                                baseMinimumFare: parseFloat(baseMinimumFare) || undefined,
+                              } : {};
                               const response = await apiRequest("POST", "/api/driver/online-status", {
                                 isOnlineForHire,
-                                ratePerMile: parseFloat(ratePerMile) || 0,
+                                ratePerMile: useTieredRates ? undefined : parseFloat(ratePerMile) || 0,
                                 driverTagline: driverTagline.trim(),
                                 serviceCategories,
+                                ...tierPayload,
                               });
                               if (response.ok) {
                                 queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });

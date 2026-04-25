@@ -151,6 +151,12 @@ async function syncDriverCommercial(userId: string, data: {
   isCommercialDriver?: boolean;
   commercialStatusVerified?: boolean;
   ratePerMile?: string;
+  tier1MaxMiles?: string;
+  tier1RatePerMile?: string;
+  tier2MaxMiles?: string;
+  tier2RatePerMile?: string;
+  tier3RatePerMile?: string;
+  baseMinimumFare?: string;
   driverTagline?: string;
   serviceCategories?: string[];
   dvlaCheckCode?: string;
@@ -258,6 +264,12 @@ async function getNormalizedUserById(userId: string): Promise<NormalizedUser | n
       isCommercialDriver: commercial.isCommercialDriver,
       commercialStatusVerified: commercial.commercialStatusVerified,
       ratePerMile: commercial.ratePerMile,
+      tier1MaxMiles: commercial.tier1MaxMiles,
+      tier1RatePerMile: commercial.tier1RatePerMile,
+      tier2MaxMiles: commercial.tier2MaxMiles,
+      tier2RatePerMile: commercial.tier2RatePerMile,
+      tier3RatePerMile: commercial.tier3RatePerMile,
+      baseMinimumFare: commercial.baseMinimumFare,
       driverTagline: commercial.driverTagline,
       serviceCategories: commercial.serviceCategories,
     } : null,
@@ -501,11 +513,17 @@ export interface IStorage {
     vehicleColor: string | null;
     vehicleRegistration: string | null;
     ratePerMile: string | null;
+    tier1MaxMiles: string | null;
+    tier1RatePerMile: string | null;
+    tier2MaxMiles: string | null;
+    tier2RatePerMile: string | null;
+    tier3RatePerMile: string | null;
+    baseMinimumFare: string | null;
     distanceFromPickup: number;
     currentLat: string | null;
     currentLng: string | null;
   }>>;
-  updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number, serviceCategories?: string[]): Promise<User>;
+  updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number, serviceCategories?: string[], tierRates?: { tier1MaxMiles?: number; tier1RatePerMile?: number; tier2MaxMiles?: number; tier2RatePerMile?: number; tier3RatePerMile?: number; baseMinimumFare?: number }): Promise<User>;
   
   // Settings and account management operations
   updateUserProfile(id: string, data: {
@@ -1622,6 +1640,12 @@ export class DatabaseStorage implements IStorage {
     vehicleColor: string | null;
     vehicleRegistration: string | null;
     ratePerMile: string | null;
+    tier1MaxMiles: string | null;
+    tier1RatePerMile: string | null;
+    tier2MaxMiles: string | null;
+    tier2RatePerMile: string | null;
+    tier3RatePerMile: string | null;
+    baseMinimumFare: string | null;
     driverTagline: string | null;
     serviceCategories: string[] | null;
     distanceFromPickup: number;
@@ -1643,6 +1667,12 @@ export class DatabaseStorage implements IStorage {
         vehicleColor: users.vehicleColor,
         vehicleRegistration: users.vehicleRegistration,
         ratePerMile: users.ratePerMile,
+        tier1MaxMiles: users.tier1MaxMiles,
+        tier1RatePerMile: users.tier1RatePerMile,
+        tier2MaxMiles: users.tier2MaxMiles,
+        tier2RatePerMile: users.tier2RatePerMile,
+        tier3RatePerMile: users.tier3RatePerMile,
+        baseMinimumFare: users.baseMinimumFare,
         driverTagline: users.driverTagline,
         serviceCategories: users.serviceCategories,
         currentLat: users.currentLat,
@@ -1697,7 +1727,7 @@ export class DatabaseStorage implements IStorage {
     return degrees * (Math.PI / 180);
   }
 
-  async updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number, serviceCategories?: string[]): Promise<User> {
+  async updateDriverOnlineStatus(id: string, isOnlineForHire: boolean, ratePerMile?: number, driverTagline?: string, lat?: number, lng?: number, serviceCategories?: string[], tierRates?: { tier1MaxMiles?: number; tier1RatePerMile?: number; tier2MaxMiles?: number; tier2RatePerMile?: number; tier3RatePerMile?: number; baseMinimumFare?: number }): Promise<User> {
     const updateData: any = {
       isOnlineForHire,
       updatedAt: new Date(),
@@ -1713,6 +1743,15 @@ export class DatabaseStorage implements IStorage {
     
     if (serviceCategories !== undefined) {
       updateData.serviceCategories = serviceCategories;
+    }
+    
+    if (tierRates) {
+      if (tierRates.tier1MaxMiles !== undefined) updateData.tier1MaxMiles = tierRates.tier1MaxMiles.toFixed(2);
+      if (tierRates.tier1RatePerMile !== undefined) updateData.tier1RatePerMile = tierRates.tier1RatePerMile.toFixed(2);
+      if (tierRates.tier2MaxMiles !== undefined) updateData.tier2MaxMiles = tierRates.tier2MaxMiles.toFixed(2);
+      if (tierRates.tier2RatePerMile !== undefined) updateData.tier2RatePerMile = tierRates.tier2RatePerMile.toFixed(2);
+      if (tierRates.tier3RatePerMile !== undefined) updateData.tier3RatePerMile = tierRates.tier3RatePerMile.toFixed(2);
+      if (tierRates.baseMinimumFare !== undefined) updateData.baseMinimumFare = tierRates.baseMinimumFare.toFixed(2);
     }
     
     if (lat !== undefined && lng !== undefined) {
@@ -1736,11 +1775,17 @@ export class DatabaseStorage implements IStorage {
         lastLocationUpdate: lat !== undefined && lng !== undefined ? new Date() : undefined,
       });
       
-      if (ratePerMile !== undefined || driverTagline !== undefined) {
+      if (ratePerMile !== undefined || driverTagline !== undefined || tierRates) {
         await syncDriverCommercial(id, {
           ratePerMile: ratePerMile !== undefined ? ratePerMile.toFixed(2) : undefined,
           driverTagline,
           serviceCategories,
+          tier1MaxMiles: tierRates?.tier1MaxMiles !== undefined ? tierRates.tier1MaxMiles.toFixed(2) : undefined,
+          tier1RatePerMile: tierRates?.tier1RatePerMile !== undefined ? tierRates.tier1RatePerMile.toFixed(2) : undefined,
+          tier2MaxMiles: tierRates?.tier2MaxMiles !== undefined ? tierRates.tier2MaxMiles.toFixed(2) : undefined,
+          tier2RatePerMile: tierRates?.tier2RatePerMile !== undefined ? tierRates.tier2RatePerMile.toFixed(2) : undefined,
+          tier3RatePerMile: tierRates?.tier3RatePerMile !== undefined ? tierRates.tier3RatePerMile.toFixed(2) : undefined,
+          baseMinimumFare: tierRates?.baseMinimumFare !== undefined ? tierRates.baseMinimumFare.toFixed(2) : undefined,
         });
       }
     }

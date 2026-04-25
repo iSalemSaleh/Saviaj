@@ -48,6 +48,7 @@ Preferred communication style: Simple, everyday language.
 - **Real-time Tracking & Chat**: WebSocket-based for live ride updates and in-app communication. Smooth animated driver marker with heading interpolation and position easing for fluid tracking experience.
 - **Driver Types**: Private (limited) and Commercial (unlimited, "online for hire" status).
 - **Service Categories**: Pro drivers can select up to 3 service categories (standard, premium, team, eco, business, budget) visible to riders.
+- **Tiered Distance Pricing**: Pro drivers can configure up to 3 distance-based rate tiers (e.g. 0–5mi @£3/mi, 5–15mi @£2/mi, 15+mi @£1.50/mi) plus an optional base minimum fare (e.g. min £5 for any trip). Falls back to flat rate if tiers not configured. Riders see "from £X/mi" label and accurate tiered estimates.
 - **Recurring Journeys**: Users can set up recurring ride requests or driver routes. Riders select commute days and time, drivers can specify per-day schedules with different routes and times. System auto-generates individual listings for the next 14 days with a rolling background job.
 - **Flexible Ride Options**: Post own route, browse driver routes, or find nearby commercial drivers.
 - **Secure Payments**: Stripe integration with robust security measures for amount validation, webhook verification, and driver earnings protection.

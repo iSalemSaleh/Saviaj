@@ -169,6 +169,12 @@ interface NearbyDriver {
   vehicleModel: string | null;
   vehicleColor: string | null;
   ratePerMile: string | null;
+  tier1MaxMiles: string | null;
+  tier1RatePerMile: string | null;
+  tier2MaxMiles: string | null;
+  tier2RatePerMile: string | null;
+  tier3RatePerMile: string | null;
+  baseMinimumFare: string | null;
   serviceCategories: string[] | null;
   distanceFromPickup: number;
   currentLat: string | null;
@@ -485,9 +491,19 @@ export function RiderLocationMap({
                     )}
                   </div>
                 )}
-                {driver.ratePerMile && (
+                {(driver.ratePerMile || driver.tier1RatePerMile) && (
                   <div className="font-medium text-green-600 mt-1">
-                    £{parseFloat(driver.ratePerMile).toFixed(2)}/mile
+                    {driver.tier1RatePerMile && parseFloat(driver.tier1RatePerMile) > 0
+                      ? (() => {
+                          const t2 = parseFloat(driver.tier2RatePerMile || "0");
+                          const t3 = parseFloat(driver.tier3RatePerMile || "0");
+                          const lowest = t3 || t2 || parseFloat(driver.tier1RatePerMile);
+                          return `from £${lowest.toFixed(2)}/mile`;
+                        })()
+                      : `£${parseFloat(driver.ratePerMile!).toFixed(2)}/mile`}
+                    {driver.baseMinimumFare && parseFloat(driver.baseMinimumFare) > 0 && (
+                      <span className="text-[10px] text-muted-foreground ml-1">(min £{parseFloat(driver.baseMinimumFare).toFixed(2)})</span>
+                    )}
                   </div>
                 )}
                 {driver.serviceCategories && driver.serviceCategories.length > 0 && (
