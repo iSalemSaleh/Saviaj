@@ -175,6 +175,16 @@ async function initStripe() {
     res.sendFile(filePath);
   });
 
+  app.get('/api/downloads/azure-guide', (_req: Request, res: Response) => {
+    const filePath = path.join(process.cwd(), 'public', 'AtlasRide_Azure_Deployment_Guide.pdf');
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    res.setHeader('Content-Disposition', 'attachment; filename="AtlasRide_Azure_Deployment_Guide.pdf"');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.sendFile(filePath);
+  });
+
   // Mount business module routes (fully isolated from existing routes)
   app.use('/api/business', businessRoutes);
 
@@ -197,16 +207,14 @@ async function initStripe() {
   }
 
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  // reusePort is Linux-only and not supported on all Azure configs — use conditionally
+  const listenOptions: any = { port, host: "0.0.0.0" };
+  if (process.platform === "linux" && !process.env.WEBSITE_HOSTNAME) {
+    listenOptions.reusePort = true;
+  }
+  httpServer.listen(listenOptions, () => {
+    log(`serving on port ${port}`);
+  });
 
   // Start payment timeout cleanup job (runs every 5 minutes)
   setInterval(async () => {

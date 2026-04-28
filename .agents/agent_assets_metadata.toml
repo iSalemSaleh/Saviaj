@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "yy90Vbo2AI7knOS1hTfws"
+uri = "file://public/AtlasRide_Azure_Deployment_Guide.pdf"
+type = "pdf"
+title = "AtlasRide — Azure Deployment Guide"
