@@ -1,0 +1,148 @@
+Lookback period
+Connected!
+2026-04-29T19:13:20.4897639Z State: Starting, Action: EstablishingSiteNetworks, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 18:06:51, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site stopped at 04/29/2026 18:06:52 (UTC), DetailsLevel: WARN
+2026-04-29T19:13:20.911926Z State: Starting, Action: StartingSiteContainers, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 18:06:51, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site stopped at 04/29/2026 18:06:52 (UTC), DetailsLevel: WARN
+2026-04-29T19:13:20.9120878Z Container start method called.
+2026-04-29T19:13:20.9121331Z State: Starting, Action: PullingImage, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 18:06:51, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Pulling image 10.1.0.5:13209/appsvc/node:24-lts_20260115.4.tuxprod for saviaj., DetailsLevel: INFO
+2026-04-29T19:13:20.9122691Z Establishing network.
+2026-04-29T19:13:20.9123973Z Pulling image: appsvc/node:24-lts_20260115.4.tuxprod.
+2026-04-29T19:13:21.0449949Z Container is starting.
+2026-04-29T19:13:21.0450812Z State: Starting, Action: MountingVolumes, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 18:06:51, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Mounting volumes for saviaj., DetailsLevel: INFO
+2026-04-29T19:13:21.0452158Z Establishing user namespace if not established already.
+2026-04-29T19:13:21.0453538Z Establishing network if not established already.
+2026-04-29T19:13:21.045499Z Mounting volumes.
+2026-04-29T19:13:21.0456657Z Nested mountpoint
+2026-04-29T19:13:21.0469921Z Nested mountpoint volatile/logs
+2026-04-29T19:13:21.0514999Z Nested mountpoint
+2026-04-29T19:13:21.0521168Z Nested mountpoint
+2026-04-29T19:13:21.0527795Z Nested mountpoint
+2026-04-29T19:13:21.1146638Z State: Starting, Action: CreatingContainer, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 18:06:51, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Finished pulling container image and mounting volumes for saviaj. Allocatinng the rest of the container resources to finish container creation., DetailsLevel: INFO
+2026-04-29T19:13:21.1148099Z Creating container.
+2026-04-29T19:13:21.1149366Z Creating pipes for streaming container io.
+2026-04-29T19:13:21.1150628Z Creating stdout named pipe at /podr/container/pipe/6c8495e21e94_saviaj/stdout_f55b22a85c6e42058853902e322f2a79.
+2026-04-29T19:13:21.1168058Z Successfully created stdout named pipe at: /podr/container/pipe/6c8495e21e94_saviaj/stdout_f55b22a85c6e42058853902e322f2a79.
+2026-04-29T19:13:21.1171055Z Opening named pipe /podr/container/pipe/6c8495e21e94_saviaj/stdout_f55b22a85c6e42058853902e322f2a79 for reading in non-blocking mode.
+2026-04-29T19:13:21.1174233Z Successfully opened named pipe: /podr/container/pipe/6c8495e21e94_saviaj/stdout_f55b22a85c6e42058853902e322f2a79.
+2026-04-29T19:13:21.1177477Z Successfully removed non-blocking flag from /podr/container/pipe/6c8495e21e94_saviaj/stdout_f55b22a85c6e42058853902e322f2a79.
+2026-04-29T19:13:21.1179262Z Creating stderr named pipe at /podr/container/pipe/6c8495e21e94_saviaj/stderr_bb5d4a2c05b4439b831e9c293fd462f1.
+2026-04-29T19:13:21.1181715Z Successfully created stderr named pipe at: /podr/container/pipe/6c8495e21e94_saviaj/stderr_bb5d4a2c05b4439b831e9c293fd462f1.
+2026-04-29T19:13:21.1183565Z Opening named pipe /podr/container/pipe/6c8495e21e94_saviaj/stderr_bb5d4a2c05b4439b831e9c293fd462f1 for reading in non-blocking mode.
+2026-04-29T19:13:21.1185911Z Successfully opened named pipe: /podr/container/pipe/6c8495e21e94_saviaj/stderr_bb5d4a2c05b4439b831e9c293fd462f1.
+2026-04-29T19:13:21.1190425Z Successfully removed non-blocking flag from /podr/container/pipe/6c8495e21e94_saviaj/stderr_bb5d4a2c05b4439b831e9c293fd462f1.
+2026-04-29T19:13:21.1192183Z Overriding PORT environment variable with pre-calculated port: 8080.
+2026-04-29T19:13:21.1193729Z Setting value of PORT variable to 8080
+2026-04-29T19:13:21.1197397Z Creating container with image: appsvc/node:24-lts_20260115.4.tuxprod from registry: 10.1.0.5:13209 and fully qualified image name: 10.1.0.5:13209/appsvc/node:24-lts_20260115.4.tuxprod
+2026-04-29T19:13:21.7482471Z Starting container: 6c8495e21e94_saviaj.
+2026-04-29T19:13:21.762602Z Starting watchers and probes.
+2026-04-29T19:13:21.763682Z Starting metrics collection.
+2026-04-29T19:13:21.7638641Z Container is running.
+2026-04-29T19:13:21.76395Z State: Starting, Action: CreatingContainer, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 18:06:51, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Container saviaj successfully created and is running., DetailsLevel: INFO
+2026-04-29T19:13:21.8095486Z Container start method finished after 897 ms.
+2026-04-29T19:13:21.8100071Z State: Starting, Action: InitiatingSiteWarmUpProbe, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 18:06:51, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Container saviaj successfully created and is running., DetailsLevel: INFO
+2026-04-29T19:13:21.8100392Z State: Starting, Action: WaitingForSiteWarmUpProbeSuccess, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 18:06:51, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Pinging warmup path to ensure container is ready to receive requests., DetailsLevel: INFO
+2026-04-29T19:13:38.5863293Z Container has finished running with exit code: 1.
+2026-04-29T19:13:38.5864832Z Container is terminating. Grace period: 5 seconds.
+2026-04-29T19:13:38.5868309Z Stop and delete container. Retry count = 0
+2026-04-29T19:13:38.5869679Z Stopping container: 6c8495e21e94_saviaj.
+2026-04-29T19:13:38.6018811Z Deleting container: 6c8495e21e94_saviaj. Retry count = 0
+2026-04-29T19:13:40.1400428Z Container spec TerminationMessagePolicy  path
+2026-04-29T19:13:40.1402284Z Container is terminated. Total time elapsed: 1553 ms.
+2026-04-29T19:13:40.1403732Z Site container: saviaj terminated during site startup.
+2026-04-29T19:13:40.1413463Z State: Stopping, Action: CancellingStartup, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 18:06:51, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: saviaj terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-04-29T19:13:40.1544866Z Site startup probe failed after 18.3440469 seconds.
+2026-04-29T19:13:40.2661405Z State: Stopping, Action: CancellingStartup, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: saviaj terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-04-29T19:13:40.2750231Z Failed to start site. Revert by stopping site.
+2026-04-29T19:13:40.2751982Z State: Stopping, Action: StoppingSite, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: saviaj terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-04-29T19:13:40.2758521Z State: Stopping, Action: StoppingSiteContainers, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: saviaj terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-04-29T19:13:40.2758673Z Site: saviaj stopped.
+2026-04-29T19:13:40.3159489Z State: Stopping, Action: UnmountingVolumes, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: saviaj terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-04-29T19:13:40.575936Z State: Stopping, Action: StoppingSiteNetworks, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: saviaj terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-04-29T19:13:40.6712247Z Site: saviaj will be blocked for 4 minutes till 04/29/2026 19:17:40
+2026-04-29T19:13:40.6718726Z State: Blocked, Action: StoppingSiteNetworks, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site: saviaj will be blocked for 4 minutes till 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:13:40.6721657Z State: Stopped, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site stopped at 04/29/2026 19:13:40 (UTC), DetailsLevel: WARN
+2026-04-29T19:13:40.701826Z State: Stopped, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site stopped at 04/29/2026 19:13:40 (UTC), DetailsLevel: WARN
+2026-04-29T19:13:42.36373Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:13:42.3637626Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:14:00.1771436Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:14:00.1771733Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:14:00.3641165Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:14:00.3641752Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:14:12.116669Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:14:12.1167057Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:14:12.3114911Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:14:12.3115204Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:14:21.4474199Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:14:21.4474516Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:14:21.7559937Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:14:21.7560235Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:14:48.6787919Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:14:48.6788224Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:14:49.5280005Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:14:49.5280305Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:16:05.4517226Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:16:05.4517528Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:16:06.2288909Z State: Blocked, Action: None, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:16:06.2289202Z Start site prohibitted because the site is being blocked.
+2026-04-29T19:17:40.6717487Z Site: saviaj is unblocked.
+2026-04-29T19:19:38.3928702Z State: Starting, Action: EstablishingSiteNetworks, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:19:38.8279908Z State: Starting, Action: StartingSiteContainers, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site is blocked due to multiple, consecutive cold start failures. Site scheduled to be unblocked at 04/29/2026 19:17:40, DetailsLevel: WARN
+2026-04-29T19:19:38.828157Z Container start method called.
+2026-04-29T19:19:38.8282105Z State: Starting, Action: PullingImage, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Pulling image 10.1.0.5:13209/appsvc/node:24-lts_20260115.4.tuxprod for saviaj., DetailsLevel: INFO
+2026-04-29T19:19:38.828354Z Establishing network.
+2026-04-29T19:19:38.8285191Z Pulling image: appsvc/node:24-lts_20260115.4.tuxprod.
+2026-04-29T19:19:38.9411045Z Container is starting.
+2026-04-29T19:19:38.9412299Z State: Starting, Action: MountingVolumes, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Mounting volumes for saviaj., DetailsLevel: INFO
+2026-04-29T19:19:38.9426713Z Establishing user namespace if not established already.
+2026-04-29T19:19:38.9428356Z Establishing network if not established already.
+2026-04-29T19:19:38.9430298Z Mounting volumes.
+2026-04-29T19:19:38.9432382Z Nested mountpoint
+2026-04-29T19:19:38.9450062Z Nested mountpoint volatile/logs
+2026-04-29T19:19:38.9480457Z Nested mountpoint
+2026-04-29T19:19:38.9488412Z Nested mountpoint
+2026-04-29T19:19:38.9567787Z Nested mountpoint
+2026-04-29T19:19:39.0383779Z State: Starting, Action: CreatingContainer, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Finished pulling container image and mounting volumes for saviaj. Allocatinng the rest of the container resources to finish container creation., DetailsLevel: INFO
+2026-04-29T19:19:39.0385929Z Creating container.
+2026-04-29T19:19:39.0387991Z Creating pipes for streaming container io.
+2026-04-29T19:19:39.038966Z Creating stdout named pipe at /podr/container/pipe/bdd123f946cf_saviaj/stdout_904a79124f1b49bfa29bbdb944e47094.
+2026-04-29T19:19:39.0411487Z Successfully created stdout named pipe at: /podr/container/pipe/bdd123f946cf_saviaj/stdout_904a79124f1b49bfa29bbdb944e47094.
+2026-04-29T19:19:39.0412897Z Opening named pipe /podr/container/pipe/bdd123f946cf_saviaj/stdout_904a79124f1b49bfa29bbdb944e47094 for reading in non-blocking mode.
+2026-04-29T19:19:39.041451Z Successfully opened named pipe: /podr/container/pipe/bdd123f946cf_saviaj/stdout_904a79124f1b49bfa29bbdb944e47094.
+2026-04-29T19:19:39.0415791Z Successfully removed non-blocking flag from /podr/container/pipe/bdd123f946cf_saviaj/stdout_904a79124f1b49bfa29bbdb944e47094.
+2026-04-29T19:19:39.041744Z Creating stderr named pipe at /podr/container/pipe/bdd123f946cf_saviaj/stderr_eaadceefa9e040abb9c0428839e157ea.
+2026-04-29T19:19:39.0419235Z Successfully created stderr named pipe at: /podr/container/pipe/bdd123f946cf_saviaj/stderr_eaadceefa9e040abb9c0428839e157ea.
+2026-04-29T19:19:39.0420534Z Opening named pipe /podr/container/pipe/bdd123f946cf_saviaj/stderr_eaadceefa9e040abb9c0428839e157ea for reading in non-blocking mode.
+2026-04-29T19:19:39.0422133Z Successfully opened named pipe: /podr/container/pipe/bdd123f946cf_saviaj/stderr_eaadceefa9e040abb9c0428839e157ea.
+2026-04-29T19:19:39.0423598Z Successfully removed non-blocking flag from /podr/container/pipe/bdd123f946cf_saviaj/stderr_eaadceefa9e040abb9c0428839e157ea.
+2026-04-29T19:19:39.0425249Z Overriding PORT environment variable with pre-calculated port: 8080.
+2026-04-29T19:19:39.0426643Z Setting value of PORT variable to 8080
+2026-04-29T19:19:39.0428535Z Creating container with image: appsvc/node:24-lts_20260115.4.tuxprod from registry: 10.1.0.5:13209 and fully qualified image name: 10.1.0.5:13209/appsvc/node:24-lts_20260115.4.tuxprod
+2026-04-29T19:19:39.2319644Z Starting container: bdd123f946cf_saviaj.
+2026-04-29T19:19:39.2469431Z Starting watchers and probes.
+2026-04-29T19:19:39.2471385Z Starting metrics collection.
+2026-04-29T19:19:39.2472771Z Container is running.
+2026-04-29T19:19:39.2473298Z State: Starting, Action: CreatingContainer, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Container saviaj successfully created and is running., DetailsLevel: INFO
+2026-04-29T19:19:39.2637881Z Container start method finished after 434 ms.
+2026-04-29T19:19:39.2640281Z State: Starting, Action: InitiatingSiteWarmUpProbe, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Container saviaj successfully created and is running., DetailsLevel: INFO
+2026-04-29T19:19:39.2640598Z State: Starting, Action: WaitingForSiteWarmUpProbeSuccess, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Pinging warmup path to ensure container is ready to receive requests., DetailsLevel: INFO
+2026-04-29T19:19:54.4289223Z Container has finished running with exit code: 1.
+2026-04-29T19:19:54.4293307Z Container is terminating. Grace period: 5 seconds.
+2026-04-29T19:19:54.4300074Z Stop and delete container. Retry count = 0
+2026-04-29T19:19:54.4302328Z Stopping container: bdd123f946cf_saviaj.
+2026-04-29T19:19:54.4532299Z Deleting container: bdd123f946cf_saviaj. Retry count = 0
+2026-04-29T19:19:56.0440473Z Container spec TerminationMessagePolicy  path
+2026-04-29T19:19:56.0442751Z Container is terminated. Total time elapsed: 1614 ms.
+2026-04-29T19:19:56.044399Z Site container: saviaj terminated during site startup.
+2026-04-29T19:19:56.0445035Z State: Stopping, Action: CancellingStartup, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:13:40, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: saviaj terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-04-29T19:19:56.0585653Z Site startup probe failed after 16.7941685 seconds.
+2026-04-29T19:19:56.2253494Z State: Stopping, Action: CancellingStartup, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:19:56, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: saviaj terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-04-29T19:19:56.2314194Z Failed to start site. Revert by stopping site.
+2026-04-29T19:19:56.2317036Z State: Stopping, Action: StoppingSite, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:19:56, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: saviaj terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-04-29T19:19:56.2319376Z State: Stopping, Action: StoppingSiteContainers, LastError: ContainerTimeout, LastErrorTimestamp: 04/29/2026 19:19:56, LastErrorDetails: Container did not start within expected time limit of 230s. Please inspect your container logs for more details., Details: Site container: saviaj terminated during site startup. Cancelling site startup., DetailsLevel: ERR
+2026-04-29T19:19:56.2319498Z Site: saviaj stopped.
+2026-04-29T19:30:47.804Z No new trace in the past 1 min(s).
+2026-04-29T19:31:47.804Z No new trace in the past 2 min(s).
+2026-04-29T19:32:47.804Z No new trace in the past 3 min(s).
+2026-04-29T19:33:47.804Z No new trace in the past 4 min(s).
+2026-04-29T19:34:47.804Z No new trace in the past 5 min(s).
+2026-04-29T19:35:47.804Z No new trace in the past 6 min(s).
+2026-04-29T19:36:47.804Z No new trace in the past 7 min(s).
