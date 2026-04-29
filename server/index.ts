@@ -185,6 +185,16 @@ async function initStripe() {
     res.sendFile(filePath);
   });
 
+  app.get('/api/downloads/azure-full-config', (_req: Request, res: Response) => {
+    const filePath = path.join(process.cwd(), 'public', 'AtlasRide_Azure_Full_Config.pdf');
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    res.setHeader('Content-Disposition', 'attachment; filename="AtlasRide_Azure_Full_Config.pdf"');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.sendFile(filePath);
+  });
+
   // Mount business module routes (fully isolated from existing routes)
   app.use('/api/business', businessRoutes);
 
