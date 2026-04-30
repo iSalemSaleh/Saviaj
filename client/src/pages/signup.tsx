@@ -113,12 +113,58 @@ export default function Signup() {
   useEffect(() => {
     const verifiedEmail = localStorage.getItem('atlasride_verified_email');
     const token = localStorage.getItem('atlasride_email_token');
-    if (verifiedEmail && token) {
+    const tokenTs = parseInt(localStorage.getItem('atlasride_email_token_ts') || '0', 10);
+    const TOKEN_TTL_MS = 30 * 60 * 1000; // server-side expiry is 30 minutes
+    const isExpired = !tokenTs || Date.now() - tokenTs > TOKEN_TTL_MS;
+    if (verifiedEmail && token && !isExpired) {
       setFormData(prev => ({ ...prev, email: verifiedEmail }));
       setIsEmailVerified(true);
       setEmailVerificationToken(token);
+    } else if (verifiedEmail || token) {
+      // Stale token - clear it so the next user isn't pre-filled
+      localStorage.removeItem('atlasride_verified_email');
+      localStorage.removeItem('atlasride_email_token');
+      localStorage.removeItem('atlasride_email_token_ts');
     }
   }, []);
+
+  // Sync the wizard step with browser history so the device back button
+  // moves one step back instead of dumping the whole flow.
+  useEffect(() => {
+    window.history.replaceState({ signupStep: 1 }, "", window.location.pathname);
+    const handlePopState = (e: PopStateEvent) => {
+      const target = e.state?.signupStep;
+      if (typeof target === "number") {
+        setStep(target);
+        setError("");
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  // Warn the user if they try to leave (refresh / close tab) past step 1.
+  useEffect(() => {
+    if (step === 1) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [step]);
+
+  const confirmAbandon = (target: string) => {
+    if (step > 1) {
+      const ok = window.confirm(
+        "You'll lose the information you've entered so far. Continue?"
+      );
+      if (!ok) return;
+    }
+    // Use a hard navigation so the per-step history entries we pushed
+    // don't pollute the back stack on the destination page.
+    window.location.href = target;
+  };
 
   const totalSteps = formData.accountType === "driver" ? 6 : 3;
   const progress = (step / totalSteps) * 100;
@@ -345,15 +391,16 @@ export default function Signup() {
       if (step === totalSteps) {
         registerMutation.mutate(formData);
       } else {
-        setStep(step + 1);
+        const next = step + 1;
+        window.history.pushState({ signupStep: next }, "", window.location.pathname);
+        setStep(next);
       }
     }
   };
 
   const handleBack = () => {
     if (step > 1) {
-      setStep(step - 1);
-      setError("");
+      window.history.back();
     }
   };
 
@@ -1066,8 +1113,9 @@ export default function Signup() {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
       <header className="p-4 flex items-center justify-between">
         <button
-          onClick={() => setLocation("/")}
+          onClick={() => confirmAbandon("/")}
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          data-testid="button-back-to-home"
         >
           <ArrowLeft className="h-5 w-5" />
           <span>Back to Home</span>
@@ -1132,8 +1180,9 @@ export default function Signup() {
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Already have an account?{" "}
               <button
-                onClick={() => setLocation("/login")}
+                onClick={() => confirmAbandon("/login")}
                 className="text-primary hover:underline"
+                data-testid="link-go-signin"
               >
                 Sign in
               </button>
@@ -1152,6 +1201,7 @@ export default function Signup() {
           setEmailVerificationToken(token);
           localStorage.setItem('atlasride_verified_email', verifiedEmail);
           localStorage.setItem('atlasride_email_token', token);
+          localStorage.setItem('atlasride_email_token_ts', String(Date.now()));
           setShowEmailVerificationModal(false);
           setError("");
         }}

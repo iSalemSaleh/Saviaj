@@ -32,14 +32,15 @@ export function PhoneVerificationModal({ open, onClose, onVerified }: PhoneVerif
 
   useEffect(() => {
     if (!open) {
+      // Reset internal modal UI only. Do NOT wipe a previously verified
+      // phone token from localStorage – that's owned by the page that
+      // opened the modal and should outlive the dialog being dismissed.
       setStep("phone");
       setPhoneNumber("");
       setOtpCode("");
       setDemoCode(null);
       setError(null);
       setCountdown(0);
-      localStorage.removeItem('atlasride_verified_phone');
-      localStorage.removeItem('atlasride_phone_token');
     }
   }, [open]);
 

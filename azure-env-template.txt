@@ -23,6 +23,22 @@ AZURE_MAPS_KEY=your-azure-maps-subscription-key
 STRIPE_SECRET_KEY=sk_live_your_stripe_secret_key
 
 # ===========================================
+# REQUIRED - Twilio (SMS / Phone OTP)
+# ===========================================
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your-twilio-auth-token
+TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# ===========================================
+# REQUIRED - Microsoft Entra External ID (Email OTP)
+# ===========================================
+# App registration Client ID from your Entra External ID tenant
+ENTRA_CLIENT_ID=your-entra-app-client-id
+# Tenant short name (the part before .onmicrosoft.com / .ciamlogin.com)
+# Defaults to "atlasridecustomers" if unset
+ENTRA_TENANT_NAME=your-tenant-shortname
+
+# ===========================================
 # REQUIRED FOR PRODUCTION
 # ===========================================
 NODE_ENV=production

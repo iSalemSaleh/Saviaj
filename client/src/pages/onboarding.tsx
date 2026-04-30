@@ -38,10 +38,9 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      localStorage.setItem('atlasride_signup', 'true');
-      window.location.href = '/api/login';
+      navigate('/login');
     }
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, navigate]);
 
   // Personal Information
   const [firstName, setFirstName] = useState("");
