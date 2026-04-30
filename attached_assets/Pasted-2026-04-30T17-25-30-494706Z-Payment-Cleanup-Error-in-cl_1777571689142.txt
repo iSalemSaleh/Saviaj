@@ -1,0 +1,100 @@
+2026-04-30T17:25:30.494706Z [Payment Cleanup] Error in cleanup job: error: relation "rides" does not exist
+2026-04-30T17:25:30.4947384Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T17:25:30.4947423Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T17:25:30.4947453Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T17:25:30.4947485Z     at async H1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:78:2996)
+2026-04-30T17:25:30.4947514Z     at async Ile (/home/site/wwwroot/dist/index.cjs:102:40401)
+2026-04-30T17:25:30.4947545Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87194) {
+2026-04-30T17:25:30.4947571Z   length: 105,
+2026-04-30T17:25:30.4947599Z   severity: 'ERROR',
+2026-04-30T17:25:30.4947626Z   code: '42P01',
+2026-04-30T17:25:30.4947654Z   detail: undefined,
+2026-04-30T17:25:30.4947703Z   hint: undefined,
+2026-04-30T17:25:30.4947731Z   position: '508',
+2026-04-30T17:25:30.4947759Z   internalPosition: undefined,
+2026-04-30T17:25:30.4947786Z   internalQuery: undefined,
+2026-04-30T17:25:30.4947814Z   where: undefined,
+2026-04-30T17:25:30.4947839Z   schema: undefined,
+2026-04-30T17:25:30.4947866Z   table: undefined,
+2026-04-30T17:25:30.4947893Z   column: undefined,
+2026-04-30T17:25:30.4947921Z   dataType: undefined,
+2026-04-30T17:25:30.4947949Z   constraint: undefined,
+2026-04-30T17:25:30.4947976Z   file: 'parse_relation.c',
+2026-04-30T17:25:30.4948Z   line: '1381',
+2026-04-30T17:25:30.4948034Z   routine: 'parserOpenTable'
+2026-04-30T17:25:30.4948061Z }
+2026-04-30T17:25:30.5407413Z [Expired Rides] Error in expired rides job: error: relation "rides" does not exist
+2026-04-30T17:25:30.5407865Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T17:25:30.5407904Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T17:25:30.5407931Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T17:25:30.5407959Z     at async H1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:78:3187)
+2026-04-30T17:25:30.5407988Z     at async Tle (/home/site/wwwroot/dist/index.cjs:102:39314)
+2026-04-30T17:25:30.540802Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87204) {
+2026-04-30T17:25:30.5410048Z   length: 105,
+2026-04-30T17:25:30.5410093Z   severity: 'ERROR',
+2026-04-30T17:25:30.5410132Z   code: '42P01',
+2026-04-30T17:25:30.5410159Z   detail: undefined,
+2026-04-30T17:25:30.5410197Z   hint: undefined,
+2026-04-30T17:25:30.5410227Z   position: '508',
+2026-04-30T17:25:30.5410254Z   internalPosition: undefined,
+2026-04-30T17:25:30.5410282Z   internalQuery: undefined,
+2026-04-30T17:25:30.541031Z   where: undefined,
+2026-04-30T17:25:30.5410337Z   schema: undefined,
+2026-04-30T17:25:30.5410363Z   table: undefined,
+2026-04-30T17:25:30.5410389Z   column: undefined,
+2026-04-30T17:25:30.5410416Z   dataType: undefined,
+2026-04-30T17:25:30.5410454Z   constraint: undefined,
+2026-04-30T17:25:30.5410483Z   file: 'parse_relation.c',
+2026-04-30T17:25:30.541051Z   line: '1381',
+2026-04-30T17:25:30.5410538Z   routine: 'parserOpenTable'
+2026-04-30T17:25:30.5410566Z }
+2026-04-30T17:30:30.5186797Z [Payment Cleanup] Error in cleanup job: error: relation "rides" does not exist
+2026-04-30T17:30:30.5187207Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T17:30:30.5187247Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T17:30:30.5187279Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T17:30:30.518731Z     at async H1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:78:2996)
+2026-04-30T17:30:30.5187337Z     at async Ile (/home/site/wwwroot/dist/index.cjs:102:40401)
+2026-04-30T17:30:30.5187366Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87194) {
+2026-04-30T17:30:30.5187391Z   length: 105,
+2026-04-30T17:30:30.5187417Z   severity: 'ERROR',
+2026-04-30T17:30:30.5187444Z   code: '42P01',
+2026-04-30T17:30:30.5187469Z   detail: undefined,
+2026-04-30T17:30:30.5187595Z   hint: undefined,
+2026-04-30T17:30:30.5187625Z   position: '508',
+2026-04-30T17:30:30.5187655Z   internalPosition: undefined,
+2026-04-30T17:30:30.5187683Z   internalQuery: undefined,
+2026-04-30T17:30:30.5187787Z   where: undefined,
+2026-04-30T17:30:30.5187818Z   schema: undefined,
+2026-04-30T17:30:30.5187848Z   table: undefined,
+2026-04-30T17:30:30.5187876Z   column: undefined,
+2026-04-30T17:30:30.5187908Z   dataType: undefined,
+2026-04-30T17:30:30.5187937Z   constraint: undefined,
+2026-04-30T17:30:30.5187966Z   file: 'parse_relation.c',
+2026-04-30T17:30:30.5187995Z   line: '1381',
+2026-04-30T17:30:30.5188149Z   routine: 'parserOpenTable'
+2026-04-30T17:30:30.5188179Z }
+2026-04-30T17:30:30.5529718Z [Expired Rides] Error in expired rides job: error: relation "rides" does not exist
+2026-04-30T17:30:30.5530099Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T17:30:30.5530134Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T17:30:30.5530163Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T17:30:30.5530192Z     at async H1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:78:3187)
+2026-04-30T17:30:30.5530223Z     at async Tle (/home/site/wwwroot/dist/index.cjs:102:39314)
+2026-04-30T17:30:30.5530252Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87204) {
+2026-04-30T17:30:30.5530277Z   length: 105,
+2026-04-30T17:30:30.5530302Z   severity: 'ERROR',
+2026-04-30T17:30:30.5530524Z   code: '42P01',
+2026-04-30T17:30:30.5530551Z   detail: undefined,
+2026-04-30T17:30:30.5530577Z   hint: undefined,
+2026-04-30T17:30:30.5530601Z   position: '508',
+2026-04-30T17:30:30.5530627Z   internalPosition: undefined,
+2026-04-30T17:30:30.5530652Z   internalQuery: undefined,
+2026-04-30T17:30:30.5530676Z   where: undefined,
+2026-04-30T17:30:30.5530701Z   schema: undefined,
+2026-04-30T17:30:30.5530725Z   table: undefined,
+2026-04-30T17:30:30.553075Z   column: undefined,
+2026-04-30T17:30:30.5530775Z   dataType: undefined,
+2026-04-30T17:30:30.5530865Z   constraint: undefined,
+2026-04-30T17:30:30.5530892Z   file: 'parse_relation.c',
+2026-04-30T17:30:30.5530917Z   line: '1381',
+2026-04-30T17:30:30.5530943Z   routine: 'parserOpenTable'
+2026-04-30T17:30:30.5530968Z }
