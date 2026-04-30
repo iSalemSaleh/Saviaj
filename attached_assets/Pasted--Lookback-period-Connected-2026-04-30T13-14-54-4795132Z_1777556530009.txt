@@ -1,0 +1,303 @@
+
+Lookback period
+Connected!
+2026-04-30T13:14:54.4795132Z [Payment Cleanup] Error in cleanup job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:14:54.4795522Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:14:54.4795564Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:14:54.4795595Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:14:54.4795623Z     at async H1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:78:2996)
+2026-04-30T13:14:54.479565Z     at async Ile (/home/site/wwwroot/dist/index.cjs:102:40401)
+2026-04-30T13:14:54.4795678Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87194) {
+2026-04-30T13:14:54.4795704Z   length: 120,
+2026-04-30T13:14:54.4795733Z   severity: 'FATAL',
+2026-04-30T13:14:54.4795758Z   code: '28P01',
+2026-04-30T13:14:54.4795784Z   detail: undefined,
+2026-04-30T13:14:54.4795828Z   hint: undefined,
+2026-04-30T13:14:54.4795855Z   position: undefined,
+2026-04-30T13:14:54.4795885Z   internalPosition: undefined,
+2026-04-30T13:14:54.4795914Z   internalQuery: undefined,
+2026-04-30T13:14:54.4795938Z   where: undefined,
+2026-04-30T13:14:54.4795963Z   schema: undefined,
+2026-04-30T13:14:54.4795987Z   table: undefined,
+2026-04-30T13:14:54.4796013Z   column: undefined,
+2026-04-30T13:14:54.4796045Z   dataType: undefined,
+2026-04-30T13:14:54.4796074Z   constraint: undefined,
+2026-04-30T13:14:54.47961Z   file: 'auth.c',
+2026-04-30T13:14:54.4796126Z   line: '427',
+2026-04-30T13:14:54.4796163Z   routine: 'auth_failed'
+2026-04-30T13:14:54.4796191Z }
+2026-04-30T13:14:56.5228993Z [Expired Rides] Error in expired rides job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:14:56.5229377Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:14:56.5229432Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:14:56.5229473Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:14:56.5229648Z     at async H1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:78:3187)
+2026-04-30T13:14:56.5229682Z     at async Tle (/home/site/wwwroot/dist/index.cjs:102:39314)
+2026-04-30T13:14:56.5229717Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87204) {
+2026-04-30T13:14:56.5229751Z   length: 120,
+2026-04-30T13:14:56.5229845Z   severity: 'FATAL',
+2026-04-30T13:14:56.522988Z   code: '28P01',
+2026-04-30T13:14:56.5229918Z   detail: undefined,
+2026-04-30T13:14:56.5229952Z   hint: undefined,
+2026-04-30T13:14:56.5229986Z   position: undefined,
+2026-04-30T13:14:56.5230023Z   internalPosition: undefined,
+2026-04-30T13:14:56.523006Z   internalQuery: undefined,
+2026-04-30T13:14:56.5230093Z   where: undefined,
+2026-04-30T13:14:56.5230127Z   schema: undefined,
+2026-04-30T13:14:56.523016Z   table: undefined,
+2026-04-30T13:14:56.5230194Z   column: undefined,
+2026-04-30T13:14:56.5230231Z   dataType: undefined,
+2026-04-30T13:14:56.5230285Z   constraint: undefined,
+2026-04-30T13:14:56.5230317Z   file: 'auth.c',
+2026-04-30T13:14:56.5230351Z   line: '427',
+2026-04-30T13:14:56.5230387Z   routine: 'auth_failed'
+2026-04-30T13:14:56.5230422Z }
+2026-04-30T13:19:54.5701304Z [Payment Cleanup] Error in cleanup job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:19:54.5701687Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:19:54.5701732Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:19:54.5701762Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:19:54.570179Z     at async H1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:78:2996)
+2026-04-30T13:19:54.5701817Z     at async Ile (/home/site/wwwroot/dist/index.cjs:102:40401)
+2026-04-30T13:19:54.570185Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87194) {
+2026-04-30T13:19:54.5701878Z   length: 120,
+2026-04-30T13:19:54.5701904Z   severity: 'FATAL',
+2026-04-30T13:19:54.5701933Z   code: '28P01',
+2026-04-30T13:19:54.5701958Z   detail: undefined,
+2026-04-30T13:19:54.5702006Z   hint: undefined,
+2026-04-30T13:19:54.5702033Z   position: undefined,
+2026-04-30T13:19:54.5702064Z   internalPosition: undefined,
+2026-04-30T13:19:54.5702091Z   internalQuery: undefined,
+2026-04-30T13:19:54.5702117Z   where: undefined,
+2026-04-30T13:19:54.5702143Z   schema: undefined,
+2026-04-30T13:19:54.570217Z   table: undefined,
+2026-04-30T13:19:54.5702195Z   column: undefined,
+2026-04-30T13:19:54.5702223Z   dataType: undefined,
+2026-04-30T13:19:54.5702251Z   constraint: undefined,
+2026-04-30T13:19:54.5702277Z   file: 'auth.c',
+2026-04-30T13:19:54.5702301Z   line: '427',
+2026-04-30T13:19:54.5702337Z   routine: 'auth_failed'
+2026-04-30T13:19:54.5702363Z }
+2026-04-30T13:19:56.613728Z [Expired Rides] Error in expired rides job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:19:56.6137675Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:19:56.6137714Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:19:56.6137742Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:19:56.6137773Z     at async H1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:78:3187)
+2026-04-30T13:19:56.613791Z     at async Tle (/home/site/wwwroot/dist/index.cjs:102:39314)
+2026-04-30T13:19:56.6137937Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87204) {
+2026-04-30T13:19:56.613796Z   length: 120,
+2026-04-30T13:19:56.6138039Z   severity: 'FATAL',
+2026-04-30T13:19:56.6138065Z   code: '28P01',
+2026-04-30T13:19:56.6138088Z   detail: undefined,
+2026-04-30T13:19:56.6138111Z   hint: undefined,
+2026-04-30T13:19:56.6138136Z   position: undefined,
+2026-04-30T13:19:56.613816Z   internalPosition: undefined,
+2026-04-30T13:19:56.6138186Z   internalQuery: undefined,
+2026-04-30T13:19:56.6138209Z   where: undefined,
+2026-04-30T13:19:56.6138234Z   schema: undefined,
+2026-04-30T13:19:56.6138257Z   table: undefined,
+2026-04-30T13:19:56.6138281Z   column: undefined,
+2026-04-30T13:19:56.6138305Z   dataType: undefined,
+2026-04-30T13:19:56.6138336Z   constraint: undefined,
+2026-04-30T13:19:56.613836Z   file: 'auth.c',
+2026-04-30T13:19:56.6138385Z   line: '427',
+2026-04-30T13:19:56.613841Z   routine: 'auth_failed'
+2026-04-30T13:19:56.6138433Z }
+2026-04-30T13:24:54.4889099Z [Payment Cleanup] Error in cleanup job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:24:54.4889402Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:24:54.4889445Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:24:54.4889482Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:24:54.4889515Z     at async H1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:78:2996)
+2026-04-30T13:24:54.4889547Z     at async Ile (/home/site/wwwroot/dist/index.cjs:102:40401)
+2026-04-30T13:24:54.4889578Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87194) {
+2026-04-30T13:24:54.4889609Z   length: 120,
+2026-04-30T13:24:54.4889641Z   severity: 'FATAL',
+2026-04-30T13:24:54.488967Z   code: '28P01',
+2026-04-30T13:24:54.4889701Z   detail: undefined,
+2026-04-30T13:24:54.488975Z   hint: undefined,
+2026-04-30T13:24:54.4889779Z   position: undefined,
+2026-04-30T13:24:54.488981Z   internalPosition: undefined,
+2026-04-30T13:24:54.4889837Z   internalQuery: undefined,
+2026-04-30T13:24:54.4889861Z   where: undefined,
+2026-04-30T13:24:54.4889886Z   schema: undefined,
+2026-04-30T13:24:54.4889911Z   table: undefined,
+2026-04-30T13:24:54.488994Z   column: undefined,
+2026-04-30T13:24:54.4889967Z   dataType: undefined,
+2026-04-30T13:24:54.4889996Z   constraint: undefined,
+2026-04-30T13:24:54.4890026Z   file: 'auth.c',
+2026-04-30T13:24:54.4890054Z   line: '427',
+2026-04-30T13:24:54.4890094Z   routine: 'auth_failed'
+2026-04-30T13:24:54.4890126Z }
+2026-04-30T13:24:56.5234719Z [Expired Rides] Error in expired rides job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:24:56.5235001Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:24:56.5235048Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:24:56.5235082Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:24:56.5235114Z     at async H1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:78:3187)
+2026-04-30T13:24:56.5235145Z     at async Tle (/home/site/wwwroot/dist/index.cjs:102:39314)
+2026-04-30T13:24:56.5235175Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87204) {
+2026-04-30T13:24:56.5235201Z   length: 120,
+2026-04-30T13:24:56.5235261Z   severity: 'FATAL',
+2026-04-30T13:24:56.5235285Z   code: '28P01',
+2026-04-30T13:24:56.5235308Z   detail: undefined,
+2026-04-30T13:24:56.5235331Z   hint: undefined,
+2026-04-30T13:24:56.5235355Z   position: undefined,
+2026-04-30T13:24:56.5235378Z   internalPosition: undefined,
+2026-04-30T13:24:56.5235401Z   internalQuery: undefined,
+2026-04-30T13:24:56.5235425Z   where: undefined,
+2026-04-30T13:24:56.523545Z   schema: undefined,
+2026-04-30T13:24:56.5235473Z   table: undefined,
+2026-04-30T13:24:56.5235496Z   column: undefined,
+2026-04-30T13:24:56.5235808Z   dataType: undefined,
+2026-04-30T13:24:56.5235863Z   constraint: undefined,
+2026-04-30T13:24:56.5235889Z   file: 'auth.c',
+2026-04-30T13:24:56.5235916Z   line: '427',
+2026-04-30T13:24:56.5235941Z   routine: 'auth_failed'
+2026-04-30T13:24:56.5235964Z }
+2026-04-30T13:29:54.5024643Z [Payment Cleanup] Error in cleanup job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:29:54.5024998Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:29:54.5025042Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:29:54.5025076Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:29:54.5025111Z     at async H1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:78:2996)
+2026-04-30T13:29:54.5025143Z     at async Ile (/home/site/wwwroot/dist/index.cjs:102:40401)
+2026-04-30T13:29:54.5025172Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87194) {
+2026-04-30T13:29:54.50252Z   length: 120,
+2026-04-30T13:29:54.5025227Z   severity: 'FATAL',
+2026-04-30T13:29:54.5025252Z   code: '28P01',
+2026-04-30T13:29:54.5025283Z   detail: undefined,
+2026-04-30T13:29:54.5025331Z   hint: undefined,
+2026-04-30T13:29:54.502536Z   position: undefined,
+2026-04-30T13:29:54.5025391Z   internalPosition: undefined,
+2026-04-30T13:29:54.5025422Z   internalQuery: undefined,
+2026-04-30T13:29:54.502545Z   where: undefined,
+2026-04-30T13:29:54.5025477Z   schema: undefined,
+2026-04-30T13:29:54.5025505Z   table: undefined,
+2026-04-30T13:29:54.5025534Z   column: undefined,
+2026-04-30T13:29:54.5025563Z   dataType: undefined,
+2026-04-30T13:29:54.5025592Z   constraint: undefined,
+2026-04-30T13:29:54.5025622Z   file: 'auth.c',
+2026-04-30T13:29:54.502565Z   line: '427',
+2026-04-30T13:29:54.5025688Z   routine: 'auth_failed'
+2026-04-30T13:29:54.5025717Z }
+2026-04-30T13:29:56.5536392Z [Expired Rides] Error in expired rides job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:29:56.5536939Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:29:56.5536979Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:29:56.5537009Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:29:56.553704Z     at async H1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:78:3187)
+2026-04-30T13:29:56.5537069Z     at async Tle (/home/site/wwwroot/dist/index.cjs:102:39314)
+2026-04-30T13:29:56.5537097Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87204) {
+2026-04-30T13:29:56.5537128Z   length: 120,
+2026-04-30T13:29:56.5537212Z   severity: 'FATAL',
+2026-04-30T13:29:56.5537238Z   code: '28P01',
+2026-04-30T13:29:56.5537267Z   detail: undefined,
+2026-04-30T13:29:56.5537477Z   hint: undefined,
+2026-04-30T13:29:56.5537502Z   position: undefined,
+2026-04-30T13:29:56.5537526Z   internalPosition: undefined,
+2026-04-30T13:29:56.5537551Z   internalQuery: undefined,
+2026-04-30T13:29:56.5537576Z   where: undefined,
+2026-04-30T13:29:56.5537599Z   schema: undefined,
+2026-04-30T13:29:56.5537623Z   table: undefined,
+2026-04-30T13:29:56.5537646Z   column: undefined,
+2026-04-30T13:29:56.5537669Z   dataType: undefined,
+2026-04-30T13:29:56.5537706Z   constraint: undefined,
+2026-04-30T13:29:56.553773Z   file: 'auth.c',
+2026-04-30T13:29:56.5537753Z   line: '427',
+2026-04-30T13:29:56.5537777Z   routine: 'auth_failed'
+2026-04-30T13:29:56.55378Z }
+2026-04-30T13:34:54.5242541Z [Payment Cleanup] Error in cleanup job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:34:54.5242873Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:34:54.5242923Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:34:54.5242963Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:34:54.5243004Z     at async H1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:78:2996)
+2026-04-30T13:34:54.5243042Z     at async Ile (/home/site/wwwroot/dist/index.cjs:102:40401)
+2026-04-30T13:34:54.5243082Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87194) {
+2026-04-30T13:34:54.5243116Z   length: 120,
+2026-04-30T13:34:54.5243152Z   severity: 'FATAL',
+2026-04-30T13:34:54.5243187Z   code: '28P01',
+2026-04-30T13:34:54.5243222Z   detail: undefined,
+2026-04-30T13:34:54.5243279Z   hint: undefined,
+2026-04-30T13:34:54.5243314Z   position: undefined,
+2026-04-30T13:34:54.5243344Z   internalPosition: undefined,
+2026-04-30T13:34:54.5243374Z   internalQuery: undefined,
+2026-04-30T13:34:54.5243401Z   where: undefined,
+2026-04-30T13:34:54.5243428Z   schema: undefined,
+2026-04-30T13:34:54.5243457Z   table: undefined,
+2026-04-30T13:34:54.5243485Z   column: undefined,
+2026-04-30T13:34:54.524351Z   dataType: undefined,
+2026-04-30T13:34:54.5243537Z   constraint: undefined,
+2026-04-30T13:34:54.524357Z   file: 'auth.c',
+2026-04-30T13:34:54.5243603Z   line: '427',
+2026-04-30T13:34:54.5243645Z   routine: 'auth_failed'
+2026-04-30T13:34:54.524368Z }
+2026-04-30T13:34:56.5602216Z [Expired Rides] Error in expired rides job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:34:56.5602643Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:34:56.5602679Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:34:56.5602709Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:34:56.5602737Z     at async H1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:78:3187)
+2026-04-30T13:34:56.5602765Z     at async Tle (/home/site/wwwroot/dist/index.cjs:102:39314)
+2026-04-30T13:34:56.5602796Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87204) {
+2026-04-30T13:34:56.5602819Z   length: 120,
+2026-04-30T13:34:56.5602906Z   severity: 'FATAL',
+2026-04-30T13:34:56.5602932Z   code: '28P01',
+2026-04-30T13:34:56.5602956Z   detail: undefined,
+2026-04-30T13:34:56.5602979Z   hint: undefined,
+2026-04-30T13:34:56.5603005Z   position: undefined,
+2026-04-30T13:34:56.5603029Z   internalPosition: undefined,
+2026-04-30T13:34:56.5603052Z   internalQuery: undefined,
+2026-04-30T13:34:56.5603075Z   where: undefined,
+2026-04-30T13:34:56.5603097Z   schema: undefined,
+2026-04-30T13:34:56.5603121Z   table: undefined,
+2026-04-30T13:34:56.5603143Z   column: undefined,
+2026-04-30T13:34:56.5603166Z   dataType: undefined,
+2026-04-30T13:34:56.5603202Z   constraint: undefined,
+2026-04-30T13:34:56.5603227Z   file: 'auth.c',
+2026-04-30T13:34:56.560325Z   line: '427',
+2026-04-30T13:34:56.5603273Z   routine: 'auth_failed'
+2026-04-30T13:34:56.5603298Z }
+2026-04-30T13:39:54.5460287Z [Payment Cleanup] Error in cleanup job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:39:54.5460664Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:39:54.5460717Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:39:54.5460758Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:39:54.5460798Z     at async H1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:78:2996)
+2026-04-30T13:39:54.5460835Z     at async Ile (/home/site/wwwroot/dist/index.cjs:102:40401)
+2026-04-30T13:39:54.546096Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87194) {
+2026-04-30T13:39:54.5460994Z   length: 120,
+2026-04-30T13:39:54.5461032Z   severity: 'FATAL',
+2026-04-30T13:39:54.5461068Z   code: '28P01',
+2026-04-30T13:39:54.5461104Z   detail: undefined,
+2026-04-30T13:39:54.5461162Z   hint: undefined,
+2026-04-30T13:39:54.5461199Z   position: undefined,
+2026-04-30T13:39:54.5461238Z   internalPosition: undefined,
+2026-04-30T13:39:54.5461273Z   internalQuery: undefined,
+2026-04-30T13:39:54.5461312Z   where: undefined,
+2026-04-30T13:39:54.5461351Z   schema: undefined,
+2026-04-30T13:39:54.5461388Z   table: undefined,
+2026-04-30T13:39:54.5461425Z   column: undefined,
+2026-04-30T13:39:54.5461461Z   dataType: undefined,
+2026-04-30T13:39:54.5461498Z   constraint: undefined,
+2026-04-30T13:39:54.5461537Z   file: 'auth.c',
+2026-04-30T13:39:54.5461574Z   line: '427',
+2026-04-30T13:39:54.5461623Z   routine: 'auth_failed'
+2026-04-30T13:39:54.5461663Z }
+2026-04-30T13:39:56.5855573Z [Expired Rides] Error in expired rides job: error: password authentication failed for user "lxqsqoxgcm@saviaj-server"
+2026-04-30T13:39:56.5856031Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T13:39:56.5857013Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T13:39:56.5857049Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T13:39:56.5857083Z     at async H1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:78:3187)
+2026-04-30T13:39:56.5857114Z     at async Tle (/home/site/wwwroot/dist/index.cjs:102:39314)
+2026-04-30T13:39:56.5857143Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87204) {
+2026-04-30T13:39:56.5857172Z   length: 120,
+2026-04-30T13:39:56.5857237Z   severity: 'FATAL',
+2026-04-30T13:39:56.5857265Z   code: '28P01',
+2026-04-30T13:39:56.5857293Z   detail: undefined,
+2026-04-30T13:39:56.5857322Z   hint: undefined,
+2026-04-30T13:39:56.585735Z   position: undefined,
+2026-04-30T13:39:56.5857378Z   internalPosition: undefined,
+2026-04-30T13:39:56.5857405Z   internalQuery: undefined,
+2026-04-30T13:39:56.5857432Z   where: undefined,
+2026-04-30T13:39:56.5857459Z   schema: undefined,
+2026-04-30T13:39:56.5857488Z   table: undefined,
+2026-04-30T13:39:56.5857515Z   column: undefined,
+2026-04-30T13:39:56.5857542Z   dataType: undefined,
+2026-04-30T13:39:56.585758Z   constraint: undefined,
+2026-04-30T13:39:56.585761Z   file: 'auth.c',
+2026-04-30T13:39:56.5857636Z   line: '427',
+2026-04-30T13:39:56.5857664Z   routine: 'auth_failed'
+2026-04-30T13:39:56.5857691Z }
