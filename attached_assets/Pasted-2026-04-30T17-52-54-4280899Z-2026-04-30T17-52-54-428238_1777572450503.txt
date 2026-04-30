@@ -1,0 +1,191 @@
+2026-04-30T17:52:54.4280899Z    _____
+2026-04-30T17:52:54.4282387Z   /  _  \ __________ _________   ____
+2026-04-30T17:52:54.4282457Z  /  /_\  \\___   /  |  \_  __ \_/ __ \
+2026-04-30T17:52:54.4282497Z /    |    \/    /|  |  /|  | \/\  ___/
+2026-04-30T17:52:54.4282561Z \____|__  /_____ \____/ |__|    \___  >
+2026-04-30T17:52:54.4282603Z         \/      \/                  \/
+2026-04-30T17:52:54.4282636Z A P P   S E R V I C E   O N   L I N U X
+2026-04-30T17:52:54.4282668Z
+2026-04-30T17:52:54.4282711Z Documentation    : http://aka.ms/webapp-linux
+2026-04-30T17:52:54.4282749Z NodeJS quickstart: https://aka.ms/node-qs
+2026-04-30T17:52:54.4282792Z NodeJS Version   : v24.13.0
+2026-04-30T17:52:54.4282828Z Instance Name    : pl0sdlwk001DFA
+2026-04-30T17:52:54.4282867Z Instance Id      : 180768af8d5f37afa6ee9320e07f55ffb654f2d3d303b4e4753535d3ea6b11df
+2026-04-30T17:52:54.4282901Z
+2026-04-30T17:52:54.4282936Z Note: Any data outside '/home' is not persisted
+2026-04-30T17:52:55.5141362Z  * Starting OpenBSD Secure Shell server sshd
+2026-04-30T17:52:55.5292985Z    ...done.
+2026-04-30T17:52:55.5430426Z WEBSITES_INCLUDE_CLOUD_CERTS is not set to true.
+2026-04-30T17:52:55.5679916Z Updating certificates in /etc/ssl/certs...
+2026-04-30T17:53:03.4480026Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-ECC.pem
+2026-04-30T17:53:03.4492076Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-RSA.pem
+2026-04-30T17:53:03.5154043Z rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
+2026-04-30T17:53:03.5497047Z 4 added, 0 removed; done.
+2026-04-30T17:53:03.549734Z Running hooks in /etc/ca-certificates/update.d...
+2026-04-30T17:53:03.5764988Z done.
+2026-04-30T17:53:03.6086625Z CA certificates copied and updated successfully.
+2026-04-30T17:53:03.64319Z  * Starting periodic command scheduler cron
+2026-04-30T17:53:03.6573021Z    ...done.
+2026-04-30T17:53:03.7512397Z Found build manifest file at '/home/site/wwwroot/oryx-manifest.toml'. Deserializing it...
+2026-04-30T17:53:03.7542459Z Could not find operation ID in manifest. Generating an operation id...
+2026-04-30T17:53:03.7543738Z Build Operation ID: b7a8ff46-0484-4e87-b02b-ad8529c8bf08
+2026-04-30T17:53:04.0415095Z Environment Variables for Application Insight's IPA Codeless Configuration exists..
+2026-04-30T17:53:04.0610485Z Writing output script to '/opt/startup/startup.sh'
+2026-04-30T17:53:04.1034553Z Running #!/bin/sh
+2026-04-30T17:53:04.1035062Z
+2026-04-30T17:53:04.1035112Z # Enter the source directory to make sure the script runs where the user expects
+2026-04-30T17:53:04.1035162Z cd "/home/site/wwwroot"
+2026-04-30T17:53:04.1035198Z
+2026-04-30T17:53:04.1036064Z export NODE_PATH=/usr/local/lib/node_modules:$NODE_PATH
+2026-04-30T17:53:04.1036133Z if [ -z "$PORT" ]; then
+2026-04-30T17:53:04.1036171Z 		export PORT=8080
+2026-04-30T17:53:04.1036217Z fi
+2026-04-30T17:53:04.103625Z
+2026-04-30T17:53:04.103805Z echo Found tar.gz based node_modules.
+2026-04-30T17:53:04.1038136Z extractionCommand="tar -xzf node_modules.tar.gz -C /node_modules"
+2026-04-30T17:53:04.1038185Z echo "Removing existing modules directory from root..."
+2026-04-30T17:53:04.1038223Z rm -fr /node_modules
+2026-04-30T17:53:04.103826Z mkdir -p /node_modules
+2026-04-30T17:53:04.1038316Z echo Extracting modules...
+2026-04-30T17:53:04.1038354Z $extractionCommand
+2026-04-30T17:53:04.1038413Z export NODE_PATH="/node_modules":$NODE_PATH
+2026-04-30T17:53:04.1038448Z export PATH=/node_modules/.bin:$PATH
+2026-04-30T17:53:04.1038483Z if [ -d node_modules ]; then
+2026-04-30T17:53:04.1038517Z     mv -f node_modules _del_node_modules || true
+2026-04-30T17:53:04.1038552Z fi
+2026-04-30T17:53:04.1038594Z
+2026-04-30T17:53:04.1038631Z if [ -d /node_modules ]; then
+2026-04-30T17:53:04.1038669Z     ln -sfn /node_modules ./node_modules
+2026-04-30T17:53:04.1038703Z fi
+2026-04-30T17:53:04.1038736Z
+2026-04-30T17:53:04.1038768Z echo "Done."
+2026-04-30T17:53:04.1038802Z npm start
+2026-04-30T17:53:04.113009Z Found tar.gz based node_modules.
+2026-04-30T17:53:04.1138524Z Removing existing modules directory from root...
+2026-04-30T17:53:04.1201729Z Extracting modules...
+2026-04-30T17:53:11.8765036Z Done.
+2026-04-30T17:53:12.7492023Z npm info using npm@10.9.2
+2026-04-30T17:53:12.7497394Z npm info using node@v24.13.0
+2026-04-30T17:53:13.1994663Z
+2026-04-30T17:53:13.1995447Z > rest-express@1.0.0 start
+2026-04-30T17:53:13.1995513Z > NODE_ENV=production node dist/index.cjs
+2026-04-30T17:53:13.1995561Z
+2026-04-30T17:53:13.8514478Z Initializing Stripe schema...
+2026-04-30T17:53:13.962695Z Stripe schema ready
+2026-04-30T17:53:14.1039801Z Failed to initialize Stripe: Error: Replit connector env vars not present
+2026-04-30T17:53:14.1040324Z     at sle (/home/site/wwwroot/dist/index.cjs:102:26583)
+2026-04-30T17:53:14.1040394Z     at I_ (/home/site/wwwroot/dist/index.cjs:102:27357)
+2026-04-30T17:53:14.1040439Z     at tB (/home/site/wwwroot/dist/index.cjs:102:27567)
+2026-04-30T17:53:14.1040477Z     at Zl (/home/site/wwwroot/dist/index.cjs:102:27670)
+2026-04-30T17:53:14.1040516Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T17:53:14.1040555Z     at async kle (/home/site/wwwroot/dist/index.cjs:108:83909)
+2026-04-30T17:53:14.104062Z     at async /home/site/wwwroot/dist/index.cjs:108:84640
+2026-04-30T17:53:14.1161109Z [auth] REPL_ID not set — skipping Replit OIDC setup (Azure/external host mode)
+2026-04-30T17:53:14.1190793Z [WebSocket] Server initialized
+2026-04-30T17:53:14.1924365Z 5:53:14 PM [express] Payment timeout and expired rides cleanup job scheduled (every 5 minutes)
+2026-04-30T17:53:14.1927638Z 5:53:14 PM [express] Recurring schedule generation job scheduled (every 6 hours)
+2026-04-30T17:53:14.1945857Z 5:53:14 PM [express] serving on port 8080
+2026-04-30T17:53:42.6651518Z 5:53:42 PM [express] GET /api/auth/user 401 in 2ms :: {"message":"Unauthorized"}
+2026-04-30T17:53:42.9832394Z 5:53:42 PM [express] GET /api/auth/user 401 in 0ms :: {"message":"Unauthorized"}
+2026-04-30T17:58:14.270793Z [Payment Cleanup] Error in cleanup job: error: relation "rides" does not exist
+2026-04-30T17:58:14.27083Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T17:58:14.2708344Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T17:58:14.2708376Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T17:58:14.2708409Z     at async H1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:78:2996)
+2026-04-30T17:58:14.2708439Z     at async Ile (/home/site/wwwroot/dist/index.cjs:102:40401)
+2026-04-30T17:58:14.2708469Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87194) {
+2026-04-30T17:58:14.2708496Z   length: 105,
+2026-04-30T17:58:14.2708525Z   severity: 'ERROR',
+2026-04-30T17:58:14.2708553Z   code: '42P01',
+2026-04-30T17:58:14.270858Z   detail: undefined,
+2026-04-30T17:58:14.2708628Z   hint: undefined,
+2026-04-30T17:58:14.2708658Z   position: '508',
+2026-04-30T17:58:14.2708686Z   internalPosition: undefined,
+2026-04-30T17:58:14.2708713Z   internalQuery: undefined,
+2026-04-30T17:58:14.2708744Z   where: undefined,
+2026-04-30T17:58:14.2708771Z   schema: undefined,
+2026-04-30T17:58:14.2708801Z   table: undefined,
+2026-04-30T17:58:14.2708829Z   column: undefined,
+2026-04-30T17:58:14.2708859Z   dataType: undefined,
+2026-04-30T17:58:14.2708888Z   constraint: undefined,
+2026-04-30T17:58:14.2708918Z   file: 'parse_relation.c',
+2026-04-30T17:58:14.2708947Z   line: '1381',
+2026-04-30T17:58:14.2708989Z   routine: 'parserOpenTable'
+2026-04-30T17:58:14.2709019Z }
+2026-04-30T17:58:14.3083534Z [Expired Rides] Error in expired rides job: error: relation "rides" does not exist
+2026-04-30T17:58:14.3083738Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T17:58:14.3083781Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T17:58:14.3083811Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T17:58:14.3083844Z     at async H1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:78:3187)
+2026-04-30T17:58:14.3083874Z     at async Tle (/home/site/wwwroot/dist/index.cjs:102:39314)
+2026-04-30T17:58:14.3083905Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87204) {
+2026-04-30T17:58:14.3083932Z   length: 105,
+2026-04-30T17:58:14.3083962Z   severity: 'ERROR',
+2026-04-30T17:58:14.3086865Z   code: '42P01',
+2026-04-30T17:58:14.3086897Z   detail: undefined,
+2026-04-30T17:58:14.3086917Z   hint: undefined,
+2026-04-30T17:58:14.3086936Z   position: '508',
+2026-04-30T17:58:14.3086955Z   internalPosition: undefined,
+2026-04-30T17:58:14.3086974Z   internalQuery: undefined,
+2026-04-30T17:58:14.3086993Z   where: undefined,
+2026-04-30T17:58:14.3087013Z   schema: undefined,
+2026-04-30T17:58:14.3087031Z   table: undefined,
+2026-04-30T17:58:14.3087048Z   column: undefined,
+2026-04-30T17:58:14.3087067Z   dataType: undefined,
+2026-04-30T17:58:14.3087092Z   constraint: undefined,
+2026-04-30T17:58:14.308711Z   file: 'parse_relation.c',
+2026-04-30T17:58:14.3087128Z   line: '1381',
+2026-04-30T17:58:14.3087146Z   routine: 'parserOpenTable'
+2026-04-30T17:58:14.3087164Z }
+2026-04-30T18:03:14.3645942Z [Payment Cleanup] Error in cleanup job: error: relation "rides" does not exist
+2026-04-30T18:03:14.364634Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T18:03:14.3646383Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T18:03:14.3646413Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T18:03:14.3646444Z     at async H1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:78:2996)
+2026-04-30T18:03:14.3646473Z     at async Ile (/home/site/wwwroot/dist/index.cjs:102:40401)
+2026-04-30T18:03:14.3646503Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87194) {
+2026-04-30T18:03:14.364653Z   length: 105,
+2026-04-30T18:03:14.3646559Z   severity: 'ERROR',
+2026-04-30T18:03:14.3646587Z   code: '42P01',
+2026-04-30T18:03:14.3646614Z   detail: undefined,
+2026-04-30T18:03:14.3646669Z   hint: undefined,
+2026-04-30T18:03:14.3646697Z   position: '508',
+2026-04-30T18:03:14.3646725Z   internalPosition: undefined,
+2026-04-30T18:03:14.3646753Z   internalQuery: undefined,
+2026-04-30T18:03:14.364678Z   where: undefined,
+2026-04-30T18:03:14.3646806Z   schema: undefined,
+2026-04-30T18:03:14.3646877Z   table: undefined,
+2026-04-30T18:03:14.3646904Z   column: undefined,
+2026-04-30T18:03:14.3646931Z   dataType: undefined,
+2026-04-30T18:03:14.3646958Z   constraint: undefined,
+2026-04-30T18:03:14.3646985Z   file: 'parse_relation.c',
+2026-04-30T18:03:14.3647014Z   line: '1381',
+2026-04-30T18:03:14.3647051Z   routine: 'parserOpenTable'
+2026-04-30T18:03:14.3647077Z }
+2026-04-30T18:03:14.4050091Z [Expired Rides] Error in expired rides job: error: relation "rides" does not exist
+2026-04-30T18:03:14.4051017Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-04-30T18:03:14.4051088Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-04-30T18:03:14.4051119Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-04-30T18:03:14.4051151Z     at async H1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:78:3187)
+2026-04-30T18:03:14.4051186Z     at async Tle (/home/site/wwwroot/dist/index.cjs:102:39314)
+2026-04-30T18:03:14.4051217Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:108:87204) {
+2026-04-30T18:03:14.4051245Z   length: 105,
+2026-04-30T18:03:14.4051273Z   severity: 'ERROR',
+2026-04-30T18:03:14.4051432Z   code: '42P01',
+2026-04-30T18:03:14.4051461Z   detail: undefined,
+2026-04-30T18:03:14.4051487Z   hint: undefined,
+2026-04-30T18:03:14.4051516Z   position: '508',
+2026-04-30T18:03:14.4051544Z   internalPosition: undefined,
+2026-04-30T18:03:14.4051573Z   internalQuery: undefined,
+2026-04-30T18:03:14.4051602Z   where: undefined,
+2026-04-30T18:03:14.4051632Z   schema: undefined,
+2026-04-30T18:03:14.4051658Z   table: undefined,
+2026-04-30T18:03:14.4051688Z   column: undefined,
+2026-04-30T18:03:14.4051718Z   dataType: undefined,
+2026-04-30T18:03:14.405176Z   constraint: undefined,
+2026-04-30T18:03:14.405179Z   file: 'parse_relation.c',
+2026-04-30T18:03:14.4051819Z   line: '1381',
+2026-04-30T18:03:14.4051847Z   routine: 'parserOpenTable'
+2026-04-30T18:03:14.4051873Z }
+2026-04-30T18:05:09.663Z No new trace in the past 1 min(s).
+2026-04-30T18:06:09.663Z No new trace in the past 2 min(s).
