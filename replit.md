@@ -62,6 +62,14 @@ Preferred communication style: Simple, everyday language.
 - **Input Validation**: Extensive use of Zod schemas and helper functions to prevent SQL injection and XSS.
 - **API Security Headers**: Standard headers (X-Frame-Options, X-Content-Type-Options, etc.) to mitigate common web vulnerabilities.
 
+### Auth Lifecycle Rules
+- **Active-user lookups**: All login, signup, OTP, password-reset, and username-availability paths use `getActiveUserByEmail` / `getActiveUserByUsername` (filter `deleted_at IS NULL`). Use the raw `getUserByEmail` / `getUserByUsername` only when you need to find a soft-deleted shell (e.g., for `releaseEmailForDeletedUser`).
+- **Account deletion**: `softDeleteUser` sets `deleted_at`; followed by `invalidateUserSessions(userId)` to wipe every session row for that user across all session shapes (`sess.userId`, `sess.user.claims.sub`, `sess.user.id`, `sess.passport.user.claims.sub`, `sess.passport.user.id`, `sess.passport.user` as string).
+- **Re-signup after deletion**: At signup, `releaseEmailForDeletedUser` suffixes the soft-deleted user's email (`<local>+deleted-<id8>-<ts>@deleted.local`) and NULLs the username (varchar(30) is too small for the suffix). The original email/username then becomes available for a brand-new account.
+- **OTP flow tracking**: Both `email_verifications` (signup OTP) and `password_reset_tokens` (reset OTP) carry a `flow_type` column ('signup' | 'signin') so the verify endpoint posts the OTP to the matching Entra `/{flow}/v1.0/continue` endpoint. Signup OTP falls back to sign-in for soft-deleted re-signups (Entra still owns the email); password reset OTP falls back to sign-up for legacy local-password users (no Entra account).
+- **Password reset hardening**: Rate limit runs BEFORE user lookup (no enumeration). Generic success returned for missing accounts and OAuth-only users (no `passwordHash`). Failed verification only burns an attempt when Entra explicitly rejected the code (`success:true, verified:false`); transient errors return 503. Post-reset, `invalidateUserSessions` runs to log the user out everywhere.
+- **Google sign-in**: Refuses soft-deleted accounts with a clear "contact support" message — never silently re-activates them.
+
 ## External Dependencies
 
 - **Stripe**: Payment processing (`stripe-replit-sync`).

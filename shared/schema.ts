@@ -839,6 +839,7 @@ export const emailVerifications = pgTable("email_verifications", {
   otpCode: varchar("otp_code", { length: 72 }).notNull(), // bcrypt hash is 60 chars
   verificationToken: text("verification_token"), // Changed to text for long Entra continuation tokens
   status: varchar("status", { length: 20 }).default("pending"), // pending, verified, expired
+  flowType: varchar("flow_type", { length: 10 }).default("signup").notNull(), // 'signup' or 'signin' — which Entra flow this token belongs to (signin used for soft-deleted re-signups)
   attempts: integer("attempts").default(0),
   expiresAt: timestamp("expires_at").notNull(),
   verifiedAt: timestamp("verified_at"),
@@ -859,6 +860,7 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   continuationToken: text("continuation_token").notNull(), // Entra continuation token for OTP verification
   resetToken: text("reset_token"), // Secure token generated after OTP verification
   status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, verified, used, expired
+  flowType: varchar("flow_type", { length: 10 }).default("signin").notNull(), // 'signin' or 'signup' — which Entra flow this token belongs to
   attempts: integer("attempts").default(0).notNull(),
   expiresAt: timestamp("expires_at").notNull(),
   verifiedAt: timestamp("verified_at"),

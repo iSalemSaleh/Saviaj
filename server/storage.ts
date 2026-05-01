@@ -1,5 +1,6 @@
 import {
   users,
+  sessions,
   riderOffers,
   driverRoutes,
   rides,
@@ -374,6 +375,17 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  // Active variants exclude soft-deleted users (deletedAt IS NULL).
+  // Use these for login, signup duplicate checks, password reset, and OTP requests.
+  // Use the raw getUserByEmail/getUserByUsername only when you need to find
+  // soft-deleted users (e.g., admin restore, OAuth refusal of deleted accounts).
+  getActiveUserByEmail(email: string): Promise<User | undefined>;
+  getActiveUserByUsername(username: string): Promise<User | undefined>;
+  // Frees the email slot on a soft-deleted user so a new account can be created
+  // with the same address. Renames email to <email>+deleted-<id>@deleted.local.
+  releaseEmailForDeletedUser(userId: string): Promise<void>;
+  // Invalidates all express-session rows belonging to a user (used after password reset).
+  invalidateUserSessions(userId: string): Promise<number>;
   getNormalizedUser(id: string): Promise<NormalizedUser | null>;
   createUser(user: UpsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
@@ -575,6 +587,65 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(sql`lower(${users.email}) = ${normalizedEmail}`);
     return user;
+  }
+
+  async getActiveUserByEmail(email: string): Promise<User | undefined> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`lower(${users.email}) = ${normalizedEmail} AND ${users.deletedAt} IS NULL`);
+    return user;
+  }
+
+  async getActiveUserByUsername(username: string): Promise<User | undefined> {
+    const normalizedUsername = username.toLowerCase();
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`lower(${users.username}) = ${normalizedUsername} AND ${users.deletedAt} IS NULL`);
+    return user;
+  }
+
+  async releaseEmailForDeletedUser(userId: string): Promise<void> {
+    // Append a unique suffix to the email so the original address is free
+    // for a brand-new account. The username column is varchar(30) and the
+    // raw suffix is ~24 chars on its own, so we NULL out the username
+    // instead of trying to keep it (it has a UNIQUE constraint, and a NULL
+    // username is allowed by Postgres uniqueness rules — multiple soft-
+    // deleted shells can coexist with NULL usernames). The original handle
+    // becomes available for a fresh signup.
+    const emailSuffix = `+deleted-${userId.slice(0, 8)}-${Date.now()}`;
+    await db.execute(sql`
+      UPDATE ${users}
+      SET email = CASE
+            WHEN email IS NULL THEN NULL
+            ELSE split_part(email, '@', 1) || ${emailSuffix} || '@deleted.local'
+          END,
+          username = NULL
+      WHERE id = ${userId} AND ${users.deletedAt} IS NOT NULL
+    `);
+  }
+
+  async invalidateUserSessions(userId: string): Promise<number> {
+    // express-session JSON shape varies by auth flow:
+    //   - localAuth login:        sess.userId = "<id>"
+    //   - Replit Auth (direct):   sess.user.claims.sub = "<id>"
+    //   - Passport + Replit Auth: sess.passport.user.claims.sub = "<id>"
+    //   - Passport + local user:  sess.passport.user.id = "<id>" (since
+    //                             serializeUser is the identity function)
+    // Wipe every shape that could carry this user's id so password-reset
+    // and account-deletion fully sign the user out everywhere.
+    const result = await db.execute(sql`
+      DELETE FROM ${sessions}
+      WHERE sess->>'userId' = ${userId}
+         OR sess->'user'->'claims'->>'sub' = ${userId}
+         OR sess->'user'->>'id' = ${userId}
+         OR sess->'passport'->'user'->'claims'->>'sub' = ${userId}
+         OR sess->'passport'->'user'->>'id' = ${userId}
+         OR sess->'passport'->>'user' = ${userId}
+    `);
+    return (result as any).rowCount ?? 0;
   }
   
   async getNormalizedUser(id: string): Promise<NormalizedUser | null> {

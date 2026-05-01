@@ -542,14 +542,20 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // Returning 409 with userExists:true lets the client show a clear
       // "sign in instead" message rather than silently falling back to a
       // sign-in OTP flow that confuses users.
-      const existingUser = await storage.getUserByEmail(normalizedEmail);
-      if (existingUser && !existingUser.deletedAt) {
+      const existingUser = await storage.getActiveUserByEmail(normalizedEmail);
+      if (existingUser) {
         return res.status(409).json({
           message: "This email already has an account. Please sign in instead.",
           userExists: true,
           loginUrl: "/login",
         });
       }
+
+      // Detect previously-deleted accounts so we can route them through the
+      // SIGN-IN OTP flow if Entra still has them — re-signup must be allowed
+      // even though Entra remembers the original signup.
+      const anyUserWithEmail = await storage.getUserByEmail(normalizedEmail);
+      const isResignup = !!(anyUserWithEmail && anyUserWithEmail.deletedAt);
       
       // Rate limiting: check for recent requests from this email
       const { emailVerifications } = await import("@shared/schema");
@@ -573,18 +579,27 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       // Try to use Entra External ID for email OTP
       try {
-        const { initiateEmailOtpSignUp } = await import("./entraEmailOtp");
-        const result = await initiateEmailOtpSignUp(normalizedEmail);
+        const { initiateEmailOtpSignUp, initiateEmailOtpSignIn } = await import("./entraEmailOtp");
 
-        // Edge case: email exists in Entra but not in our local DB
-        // (e.g., legacy account or signup that never completed). Surface the
-        // same clear "sign in instead" response.
+        let flowType: 'signup' | 'signin' = 'signup';
+        let result = await initiateEmailOtpSignUp(normalizedEmail);
+
         if (!result.success && result.error === 'user_already_exists') {
-          return res.status(409).json({
-            message: "This email already has an account. Please sign in instead.",
-            userExists: true,
-            loginUrl: "/login",
-          });
+          if (isResignup) {
+            // Soft-deleted account is being re-created. Entra still knows
+            // this email so signup is impossible — switch to SIGN-IN OTP
+            // and remember the flow so verify hits /signin/v1.0/continue.
+            flowType = 'signin';
+            result = await initiateEmailOtpSignIn(normalizedEmail);
+          } else {
+            // Email is registered in Entra but NOT in our local DB at all
+            // (orphan / legacy / abandoned signup). Tell them to sign in.
+            return res.status(409).json({
+              message: "This email already has an account. Please sign in instead.",
+              userExists: true,
+              loginUrl: "/login",
+            });
+          }
         }
         
         if (result.success && result.continuationToken) {
@@ -604,6 +619,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
             email: normalizedEmail,
             otpCode: placeholderHash,
             verificationToken: result.continuationToken,
+            flowType,
             status: "pending",
             attempts: 0,
             expiresAt,
@@ -673,67 +689,68 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Code has expired. Please request a new code." });
       }
       
-      // If we have a continuation token, verify with Entra
-      if (verification.verificationToken && continuationToken) {
-        try {
-          const { verifyEmailOtp } = await import("./entraEmailOtp");
-          const result = await verifyEmailOtp(continuationToken, code);
-          
-          if (result.verified) {
-            const crypto = await import("crypto");
-            const newVerificationToken = crypto.randomBytes(32).toString("hex");
-            
-            await db.update(emailVerifications)
-              .set({ 
-                status: "verified",
-                verificationToken: newVerificationToken,
-                verifiedAt: new Date()
-              })
-              .where(eq(emailVerifications.id, verification.id));
-            
-            return res.json({ 
-              success: true, 
+      // SECURITY: bind verification to the stored continuation token. The
+      // client may pass a continuationToken in the request body, but we
+      // require it to match what we recorded for this email. If a client
+      // tries to verify with a token from a different request (or doesn't
+      // send one at all), we use the server-side stored token. Either way
+      // Entra is called with the token we issued, never one chosen by the
+      // caller.
+      if (continuationToken && continuationToken !== verification.verificationToken) {
+        return res.status(400).json({ message: "Verification token mismatch. Please request a new code." });
+      }
+
+      const tokenForEntra = verification.verificationToken;
+
+      // We only ever issue Entra-backed codes, so a missing token here means
+      // the verification record is in an inconsistent state — refuse rather
+      // than silently falling through to a placeholder bcrypt comparison.
+      if (!tokenForEntra) {
+        return res.status(400).json({ message: "Verification record is invalid. Please request a new code." });
+      }
+
+      // Verify with Entra. Use the same flow (signup vs signin) that was
+      // recorded when the OTP was issued so we hit the matching
+      // /{flow}/v1.0/continue endpoint.
+      try {
+        const { verifyEmailOtp } = await import("./entraEmailOtp");
+        const isSignUp = verification.flowType !== 'signin';
+        const result = await verifyEmailOtp(tokenForEntra, code, isSignUp);
+
+        if (result.verified) {
+          const crypto = await import("crypto");
+          const newVerificationToken = crypto.randomBytes(32).toString("hex");
+
+          await db.update(emailVerifications)
+            .set({
+              status: "verified",
               verificationToken: newVerificationToken,
-              email: normalizedEmail
-            });
-          } else {
-            await db.update(emailVerifications)
-              .set({ attempts: (verification.attempts || 0) + 1 })
-              .where(eq(emailVerifications.id, verification.id));
-            return res.status(400).json({ message: result.error || "Invalid code. Please try again." });
-          }
-        } catch (entraError: any) {
-          console.error("Entra verification error:", entraError);
-          // Fall through to demo mode verification
+              verifiedAt: new Date()
+            })
+            .where(eq(emailVerifications.id, verification.id));
+
+          return res.json({
+            success: true,
+            verificationToken: newVerificationToken,
+            email: normalizedEmail
+          });
         }
+
+        // Only burn an attempt when Entra explicitly rejected the code
+        // (success:true, verified:false). Transient failures (network, etc.)
+        // surface as success:false and should NOT cost the user an attempt.
+        if (result.success === true) {
+          await db.update(emailVerifications)
+            .set({ attempts: (verification.attempts || 0) + 1 })
+            .where(eq(emailVerifications.id, verification.id));
+          return res.status(400).json({ message: result.error || "Invalid code. Please try again." });
+        }
+        return res.status(503).json({ message: result.error || "Verification service is temporarily unavailable. Please try again." });
+      } catch (entraError: any) {
+        // Network / unexpected error — do NOT increment attempts; let the user retry.
+        console.error("Entra verification error:", entraError);
+        return res.status(503).json({ message: "Verification service is temporarily unavailable. Please try again." });
       }
-      
-      // Demo mode verification (or fallback)
-      const isValidCode = await bcrypt.default.compare(code, verification.otpCode);
-      
-      if (!isValidCode) {
-        await db.update(emailVerifications)
-          .set({ attempts: (verification.attempts || 0) + 1 })
-          .where(eq(emailVerifications.id, verification.id));
-        return res.status(400).json({ message: "Invalid code. Please try again." });
-      }
-      
-      const crypto = await import("crypto");
-      const verificationTokenNew = crypto.randomBytes(32).toString("hex");
-      
-      await db.update(emailVerifications)
-        .set({ 
-          status: "verified",
-          verificationToken: verificationTokenNew,
-          verifiedAt: new Date()
-        })
-        .where(eq(emailVerifications.id, verification.id));
-      
-      res.json({ 
-        success: true, 
-        verificationToken: verificationTokenNew,
-        email: normalizedEmail
-      });
     } catch (error) {
       console.error("Email OTP verification error:", error);
       res.status(500).json({ message: "Failed to verify code" });
@@ -824,24 +841,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       
       const normalizedEmail = email.toLowerCase().trim();
-      
-      // Check if user exists with this email
-      const existingUser = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, normalizedEmail))
-        .limit(1);
-      
-      if (existingUser.length === 0) {
-        // Don't reveal if email exists - return success anyway for security
-        return res.json({ 
-          success: true, 
-          message: "If an account exists with this email, you will receive a verification code."
-        });
-      }
-      
-      // Rate limiting: check for recent requests
       const { passwordResetTokens } = await import("@shared/schema");
+
+      // Rate limit FIRST (before any user lookup) so timing/behaviour is
+      // identical for known and unknown emails — prevents account enumeration.
       const recentReset = await db
         .select()
         .from(passwordResetTokens)
@@ -859,12 +862,58 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           });
         }
       }
+
+      // Generic success response used in every "no code will be sent" path
+      // so we never leak whether the email exists or which auth provider it uses.
+      const genericSuccess = {
+        success: true,
+        message: "If an account exists with this email, you will receive a verification code.",
+      };
+
+      // Lookup active (non-soft-deleted) user.
+      const existingUser = await storage.getActiveUserByEmail(normalizedEmail);
+
+      // No matching user OR user has no local password (OAuth-only) — silently
+      // skip sending a code. Returning generic success preserves no-enumeration
+      // and steers OAuth users back to their original sign-in method
+      // (they'll never receive a code so they'll naturally try Google/etc).
+      if (!existingUser || !existingUser.passwordHash) {
+        return res.json(genericSuccess);
+      }
       
-      // Use Entra External ID for email OTP
+      // User exists and has a password — try Entra SIGN-IN OTP first.
+      // If Entra returns a "user not found"-style error it means this account
+      // exists locally (legacy password account) but was never registered in
+      // Entra. Fall back to the SIGN-UP OTP flow so the user can still receive
+      // a code; we record which flow we used so verify uses the matching
+      // /signup vs /signin continue endpoint.
       try {
-        const { initiateEmailOtpSignUp } = await import("./entraEmailOtp");
-        const result = await initiateEmailOtpSignUp(normalizedEmail);
-        
+        const { initiateEmailOtpSignIn, initiateEmailOtpSignUp } = await import("./entraEmailOtp");
+
+        let flowType: 'signin' | 'signup' = 'signin';
+        let result = await initiateEmailOtpSignIn(normalizedEmail);
+
+        // Entra's behaviour for unknown users varies (sometimes a typed error
+        // like "user_not_found", sometimes a 4xx with an empty body that
+        // throws a JSON parse error). Since at this point we already know
+        // the account exists locally with a password, ANY failure of the
+        // sign-in flow means the user just isn't in Entra yet — fall back to
+        // the sign-up flow so they can still receive an OTP and reset their
+        // password. The flow_type column ensures verify uses the correct
+        // /signup vs /signin continue endpoint.
+        if (!result.success) {
+          flowType = 'signup';
+          const fallback = await initiateEmailOtpSignUp(normalizedEmail);
+          if (fallback.success) {
+            result = fallback;
+          } else {
+            // If signup ALSO fails (e.g., user_already_exists in Entra but
+            // signin still failed for a transient reason), preserve the
+            // original error for the user-facing message.
+            result = result.error ? result : fallback;
+          }
+        }
+
         if (result.success && result.continuationToken) {
           const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
           
@@ -873,10 +922,12 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
             .set({ status: "expired" })
             .where(eq(passwordResetTokens.email, normalizedEmail));
           
-          // Store the continuation token
+          // Store the continuation token together with the flow type so the
+          // verify endpoint knows which Entra continue URL to call.
           await db.insert(passwordResetTokens).values({
             email: normalizedEmail,
             continuationToken: result.continuationToken,
+            flowType,
             status: "pending",
             attempts: 0,
             expiresAt,
@@ -946,10 +997,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Code has expired. Please request a new code." });
       }
       
-      // Verify with Entra
+      // Verify with Entra using the SAME flow that produced this token.
+      // The request endpoint records 'signin' or 'signup' in flowType so we
+      // hit the matching /{flow}/v1.0/continue endpoint here.
       try {
         const { verifyEmailOtp } = await import("./entraEmailOtp");
-        const result = await verifyEmailOtp(continuationToken, code);
+        const isSignUp = resetRequest.flowType === 'signup';
+        const result = await verifyEmailOtp(continuationToken, code, isSignUp);
         
         if (result.verified) {
           const crypto = await import("crypto");
@@ -969,17 +1023,22 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
             email: normalizedEmail
           });
         } else {
-          await db.update(passwordResetTokens)
-            .set({ attempts: resetRequest.attempts + 1 })
-            .where(eq(passwordResetTokens.id, resetRequest.id));
+          // Only count an attempt against the user when Entra explicitly
+          // rejected the code (verifyEmailOtp returns success:true,verified:false
+          // with the error string set by the invalid_oob_value branch). For
+          // other failures (e.g., Microsoft outage) we surface the message
+          // without burning one of the 5 allowed attempts.
+          if (result.success === true) {
+            await db.update(passwordResetTokens)
+              .set({ attempts: resetRequest.attempts + 1 })
+              .where(eq(passwordResetTokens.id, resetRequest.id));
+          }
           return res.status(400).json({ message: result.error || "Invalid code. Please try again." });
         }
       } catch (entraError: any) {
+        // Network / unexpected error — do NOT increment attempts; let the user retry.
         console.error("Password reset verification error:", entraError);
-        await db.update(passwordResetTokens)
-          .set({ attempts: resetRequest.attempts + 1 })
-          .where(eq(passwordResetTokens.id, resetRequest.id));
-        return res.status(400).json({ message: "Invalid code. Please try again." });
+        return res.status(503).json({ message: "Verification service is temporarily unavailable. Please try again." });
       }
     } catch (error) {
       console.error("Password reset verification error:", error);
@@ -1030,6 +1089,15 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Reset token has expired. Please request a new code." });
       }
       
+      // Look up the active user explicitly so we update by id (not by email)
+      // — important because soft-deleted shells with the same email could
+      // otherwise be touched if the unique constraint were ever relaxed.
+      const targetUser = await storage.getActiveUserByEmail(normalizedEmail);
+      if (!targetUser) {
+        // No active account anymore — refuse without leaking which case applies.
+        return res.status(400).json({ message: "Invalid or expired reset token. Please request a new code." });
+      }
+
       // Hash the new password (12 salt rounds matches registration)
       const bcrypt = await import("bcrypt");
       const passwordHash = await bcrypt.default.hash(newPassword, 12);
@@ -1038,12 +1106,21 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       await db.transaction(async (tx) => {
         await tx.update(users)
           .set({ passwordHash })
-          .where(eq(users.email, normalizedEmail));
+          .where(eq(users.id, targetUser.id));
         
         await tx.update(passwordResetTokens)
           .set({ status: "used", usedAt: new Date() })
           .where(eq(passwordResetTokens.id, resetRequest.id));
       });
+
+      // Invalidate every active session for this user. If the reset was
+      // triggered because the account was compromised, this kicks the
+      // attacker out everywhere (best-effort; log+continue on failure).
+      try {
+        await storage.invalidateUserSessions(targetUser.id);
+      } catch (sessionErr) {
+        console.error("Password reset: failed to invalidate sessions", sessionErr);
+      }
       
       res.json({ 
         success: true, 
@@ -4291,8 +4368,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       
       await storage.softDeleteUser(userId, reason, 'self');
+
+      // Invalidate every active session for this user (including the current
+      // one) so the deleted account can't keep using its cookie.
+      try {
+        await storage.invalidateUserSessions(userId);
+      } catch (sessionErr) {
+        console.error("Account delete: failed to invalidate sessions", sessionErr);
+      }
       
-      // Clear session
+      // Clear current request's session as a belt-and-braces measure.
       req.logout?.(() => {});
       req.session?.destroy?.(() => {});
       

@@ -42,6 +42,14 @@ function ensureStrategy(): boolean {
 
           let user = await storage.getUserByEmail(email);
 
+          // Refuse soft-deleted accounts: don't silently re-activate them
+          // via Google sign-in. Tell the user to contact support.
+          if (user && user.deletedAt) {
+            return done(new Error(
+              "This account has been deleted. Please contact support if you wish to restore access."
+            ));
+          }
+
           if (!user) {
             // First-time Google sign-in is treated as legal acceptance.
             // The Google sign-in button surfaces a clear consent disclaimer

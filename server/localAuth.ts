@@ -206,15 +206,22 @@ export function setupLocalAuth(app: Express) {
         return res.status(400).json({ message: "Email verification expired. Please verify your email again." });
       }
       
-      const existingUser = await storage.getUserByEmail(validatedData.email);
-      if (existingUser) {
+      const existingActiveUser = await storage.getActiveUserByEmail(validatedData.email);
+      if (existingActiveUser) {
         return res.status(400).json({ message: "An account with this email already exists" });
       }
 
-      // Check username uniqueness if provided
+      // If a soft-deleted user owns this email, free the slot so the new
+      // signup can succeed (the email column has a UNIQUE constraint).
+      const anyUserWithEmail = await storage.getUserByEmail(validatedData.email);
+      if (anyUserWithEmail && anyUserWithEmail.deletedAt) {
+        await storage.releaseEmailForDeletedUser(anyUserWithEmail.id);
+      }
+
+      // Check username uniqueness if provided (active accounts only)
       if (validatedData.username) {
-        const existingUsername = await storage.getUserByUsername(validatedData.username);
-        if (existingUsername) {
+        const existingActiveUsername = await storage.getActiveUserByUsername(validatedData.username);
+        if (existingActiveUsername) {
           return res.status(400).json({ message: "This username is already taken" });
         }
       }
@@ -330,9 +337,9 @@ export function setupLocalAuth(app: Express) {
       let user;
       
       if (isEmail) {
-        user = await storage.getUserByEmail(validatedData.identifier);
+        user = await storage.getActiveUserByEmail(validatedData.identifier);
       } else {
-        user = await storage.getUserByUsername(validatedData.identifier);
+        user = await storage.getActiveUserByUsername(validatedData.identifier);
       }
       
       if (!user || !user.passwordHash) {
@@ -394,7 +401,10 @@ export function setupLocalAuth(app: Express) {
         return res.status(400).json({ available: false, message: "Username must be 3-30 characters, alphanumeric and underscores only" });
       }
       
-      const existingUser = await storage.getUserByUsername(username);
+      // Only block on usernames held by ACTIVE accounts. Soft-deleted users
+      // get their username suffixed by releaseEmailForDeletedUser, so the
+      // original handle is fair game for someone else.
+      const existingUser = await storage.getActiveUserByUsername(username);
       res.json({ available: !existingUser });
     } catch (error) {
       console.error("Username availability check error:", error);
