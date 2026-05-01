@@ -292,7 +292,7 @@ configTable([
   { name: 'MAPBOX_ACCESS_TOKEN',          value: 'pk.eyJ1... — Mapbox public token (optional, see section 8)', type: 'Optional', color: 'amber' },
   // Auto-set
   { name: 'PORT',                         value: '8080  — SET BY AZURE AUTOMATICALLY. Do not override.',   type: 'AUTO', color: 'green' },
-  { name: 'WEBSITE_HOSTNAME',             value: 'saviaj.azurewebsites.net — SET BY AZURE AUTOMATICALLY.',  type: 'AUTO', color: 'green' },
+  { name: 'WEBSITE_HOSTNAME',             value: 'saviaj-eag6c8epg9hzaze6.canadacentral-01.azurewebsites.net — SET BY AZURE AUTOMATICALLY.',  type: 'AUTO', color: 'green' },
 ], true);
 
 subHead('Generate a SESSION_SECRET');

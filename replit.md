@@ -2,6 +2,8 @@
 
 ## Overview
 
+**Production URL**: `https://saviaj-eag6c8epg9hzaze6.canadacentral-01.azurewebsites.net` (Azure App Service "Saviaj", Canada Central). Always use this hostname for OAuth callbacks, webhooks, deep links, share links, and any documentation that references the live site.
+
 AtlasRide is a democratized transportation marketplace aiming to disrupt traditional ride-sharing by giving users control over pricing and route sharing. Riders post trip requests with custom price offers, and drivers can accept or decline. Drivers can also publish planned routes with available seats. The platform integrates real-time location tracking, leverages Azure Maps for geocoding and routing, and focuses on scalability, security, and a user-driven experience. The business vision is to create a community-driven transportation network, offering flexible and personalized travel options.
 
 ## User Preferences

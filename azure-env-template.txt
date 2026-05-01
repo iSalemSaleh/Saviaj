@@ -44,7 +44,7 @@ ENTRA_TENANT_NAME=your-tenant-shortname
 # Create an OAuth 2.0 Client ID in Google Cloud Console:
 # https://console.cloud.google.com/apis/credentials
 # Authorised redirect URI must be:
-#   https://saviaj.azurewebsites.net/api/auth/google/callback
+#   https://saviaj-eag6c8epg9hzaze6.canadacentral-01.azurewebsites.net/api/auth/google/callback
 # Leave both blank to disable Google sign-in (the button hides automatically).
 GOOGLE_CLIENT_ID=your-google-oauth-client-id
 GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
