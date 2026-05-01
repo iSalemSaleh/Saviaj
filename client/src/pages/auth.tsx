@@ -67,7 +67,7 @@ export default function AuthPage() {
               Sign In with Email
             </Button>
 
-            <GoogleSignInButton className="w-full h-12 text-base" />
+            <GoogleSignInButton className="w-full h-12 text-base" showConsentNotice />
 
             <div className="relative py-2">
               <div className="absolute inset-0 flex items-center">

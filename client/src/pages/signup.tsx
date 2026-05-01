@@ -55,6 +55,8 @@ interface FormData {
   phvLicenseUrl: string;
   phvLicenseNumber: string;
   phvLicenseExpiry: string;
+  // Legal acceptance
+  acceptedLegal: boolean;
 }
 
 const initialFormData: FormData = {
@@ -95,6 +97,7 @@ const initialFormData: FormData = {
   phvLicenseUrl: "",
   phvLicenseNumber: "",
   phvLicenseExpiry: "",
+  acceptedLegal: false,
 };
 
 export default function Signup() {
@@ -177,6 +180,7 @@ export default function Signup() {
       const response = await apiRequest("POST", "/api/auth/register", {
         email: data.email,
         emailVerificationToken: emailVerificationToken,
+        acceptedLegal: data.acceptedLegal,
         username: data.username || undefined,
         password: data.password,
         firstName: data.firstName,
@@ -389,6 +393,12 @@ export default function Signup() {
   const handleNext = () => {
     if (validateStep()) {
       if (step === totalSteps) {
+        if (!formData.acceptedLegal) {
+          setError(
+            "Please accept the Terms of Service, Privacy Policy, Refund Policy and Cancellation Policy to create your account.",
+          );
+          return;
+        }
         registerMutation.mutate(formData);
       } else {
         const next = step + 1;
@@ -1144,6 +1154,64 @@ export default function Signup() {
             )}
 
             {renderStep()}
+
+            {step === totalSteps && (
+              <div className="mt-8 p-4 rounded-lg border bg-muted/30">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <Checkbox
+                    checked={formData.acceptedLegal}
+                    onCheckedChange={(v) =>
+                      setFormData((prev) => ({ ...prev, acceptedLegal: v === true }))
+                    }
+                    data-testid="checkbox-accept-legal"
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-foreground/90 leading-relaxed">
+                    I confirm I am 18 or older and I agree to Saviaj's{" "}
+                    <a
+                      href="/terms"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-primary underline underline-offset-2 hover:no-underline"
+                      data-testid="link-signup-terms"
+                    >
+                      Terms of Service
+                    </a>
+                    ,{" "}
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-primary underline underline-offset-2 hover:no-underline"
+                      data-testid="link-signup-privacy"
+                    >
+                      Privacy Policy
+                    </a>
+                    ,{" "}
+                    <a
+                      href="/refund-policy"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-primary underline underline-offset-2 hover:no-underline"
+                      data-testid="link-signup-refund"
+                    >
+                      Refund Policy
+                    </a>
+                    {" "}and{" "}
+                    <a
+                      href="/cancellation-policy"
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-primary underline underline-offset-2 hover:no-underline"
+                      data-testid="link-signup-cancellation"
+                    >
+                      Cancellation Policy
+                    </a>
+                    .
+                  </span>
+                </label>
+              </div>
+            )}
 
             <div className="flex justify-between mt-8">
               <Button

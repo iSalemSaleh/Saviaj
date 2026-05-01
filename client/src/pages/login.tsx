@@ -125,7 +125,7 @@ export default function Login() {
               </div>
             </div>
 
-            <GoogleSignInButton />
+            <GoogleSignInButton showConsentNotice />
 
             <div className="mt-3 text-center">
               <button

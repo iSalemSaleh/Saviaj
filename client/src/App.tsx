@@ -21,6 +21,7 @@ import BecomeDriverPage from "@/pages/become-driver";
 import SplashScreen from "@/components/SplashScreen";
 import HistoryPage from "@/pages/history";
 import SettingsPage from "@/pages/settings";
+import LegalPage from "@/pages/legal-page";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -153,6 +154,19 @@ function Router() {
       <Route path="/settings">
         <ProtectedRoute component={SettingsPage} />
       </Route>
+      <Route path="/terms">
+        <LegalPage doc="terms" />
+      </Route>
+      <Route path="/privacy">
+        <LegalPage doc="privacy" />
+      </Route>
+      <Route path="/refund-policy">
+        <LegalPage doc="refund-policy" />
+      </Route>
+      <Route path="/cancellation-policy">
+        <LegalPage doc="cancellation-policy" />
+      </Route>
+      <Route path="/legal/:doc" component={LegalPage} />
       <Route component={NotFound} />
     </Switch>
   );

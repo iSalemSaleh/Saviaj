@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 interface GoogleSignInButtonProps {
   label?: string;
   className?: string;
+  showConsentNotice?: boolean;
 }
 
 export function GoogleSignInButton({
   label = "Continue with Google",
   className,
+  showConsentNotice = false,
 }: GoogleSignInButtonProps) {
   const [enabled, setEnabled] = useState<boolean | null>(null);
 
@@ -30,18 +32,64 @@ export function GoogleSignInButton({
   if (!enabled) return null;
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      className={className ?? "w-full h-12"}
-      onClick={() => {
-        window.location.href = "/api/auth/google";
-      }}
-      data-testid="button-google-signin"
-    >
-      <GoogleLogo className="mr-2 h-5 w-5" />
-      {label}
-    </Button>
+    <div className="space-y-2">
+      <Button
+        type="button"
+        variant="outline"
+        className={className ?? "w-full h-12"}
+        onClick={() => {
+          window.location.href = "/api/auth/google";
+        }}
+        data-testid="button-google-signin"
+      >
+        <GoogleLogo className="mr-2 h-5 w-5" />
+        {label}
+      </Button>
+      {showConsentNotice && (
+        <p
+          className="text-xs text-muted-foreground text-center leading-relaxed"
+          data-testid="text-google-consent-notice"
+        >
+          By continuing with Google you agree to Saviaj's{" "}
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline hover:text-foreground"
+          >
+            Terms of Service
+          </a>
+          ,{" "}
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline hover:text-foreground"
+          >
+            Privacy Policy
+          </a>
+          ,{" "}
+          <a
+            href="/refund-policy"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline hover:text-foreground"
+          >
+            Refund Policy
+          </a>
+          {" "}and{" "}
+          <a
+            href="/cancellation-policy"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline hover:text-foreground"
+          >
+            Cancellation Policy
+          </a>
+          .
+        </p>
+      )}
+    </div>
   );
 }
 

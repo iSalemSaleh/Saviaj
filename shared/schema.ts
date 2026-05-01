@@ -33,6 +33,9 @@ export const users = pgTable("users", {
   passwordHash: varchar("password_hash"),
   emailVerified: boolean("email_verified").default(false),
   authProvider: varchar("auth_provider", { length: 20 }).default("local"),
+  // Legal acceptance — timestamps prove what version was accepted and when
+  termsAcceptedAt: timestamp("terms_accepted_at"),
+  privacyAcceptedAt: timestamp("privacy_accepted_at"),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),

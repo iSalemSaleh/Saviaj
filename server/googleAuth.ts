@@ -43,6 +43,10 @@ function ensureStrategy(): boolean {
           let user = await storage.getUserByEmail(email);
 
           if (!user) {
+            // First-time Google sign-in is treated as legal acceptance.
+            // The Google sign-in button surfaces a clear consent disclaimer
+            // linking to /terms and /privacy before this code path is reached.
+            const acceptedAt = new Date();
             user = await storage.createUser({
               email,
               authProvider: "google",
@@ -53,6 +57,8 @@ function ensureStrategy(): boolean {
                 profile.displayName?.split(" ").slice(1).join(" ") ??
                 "",
               profileImageUrl: profile.photos?.[0]?.value,
+              termsAcceptedAt: acceptedAt,
+              privacyAcceptedAt: acceptedAt,
             });
           }
 

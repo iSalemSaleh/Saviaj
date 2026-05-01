@@ -152,6 +152,13 @@ const registerSchema = z.object({
   phvLicenseUrl: z.string().optional(),
   phvLicenseNumber: z.string().optional(),
   phvLicenseExpiry: z.string().optional(),
+  // Legal acceptance — must be true to register
+  acceptedLegal: z.literal(true, {
+    errorMap: () => ({
+      message:
+        "You must accept the Terms of Service, Privacy Policy, Refund Policy and Cancellation Policy to create an account.",
+    }),
+  }),
 });
 
 const loginSchema = z.object({
@@ -229,12 +236,15 @@ export function setupLocalAuth(app: Express) {
 
       const passwordHash = await bcrypt.hash(validatedData.password, SALT_ROUNDS);
       
+      const acceptedAt = new Date();
       const user = await storage.createUser({
         email: validatedData.email,
         username: validatedData.username ? validatedData.username.toLowerCase() : undefined,
         passwordHash,
         authProvider: "local",
         emailVerified: true, // Email was verified via OTP
+        termsAcceptedAt: acceptedAt,
+        privacyAcceptedAt: acceptedAt,
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         profileImageUrl: validatedData.profileImageUrl,
