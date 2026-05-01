@@ -67,5 +67,6 @@ Preferred communication style: Simple, everyday language.
 - **OpenStreetMap**: Map tile rendering.
 - **Replit Auth**: User authentication (requires `ISSUER_URL`, `REPL_ID`, `SESSION_SECRET` for Replit deployments).
 - **Microsoft Entra External ID**: Email OTP verification for signup (for Azure deployments).
+- **Google Sign-In** (optional): OAuth 2.0 via `passport-google-oauth20`. Requires `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`. Routes: `/api/auth/google` (initiate), `/api/auth/google/callback`, `/api/auth/google/status`. Frontend `<GoogleSignInButton />` self-hides when status returns `enabled: false`. Verify callback creates a local user with `authProvider: "google"` if no user with that email exists; otherwise it just logs them in via session. Authorised redirect URI in Google Cloud Console must match `https://<host>/api/auth/google/callback`.
 - **PostgreSQL**: Primary database (requires `DATABASE_URL`).
 - **Twilio**: SMS for phone verification.

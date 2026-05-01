@@ -39,6 +39,17 @@ ENTRA_CLIENT_ID=your-entra-app-client-id
 ENTRA_TENANT_NAME=your-tenant-shortname
 
 # ===========================================
+# OPTIONAL - Google Sign-In
+# ===========================================
+# Create an OAuth 2.0 Client ID in Google Cloud Console:
+# https://console.cloud.google.com/apis/credentials
+# Authorised redirect URI must be:
+#   https://saviaj.azurewebsites.net/api/auth/google/callback
+# Leave both blank to disable Google sign-in (the button hides automatically).
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+
+# ===========================================
 # REQUIRED FOR PRODUCTION
 # ===========================================
 NODE_ENV=production

@@ -6,6 +6,7 @@ import fs from "fs";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth } from "./localAuth";
+import { setupGoogleAuth } from "./googleAuth";
 import { setupWebSocket } from "./websocket";
 import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema, users } from "@shared/schema";
 import { db } from "./db";
@@ -328,6 +329,9 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   
   // Local auth routes (email/password registration and login)
   setupLocalAuth(app);
+
+  // Google OAuth (only registers if GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET are set)
+  setupGoogleAuth(app);
   
   // Setup WebSocket for real-time location tracking on the main server
   setupWebSocket(httpServer);

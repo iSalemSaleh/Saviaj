@@ -5,6 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Car, Users, Shield, UserPlus, Mail } from "lucide-react";
 import atlasRideLogo from "@assets/AtlasRideLogo_1767134626458.png";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(true);
@@ -65,6 +66,8 @@ export default function AuthPage() {
               <Mail className="mr-2 h-5 w-5" />
               Sign In with Email
             </Button>
+
+            <GoogleSignInButton className="w-full h-12 text-base" />
 
             <div className="relative py-2">
               <div className="absolute inset-0 flex items-center">

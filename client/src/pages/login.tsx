@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import atlasRideLogo from "@assets/AtlasRideLogo_1767134626458.png";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { Separator } from "@/components/ui/separator";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -113,6 +115,17 @@ export default function Login() {
                 {loginMutation.isPending ? "Signing in..." : "Sign In"}
               </Button>
             </form>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <Separator />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+
+            <GoogleSignInButton />
 
             <div className="mt-3 text-center">
               <button
