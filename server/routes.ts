@@ -537,6 +537,19 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       
       const normalizedEmail = email.toLowerCase().trim();
+
+      // Block signup attempts for emails that already have an active account.
+      // Returning 409 with userExists:true lets the client show a clear
+      // "sign in instead" message rather than silently falling back to a
+      // sign-in OTP flow that confuses users.
+      const existingUser = await storage.getUserByEmail(normalizedEmail);
+      if (existingUser && !existingUser.deletedAt) {
+        return res.status(409).json({
+          message: "This email already has an account. Please sign in instead.",
+          userExists: true,
+          loginUrl: "/login",
+        });
+      }
       
       // Rate limiting: check for recent requests from this email
       const { emailVerifications } = await import("@shared/schema");
@@ -562,6 +575,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       try {
         const { initiateEmailOtpSignUp } = await import("./entraEmailOtp");
         const result = await initiateEmailOtpSignUp(normalizedEmail);
+
+        // Edge case: email exists in Entra but not in our local DB
+        // (e.g., legacy account or signup that never completed). Surface the
+        // same clear "sign in instead" response.
+        if (!result.success && result.error === 'user_already_exists') {
+          return res.status(409).json({
+            message: "This email already has an account. Please sign in instead.",
+            userExists: true,
+            loginUrl: "/login",
+          });
+        }
         
         if (result.success && result.continuationToken) {
           // Store the continuation token in database for later verification

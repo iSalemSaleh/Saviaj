@@ -66,9 +66,11 @@ export async function initiateEmailOtpSignUp(email: string): Promise<{
     }
 
     if (startData.error) {
-      // If user already exists, try sign-in flow instead
+      // Surface user_already_exists explicitly so callers can show a clear
+      // "please sign in instead" message rather than silently switching to
+      // the sign-in OTP flow (which produces token-type mismatches at verify).
       if (startData.error === 'user_already_exists') {
-        return initiateEmailOtpSignIn(email);
+        return { success: false, error: 'user_already_exists' };
       }
       return { success: false, error: startData.error_description || startData.error };
     }
