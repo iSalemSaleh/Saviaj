@@ -264,6 +264,26 @@ const isProfileComplete: RequestHandler = async (req: any, res, next) => {
   }
 };
 
+// Driver-only guard. Used as a pre-multer middleware on compliance
+// upload routes so non-drivers are rejected BEFORE we write any
+// orphaned file to disk (closes the storage-abuse vector flagged by
+// code review).
+const requireDriver: RequestHandler = async (req: any, res, next) => {
+  try {
+    const userId = req.session?.userId || req.user?.claims?.sub;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const me = await storage.getUser(userId);
+    if (!me?.isDriver) {
+      return res.status(403).json({ message: "Driver account required" });
+    }
+    (req as any).driverUser = me;
+    next();
+  } catch (err) {
+    console.error("[compliance] requireDriver failed:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 const uploadDir = path.join(process.cwd(), 'uploads', 'licenses');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -1479,6 +1499,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Bank details are required to receive payments" });
       }
 
+      // Tax / self-employment acknowledgement is required for ALL drivers.
+      // UK rideshare drivers are self-employed and personally responsible
+      // for income tax + National Insurance. We need explicit evidence
+      // they were warned and accepted the responsibility before they can
+      // accept paid trips.
+      if (!req.body.taxSelfEmploymentAcknowledged) {
+        return res.status(400).json({
+          message: "You must acknowledge that you are responsible for your own tax and National Insurance as a self-employed driver before going live.",
+        });
+      }
+
       // Commercial drivers must declare which Local Licensing Authority
       // (council, or TfL in Greater London) issues their PHV / taxi
       // plate. We validate against our curated list — typos or freeform
@@ -1550,6 +1581,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           phvLicenseNumber: isCommercialDriver ? phvLicenseNumber : null,
           phvLicenseExpiry: isCommercialDriver ? phvLicenseExpiry : null,
           licensingCouncil: isCommercialDriver ? licensingCouncil : null,
+          taxSelfEmploymentAcknowledged: true,
+          taxAcknowledgedAt: new Date(),
           // TESTING ONLY: Auto-verify commercial drivers before March 1, 2026
           // This allows testing Pro driver features without manual verification
           // This script expires on March 1, 2026 and should be removed after that date
@@ -1573,6 +1606,261 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // ============================================================
+  // Compliance endpoints — DBS, DVLA, Hire & Reward insurance,
+  // KYC, sanctions screening, tax-self-employment acknowledgement.
+  // Each writes through `storage` so we have a single audited path
+  // for status flips. The aggregate GET /api/driver/compliance
+  // endpoint feeds the Settings page traffic-light dashboard.
+  // ============================================================
+
+  // POST /api/auth/acknowledge-tax-notice
+  // Records that the user has read and accepted the self-employment
+  // tax notice. Required before they can be flagged isDriver=true.
+  app.post('/api/auth/acknowledge-tax-notice', isAuthenticated, async (req: any, res) => {
+    const userId = req.session?.userId || req.user?.claims?.sub;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    const user = await storage.recordTaxAcknowledgement(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ acknowledgedAt: user.taxAcknowledgedAt });
+  });
+
+  // POST /api/driver/dbs
+  // Records the driver's DBS (Disclosure & Barring Service) certificate.
+  // Field upload uses the same `licenseUpload` multer setup so we get the
+  // identical 10MB / JPG-PNG-PDF guardrails as for driving licences.
+  app.post(
+    '/api/driver/dbs',
+    isAuthenticated,
+    requireDriver,
+    licenseUpload.single('dbsCertificate'),
+    async (req: any, res) => {
+      try {
+        const userId = req.session?.userId || req.user?.claims?.sub;
+        if (!userId) return res.status(401).json({ message: "Unauthorized" });
+        if (!req.file) return res.status(400).json({ message: "DBS certificate file is required" });
+
+        const { dbsCertificateNumber, dbsCertificateIssueDate, dbsCertificateExpiry, dbsUpdateServiceSubscribed } = req.body;
+        if (!dbsCertificateNumber || !dbsCertificateIssueDate || !dbsCertificateExpiry) {
+          return res.status(400).json({ message: "DBS certificate number, issue date and expiry are required" });
+        }
+        // Sanity-check expiry > issue date.
+        if (new Date(dbsCertificateExpiry) <= new Date(dbsCertificateIssueDate)) {
+          return res.status(400).json({ message: "DBS expiry must be after the issue date" });
+        }
+
+        const url = `/uploads/licenses/${req.file.filename}`;
+        const user = await storage.recordDbsCertificate(userId, {
+          dbsCertificateNumber: dbsCertificateNumber.toUpperCase().trim(),
+          dbsCertificateIssueDate,
+          dbsCertificateExpiry,
+          dbsCertificateUrl: url,
+          dbsUpdateServiceSubscribed: dbsUpdateServiceSubscribed === 'true' || dbsUpdateServiceSubscribed === true,
+        });
+        if (!user) return res.status(404).json({ message: "User not found" });
+        res.json({
+          dbsCertificateExpiry: user.dbsCertificateExpiry,
+          backgroundCheckStatus: user.backgroundCheckStatus,
+        });
+      } catch (err) {
+        console.error("[compliance] DBS submit failed:", err);
+        res.status(500).json({ message: "Failed to record DBS certificate" });
+      }
+    },
+  );
+
+  // POST /api/driver/hire-reward-insurance
+  // Records the driver's Hire & Reward motor insurance — a hard legal
+  // requirement for ANY UK driver carrying paying passengers. Standard
+  // motor insurance does NOT cover ride-sharing.
+  app.post(
+    '/api/driver/hire-reward-insurance',
+    isAuthenticated,
+    requireDriver,
+    licenseUpload.single('insuranceCertificate'),
+    async (req: any, res) => {
+      try {
+        const userId = req.session?.userId || req.user?.claims?.sub;
+        if (!userId) return res.status(401).json({ message: "Unauthorized" });
+        if (!req.file) return res.status(400).json({ message: "Insurance certificate file is required" });
+
+        const { hireRewardInsuranceExpiry } = req.body;
+        if (!hireRewardInsuranceExpiry) {
+          return res.status(400).json({ message: "Insurance expiry date is required" });
+        }
+        if (new Date(hireRewardInsuranceExpiry) <= new Date()) {
+          return res.status(400).json({ message: "Insurance certificate has already expired" });
+        }
+
+        const url = `/uploads/licenses/${req.file.filename}`;
+        const user = await storage.recordHireRewardInsurance(userId, {
+          hireRewardInsuranceUrl: url,
+          hireRewardInsuranceExpiry,
+        });
+        if (!user) return res.status(404).json({ message: "User not found" });
+        res.json({
+          hireRewardInsuranceExpiry: user.hireRewardInsuranceExpiry,
+          hireRewardInsuranceVerified: user.hireRewardInsuranceVerified,
+        });
+      } catch (err) {
+        console.error("[compliance] H&R insurance submit failed:", err);
+        res.status(500).json({ message: "Failed to record insurance" });
+      }
+    },
+  );
+
+  // POST /api/driver/dvla/refresh
+  // Driver-facing endpoint: only records a NEW pending check
+  // (timestamp + optionally a fresh share-code). It can never mark the
+  // licence as verified — that is reserved for an admin or the DVLA
+  // Share Driving Licence partner webhook. This closes the
+  // self-verification loophole flagged by code review.
+  app.post('/api/driver/dvla/refresh', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      const requester = await storage.getUser(userId);
+      if (!requester?.isDriver) {
+        return res.status(403).json({ message: "Driver account required" });
+      }
+
+      // Optionally accept a refreshed DVLA share code from the driver.
+      const newCheckCode = typeof req.body?.dvlaCheckCode === 'string' && req.body.dvlaCheckCode.trim().length >= 8
+        ? req.body.dvlaCheckCode.trim().toUpperCase()
+        : undefined;
+      if (newCheckCode) {
+        await db
+          .update(users)
+          .set({ dvlaCheckCode: newCheckCode, updatedAt: new Date() })
+          .where(eq(users.id, userId));
+      }
+
+      // Always re-set status to 'pending' — verification flips happen
+      // out-of-band via admin / webhook only.
+      const user = await storage.recordDvlaCheck(userId, 'pending');
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json({ dvlaCheckStatus: user.dvlaCheckStatus, dvlaLastCheckedAt: user.dvlaLastCheckedAt });
+    } catch (err) {
+      console.error("[compliance] DVLA refresh failed:", err);
+      res.status(500).json({ message: "Failed to record DVLA check" });
+    }
+  });
+
+  // POST /api/admin/driver/:userId/dvla
+  // Admin-only endpoint that flips the DVLA check status to one of
+  // verified | failed | expired. This is the only path that can mark a
+  // driver as DVLA-verified.
+  app.post('/api/admin/driver/:userId/dvla', isAuthenticated, async (req: any, res) => {
+    try {
+      const callerId = req.session?.userId || req.user?.claims?.sub;
+      if (!callerId) return res.status(401).json({ message: "Unauthorized" });
+      const caller = await storage.getUser(callerId);
+      if (!caller?.isAdmin) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const targetUserId = req.params.userId;
+      const status = req.body?.status;
+      if (!['verified', 'failed', 'expired', 'pending'].includes(status)) {
+        return res.status(400).json({ message: "Invalid DVLA status" });
+      }
+      // Confirm target is actually a driver — keeps audit trail clean
+      // and prevents stray writes against rider/passenger rows.
+      const target = await storage.getUser(targetUserId);
+      if (!target) return res.status(404).json({ message: "User not found" });
+      if (!target.isDriver) {
+        return res.status(400).json({ message: "Target user is not a driver" });
+      }
+      const user = await storage.recordDvlaCheck(targetUserId, status);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json({ dvlaCheckStatus: user.dvlaCheckStatus, dvlaLastCheckedAt: user.dvlaLastCheckedAt });
+    } catch (err) {
+      console.error("[compliance] Admin DVLA flip failed:", err);
+      res.status(500).json({ message: "Failed to update DVLA status" });
+    }
+  });
+
+  // POST /api/driver/kyc/start — scaffold for Onfido / Stripe Identity.
+  // Records the intent so the FE can show "verification in progress".
+  app.post('/api/driver/kyc/start', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      const me = await storage.getUser(userId);
+      if (!me?.isDriver) {
+        return res.status(403).json({ message: "Driver account required" });
+      }
+      const provider = (req.body?.provider as string) || 'manual';
+      const user = await storage.recordKycResult(userId, 'submitted', provider);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json({ kycStatus: user.kycStatus, kycProvider: user.kycProvider });
+    } catch (err) {
+      console.error("[compliance] KYC start failed:", err);
+      res.status(500).json({ message: "Failed to start KYC" });
+    }
+  });
+
+  // GET /api/driver/compliance
+  // Aggregate dashboard snapshot — feeds the Settings compliance card
+  // with one round-trip. Returns null statuses for non-drivers so the FE
+  // can hide the card cleanly.
+  app.get('/api/driver/compliance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      const u = await storage.getUser(userId);
+      if (!u) return res.status(404).json({ message: "User not found" });
+      const today = new Date();
+      const daysUntil = (d: string | Date | null | undefined) => {
+        if (!d) return null;
+        const diff = new Date(d).getTime() - today.getTime();
+        return Math.floor(diff / (1000 * 60 * 60 * 24));
+      };
+      res.json({
+        isDriver: !!u.isDriver,
+        isCommercialDriver: !!u.isCommercialDriver,
+        taxSelfEmploymentAcknowledged: !!u.taxSelfEmploymentAcknowledged,
+        taxAcknowledgedAt: u.taxAcknowledgedAt,
+        dbs: {
+          status: u.backgroundCheckStatus || 'not_submitted',
+          certificateNumber: u.dbsCertificateNumber,
+          expiry: u.dbsCertificateExpiry,
+          daysUntilExpiry: daysUntil(u.dbsCertificateExpiry),
+          updateServiceSubscribed: u.dbsUpdateServiceSubscribed,
+        },
+        dvla: {
+          status: u.dvlaCheckStatus,
+          lastCheckedAt: u.dvlaLastCheckedAt,
+          checkCode: u.dvlaCheckCode ? '****' + (u.dvlaCheckCode || '').slice(-4) : null,
+        },
+        hireRewardInsurance: {
+          verified: !!u.hireRewardInsuranceVerified,
+          expiry: u.hireRewardInsuranceExpiry,
+          daysUntilExpiry: daysUntil(u.hireRewardInsuranceExpiry),
+          uploaded: !!u.hireRewardInsuranceUrl,
+        },
+        kyc: {
+          status: u.kycStatus,
+          provider: u.kycProvider,
+          verifiedAt: u.kycVerifiedAt,
+        },
+        sanctions: {
+          status: u.sanctionsScreeningStatus,
+          screenedAt: u.sanctionsScreenedAt,
+        },
+        commercial: u.isCommercialDriver ? {
+          licensingCouncil: u.licensingCouncil,
+          phvLicenseExpiry: u.phvLicenseExpiry,
+          commercialInsuranceExpiry: u.commercialInsuranceExpiry,
+          vehicleInspectionExpiry: u.vehicleInspectionExpiry,
+        } : null,
+      });
+    } catch (err) {
+      console.error("[compliance] aggregate fetch failed:", err);
+      res.status(500).json({ message: "Failed to fetch compliance status" });
+    }
+  });
+
   // Upgrade existing private driver to commercial (Pro) status
   app.post('/api/user/upgrade-to-commercial', isAuthenticated, async (req: any, res) => {
     try {
@@ -1591,7 +1879,39 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (existingUser.isCommercialDriver) {
         return res.status(400).json({ message: "You are already a commercial driver" });
       }
-      
+
+      // Tax acknowledgement is a hard gate for any driver flow — if the
+      // private-driver upgrade somehow bypassed it, refuse here too.
+      if (!existingUser.taxSelfEmploymentAcknowledged) {
+        return res.status(400).json({
+          message: "Please accept the self-employment / tax notice on your profile before upgrading to a commercial driver.",
+        });
+      }
+
+      // Hire & Reward insurance is mandatory for any UK driver carrying
+      // paying passengers (commercial and private alike). Refuse the
+      // commercial upgrade if it isn't on file or has already lapsed.
+      if (!existingUser.hireRewardInsuranceUrl || !existingUser.hireRewardInsuranceExpiry) {
+        return res.status(400).json({
+          message: "Hire & Reward insurance is required for commercial drivers. Please upload your insurance certificate before upgrading.",
+        });
+      }
+      if (new Date(existingUser.hireRewardInsuranceExpiry) <= new Date()) {
+        return res.status(400).json({
+          message: "Your Hire & Reward insurance has expired. Please upload a current certificate before upgrading.",
+        });
+      }
+
+      // Licensing council validation (post-Rotherham triple-licensing rule).
+      const { isValidCouncil } = await import("@shared/data/uk-councils");
+      const requestedCouncil = req.body?.licensingCouncil;
+      const finalCouncil = requestedCouncil || existingUser.licensingCouncil;
+      if (!finalCouncil || !isValidCouncil(finalCouncil)) {
+        return res.status(400).json({
+          message: "Please select the Local Licensing Authority (council) that issues your PHV / taxi licence.",
+        });
+      }
+
       const {
         privateHireLicenseUrl,
         privateHireLicenseNumber,
@@ -1624,6 +1944,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           phvLicenseExpiry,
           ratePerMile: ratePerMile ? parseFloat(ratePerMile) : null,
           driverTagline,
+          licensingCouncil: finalCouncil,
           // TESTING ONLY: Auto-verify commercial drivers before March 1, 2026
           commercialStatusVerified: new Date() < new Date('2026-03-01T00:00:00Z'),
           updatedAt: new Date(),
@@ -1696,8 +2017,22 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const isOwner = (
         user?.driverLicenseUrl === expectedPath ||
         user?.privateHireLicenseUrl === expectedPath ||
-        user?.phvLicenseUrl === expectedPath
+        user?.phvLicenseUrl === expectedPath ||
+        user?.dbsCertificateUrl === expectedPath ||
+        user?.hireRewardInsuranceUrl === expectedPath ||
+        user?.commercialInsuranceUrl === expectedPath ||
+        user?.vehicleInspectionUrl === expectedPath
       );
+
+      // Admins can view any compliance document for review purposes.
+      const isAdminViewer = !!user?.isAdmin;
+      if (isAdminViewer && !isOwner) {
+        const filePath = path.join(uploadDir, filename);
+        if (!fs.existsSync(filePath)) {
+          return res.status(404).json({ message: "File not found" });
+        }
+        return res.sendFile(filePath);
+      }
       
       if (!isOwner) {
         return res.status(403).json({ message: "Access denied" });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -50,7 +51,7 @@ export default function SettingsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className={user?.isDriver ? "grid w-full grid-cols-4" : "grid w-full grid-cols-3"}>
             <TabsTrigger value="profile" data-testid="tab-profile">
               <User className="h-4 w-4 mr-2" />
               Profile
@@ -59,6 +60,12 @@ export default function SettingsPage() {
               <Lock className="h-4 w-4 mr-2" />
               Security
             </TabsTrigger>
+            {user?.isDriver && (
+              <TabsTrigger value="compliance" data-testid="tab-compliance">
+                <ShieldCheck className="h-4 w-4 mr-2" />
+                Compliance
+              </TabsTrigger>
+            )}
             <TabsTrigger value="account" data-testid="tab-account">
               <Trash2 className="h-4 w-4 mr-2" />
               Account
@@ -73,12 +80,471 @@ export default function SettingsPage() {
             <SecuritySection />
           </TabsContent>
 
+          {user?.isDriver && (
+            <TabsContent value="compliance">
+              <ComplianceSection />
+            </TabsContent>
+          )}
+
           <TabsContent value="account">
             <AccountSection />
           </TabsContent>
         </Tabs>
       </main>
     </div>
+  );
+}
+
+// ============================================================
+// Compliance dashboard — driver-only. Aggregates DBS, DVLA,
+// Hire & Reward insurance, KYC, sanctions and tax-acknowledge
+// state with traffic-light badges + days-until-expiry. Backed
+// by `GET /api/driver/compliance` so the screen reflects the
+// authoritative server state, not the cached `/api/auth/user`.
+// ============================================================
+function ComplianceSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data, isLoading, refetch } = useQuery<any>({
+    queryKey: ["/api/driver/compliance"],
+  });
+
+  // Mutations -------------------------------------------------------------
+  const ackTax = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/auth/acknowledge-tax-notice", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/compliance"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({ title: "Tax notice acknowledged" });
+    },
+    onError: (e: any) => toast({ title: "Failed", description: e?.message || "Try again", variant: "destructive" }),
+  });
+
+  const startKyc = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/driver/kyc/start", { provider: "manual" });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/compliance"] });
+      toast({ title: "KYC started", description: "Identity verification is now pending review." });
+    },
+    onError: (e: any) => toast({ title: "Failed", description: e?.message || "Try again", variant: "destructive" }),
+  });
+
+  const refreshDvla = useMutation({
+    mutationFn: async (dvlaCheckCode: string) => {
+      const res = await apiRequest("POST", "/api/driver/dvla/refresh", dvlaCheckCode ? { dvlaCheckCode } : {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/compliance"] });
+      toast({ title: "DVLA check requested", description: "Your check has been queued for review." });
+    },
+    onError: (e: any) => toast({ title: "Failed", description: e?.message || "Try again", variant: "destructive" }),
+  });
+
+  const uploadDbs = useMutation({
+    mutationFn: async (form: FormData) => {
+      const res = await fetch("/api/driver/dbs", { method: "POST", body: form, credentials: "include" });
+      if (!res.ok) throw new Error((await res.json()).message || "Upload failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/compliance"] });
+      toast({ title: "DBS certificate submitted", description: "We'll review it shortly." });
+    },
+    onError: (e: any) => toast({ title: "Failed", description: e?.message || "Try again", variant: "destructive" }),
+  });
+
+  const uploadHr = useMutation({
+    mutationFn: async (form: FormData) => {
+      const res = await fetch("/api/driver/hire-reward-insurance", { method: "POST", body: form, credentials: "include" });
+      if (!res.ok) throw new Error((await res.json()).message || "Upload failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/compliance"] });
+      toast({ title: "Hire & Reward insurance submitted" });
+    },
+    onError: (e: any) => toast({ title: "Failed", description: e?.message || "Try again", variant: "destructive" }),
+  });
+
+  // Local state for the upload dialogs ------------------------------------
+  const [dbsOpen, setDbsOpen] = useState(false);
+  const [dbsNum, setDbsNum] = useState("");
+  const [dbsIssue, setDbsIssue] = useState("");
+  const [dbsExpiryDate, setDbsExpiryDate] = useState("");
+  const [dbsUpdate, setDbsUpdate] = useState(false);
+  const [dbsFile, setDbsFile] = useState<File | null>(null);
+
+  const [hrOpen, setHrOpen] = useState(false);
+  const [hrExpiryDate, setHrExpiryDate] = useState("");
+  const [hrFile, setHrFile] = useState<File | null>(null);
+
+  const [dvlaOpen, setDvlaOpen] = useState(false);
+  const [dvlaCode, setDvlaCode] = useState("");
+
+  const submitDbs = () => {
+    if (!dbsFile || !dbsNum || !dbsIssue || !dbsExpiryDate) {
+      toast({ title: "Missing fields", description: "Certificate file, number, issue and expiry are required.", variant: "destructive" });
+      return;
+    }
+    const fd = new FormData();
+    fd.append("dbsCertificate", dbsFile);
+    fd.append("dbsCertificateNumber", dbsNum);
+    fd.append("dbsCertificateIssueDate", dbsIssue);
+    fd.append("dbsCertificateExpiry", dbsExpiryDate);
+    fd.append("dbsUpdateServiceSubscribed", String(dbsUpdate));
+    uploadDbs.mutate(fd, { onSuccess: () => { setDbsOpen(false); setDbsFile(null); setDbsNum(""); setDbsIssue(""); setDbsExpiryDate(""); setDbsUpdate(false); } });
+  };
+
+  const submitHr = () => {
+    if (!hrFile || !hrExpiryDate) {
+      toast({ title: "Missing fields", description: "Insurance file and expiry date are required.", variant: "destructive" });
+      return;
+    }
+    const fd = new FormData();
+    fd.append("insuranceCertificate", hrFile);
+    fd.append("hireRewardInsuranceExpiry", hrExpiryDate);
+    uploadHr.mutate(fd, { onSuccess: () => { setHrOpen(false); setHrFile(null); setHrExpiryDate(""); } });
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-8 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-accent" />
+        </CardContent>
+      </Card>
+    );
+  }
+  if (!data) return null;
+
+  // Status -> badge variant. Greens are "all good", amber means
+  // pending / submitted, reds are blocking issues.
+  const statusBadge = (label: string, kind: "ok" | "pending" | "warn" | "fail" | "neutral") => {
+    const cls =
+      kind === "ok"
+        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30"
+        : kind === "pending"
+        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30"
+        : kind === "warn"
+        ? "bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30"
+        : kind === "fail"
+        ? "bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30"
+        : "bg-muted text-muted-foreground border-border";
+    return (
+      <Badge variant="outline" className={cls} data-testid={`badge-${label.toLowerCase().replace(/\s+/g, "-")}`}>
+        {label}
+      </Badge>
+    );
+  };
+
+  const expiryHelper = (days: number | null | undefined): { kind: "ok" | "warn" | "fail" | "neutral"; label: string } => {
+    if (days === null || days === undefined) return { kind: "neutral", label: "No date" };
+    if (days < 0) return { kind: "fail", label: `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ago` };
+    if (days <= 30) return { kind: "warn", label: `Expires in ${days} day${days === 1 ? "" : "s"}` };
+    return { kind: "ok", label: `Valid · ${days} day${days === 1 ? "" : "s"} remaining` };
+  };
+
+  const Row = ({
+    title,
+    description,
+    badge,
+    detail,
+  }: {
+    title: string;
+    description: string;
+    badge: React.ReactNode;
+    detail?: React.ReactNode;
+  }) => (
+    <div className="flex items-start justify-between gap-4 py-3 border-b last:border-0">
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-sm">{title}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
+        {detail && <div className="text-xs text-muted-foreground mt-1">{detail}</div>}
+      </div>
+      <div className="shrink-0">{badge}</div>
+    </div>
+  );
+
+  // ---- Each compliance row -------------------------------------------------
+  const dbsExpiry = expiryHelper(data.dbs?.daysUntilExpiry);
+  const hrExpiry = expiryHelper(data.hireRewardInsurance?.daysUntilExpiry);
+
+  // DBS overall status: prefer expiry status when we have a date, otherwise
+  // fall back to the textual backgroundCheckStatus from the server.
+  const dbsBadge = data.dbs?.expiry
+    ? statusBadge(dbsExpiry.label, dbsExpiry.kind)
+    : data.dbs?.status === "approved"
+    ? statusBadge("Approved", "ok")
+    : data.dbs?.status === "submitted"
+    ? statusBadge("Under review", "pending")
+    : data.dbs?.status === "rejected"
+    ? statusBadge("Rejected", "fail")
+    : statusBadge("Not submitted", "warn");
+
+  const dvlaBadge =
+    data.dvla?.status === "verified"
+      ? statusBadge("Verified", "ok")
+      : data.dvla?.status === "failed"
+      ? statusBadge("Failed", "fail")
+      : data.dvla?.status === "expired"
+      ? statusBadge("Expired", "fail")
+      : statusBadge("Pending", "pending");
+
+  const hrBadge = !data.hireRewardInsurance?.uploaded
+    ? statusBadge("Not uploaded", "warn")
+    : data.hireRewardInsurance?.daysUntilExpiry !== null
+    ? statusBadge(hrExpiry.label, hrExpiry.kind)
+    : statusBadge("Pending review", "pending");
+
+  const kycBadge =
+    data.kyc?.status === "verified"
+      ? statusBadge("Verified", "ok")
+      : data.kyc?.status === "submitted"
+      ? statusBadge("Under review", "pending")
+      : data.kyc?.status === "failed"
+      ? statusBadge("Failed", "fail")
+      : statusBadge("Not started", "warn");
+
+  const sanctionsBadge =
+    data.sanctions?.status === "cleared"
+      ? statusBadge("Cleared", "ok")
+      : data.sanctions?.status === "flagged"
+      ? statusBadge("Flagged", "fail")
+      : statusBadge("Pending", "pending");
+
+  const taxBadge = data.taxSelfEmploymentAcknowledged
+    ? statusBadge("Acknowledged", "ok")
+    : statusBadge("Required", "fail");
+
+  return (
+    <Card data-testid="card-compliance">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5" />
+          Driver Compliance
+        </CardTitle>
+        <CardDescription>
+          Statutory checks and documents you need to keep current to drive
+          on Saviaj. Items that have expired or are missing must be
+          resolved before you can accept paying passengers.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Row
+          title="Self-employment / Tax notice"
+          description="You are responsible for declaring your earnings and paying your own tax and National Insurance."
+          badge={taxBadge}
+          detail={data.taxAcknowledgedAt ? `Accepted on ${new Date(data.taxAcknowledgedAt).toLocaleDateString()}` : undefined}
+        />
+        <Row
+          title="Enhanced DBS check"
+          description="Background check from the Disclosure & Barring Service. Required for all drivers carrying members of the public."
+          badge={dbsBadge}
+          detail={
+            data.dbs?.certificateNumber
+              ? `Certificate ${data.dbs.certificateNumber}${data.dbs.updateServiceSubscribed ? " · DBS Update Service: yes" : ""}`
+              : undefined
+          }
+        />
+        <Row
+          title="DVLA driving licence check"
+          description="Validates your driving entitlement against the DVLA via your share-driving-licence code."
+          badge={dvlaBadge}
+          detail={
+            data.dvla?.lastCheckedAt
+              ? `Last checked ${new Date(data.dvla.lastCheckedAt).toLocaleDateString()}${data.dvla.checkCode ? ` · Code ${data.dvla.checkCode}` : ""}`
+              : undefined
+          }
+        />
+        <Row
+          title="Hire & Reward insurance"
+          description="Standard motor insurance does NOT cover paying passengers. You must hold a valid H&R policy."
+          badge={hrBadge}
+          detail={data.hireRewardInsurance?.expiry ? `Expires ${new Date(data.hireRewardInsurance.expiry).toLocaleDateString()}` : undefined}
+        />
+        <Row
+          title="Identity verification (KYC)"
+          description="Confirms your identity using a photo ID and a live selfie via our KYC partner."
+          badge={kycBadge}
+          detail={data.kyc?.provider ? `Provider: ${data.kyc.provider}` : undefined}
+        />
+        <Row
+          title="Sanctions / AML screening"
+          description="UK / EU / OFAC sanctions and PEP screening. Re-run periodically while your driver account is active."
+          badge={sanctionsBadge}
+          detail={data.sanctions?.screenedAt ? `Last screened ${new Date(data.sanctions.screenedAt).toLocaleDateString()}` : undefined}
+        />
+
+        {data.commercial && (
+          <div className="mt-4 pt-4 border-t">
+            <div className="text-sm font-medium mb-2">Commercial driver records</div>
+            <Row
+              title="Local Licensing Authority"
+              description="Council that issues your private hire / hackney plate."
+              badge={statusBadge(data.commercial.licensingCouncil || "Not set", data.commercial.licensingCouncil ? "ok" : "fail")}
+            />
+            <Row
+              title="PHV operator licence"
+              description="Your private hire vehicle operator licence."
+              badge={
+                data.commercial.phvLicenseExpiry
+                  ? (() => {
+                      const d = expiryHelper(Math.floor((new Date(data.commercial.phvLicenseExpiry).getTime() - Date.now()) / 86400000));
+                      return statusBadge(d.label, d.kind);
+                    })()
+                  : statusBadge("Not on file", "warn")
+              }
+            />
+            <Row
+              title="Vehicle inspection"
+              description="MOT-style inspection certificate required for taxi / PHV operation."
+              badge={
+                data.commercial.vehicleInspectionExpiry
+                  ? (() => {
+                      const d = expiryHelper(Math.floor((new Date(data.commercial.vehicleInspectionExpiry).getTime() - Date.now()) / 86400000));
+                      return statusBadge(d.label, d.kind);
+                    })()
+                  : statusBadge("Not on file", "warn")
+              }
+            />
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap gap-2 justify-end">
+          {!data.taxSelfEmploymentAcknowledged && (
+            <Button variant="default" size="sm" onClick={() => ackTax.mutate()} disabled={ackTax.isPending} data-testid="button-acknowledge-tax">
+              {ackTax.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Acknowledge tax notice"}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => setDbsOpen(true)} data-testid="button-open-dbs">
+            Upload DBS
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setHrOpen(true)} data-testid="button-open-hr">
+            Upload H&amp;R insurance
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setDvlaOpen(true)} data-testid="button-open-dvla">
+            Refresh DVLA check
+          </Button>
+          {data.kyc?.status !== "verified" && data.kyc?.status !== "submitted" && (
+            <Button variant="outline" size="sm" onClick={() => startKyc.mutate()} disabled={startKyc.isPending} data-testid="button-start-kyc">
+              {startKyc.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Start KYC"}
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => refetch()} data-testid="button-refresh-compliance">
+            Refresh
+          </Button>
+        </div>
+
+        {/* DBS upload dialog */}
+        <Dialog open={dbsOpen} onOpenChange={setDbsOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload DBS Certificate</DialogTitle>
+              <DialogDescription>
+                Submit your Enhanced DBS certificate. We'll review it before
+                marking your background check as approved.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Certificate file (PDF / JPG / PNG)</Label>
+                <Input type="file" accept=".pdf,image/png,image/jpeg" onChange={(e) => setDbsFile(e.target.files?.[0] || null)} data-testid="input-dbs-file" />
+              </div>
+              <div>
+                <Label>Certificate number</Label>
+                <Input value={dbsNum} onChange={(e) => setDbsNum(e.target.value)} placeholder="e.g. 001234567890" data-testid="input-dbs-number" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Issue date</Label>
+                  <Input type="date" value={dbsIssue} onChange={(e) => setDbsIssue(e.target.value)} data-testid="input-dbs-issue" />
+                </div>
+                <div>
+                  <Label>Expiry date</Label>
+                  <Input type="date" value={dbsExpiryDate} onChange={(e) => setDbsExpiryDate(e.target.value)} data-testid="input-dbs-expiry" />
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={dbsUpdate} onChange={(e) => setDbsUpdate(e.target.checked)} data-testid="checkbox-dbs-update" />
+                I'm subscribed to the DBS Update Service
+              </label>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDbsOpen(false)}>Cancel</Button>
+              <Button onClick={submitDbs} disabled={uploadDbs.isPending} data-testid="button-submit-dbs">
+                {uploadDbs.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* H&R insurance upload dialog */}
+        <Dialog open={hrOpen} onOpenChange={setHrOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload Hire &amp; Reward Insurance</DialogTitle>
+              <DialogDescription>
+                Standard motor insurance does NOT cover paying passengers.
+                Upload your current Hire &amp; Reward certificate.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Certificate file (PDF / JPG / PNG)</Label>
+                <Input type="file" accept=".pdf,image/png,image/jpeg" onChange={(e) => setHrFile(e.target.files?.[0] || null)} data-testid="input-hr-file" />
+              </div>
+              <div>
+                <Label>Expiry date</Label>
+                <Input type="date" value={hrExpiryDate} onChange={(e) => setHrExpiryDate(e.target.value)} data-testid="input-hr-expiry" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setHrOpen(false)}>Cancel</Button>
+              <Button onClick={submitHr} disabled={uploadHr.isPending} data-testid="button-submit-hr">
+                {uploadHr.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* DVLA refresh dialog */}
+        <Dialog open={dvlaOpen} onOpenChange={setDvlaOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Refresh DVLA Driving Licence Check</DialogTitle>
+              <DialogDescription>
+                Generate a fresh share code at gov.uk/view-driving-licence
+                and paste it below. Your check will be marked pending until
+                we've verified it.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>DVLA share code (optional)</Label>
+                <Input value={dvlaCode} onChange={(e) => setDvlaCode(e.target.value)} placeholder="e.g. AB12 CD34" data-testid="input-dvla-code" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDvlaOpen(false)}>Cancel</Button>
+              <Button
+                onClick={() => refreshDvla.mutate(dvlaCode, { onSuccess: () => { setDvlaOpen(false); setDvlaCode(""); } })}
+                disabled={refreshDvla.isPending}
+                data-testid="button-submit-dvla"
+              >
+                {refreshDvla.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   );
 }
 

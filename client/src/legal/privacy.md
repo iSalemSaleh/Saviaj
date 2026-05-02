@@ -100,3 +100,49 @@ If you have a concern about how we handle your personal data, please contact us 
 75 Beverley Road, Bristol, BS7 0JW, United Kingdom
 Email: [info@sibranet.co.uk](mailto:info@sibranet.co.uk)
 Phone: +44 7311 972206
+
+## 13. Operator Licensing & Tax Identifiers
+
+Saviaj is operated by Sibranet Technologies Ltd. The following operator
+identifiers are kept up to date as the business grows:
+
+- **Company registration number:** 16953498 (Companies House, England & Wales)
+- **PHV Operator Licence:** application pending. Once granted, the issuing
+  authority and licence number will be published on the legal index page
+  (`/legal`) and on every booking receipt.
+- **VAT registration:** Sibranet Technologies Ltd is below the HMRC VAT
+  registration threshold at launch and is therefore NOT VAT registered. We
+  do not charge or collect VAT. When we cross the threshold and register,
+  the VAT number will be added to receipts and to this policy.
+
+## 14. Driver Compliance Records & Retention
+
+When you sign up as a driver, we additionally store the following
+compliance records for the periods stated, after which they are deleted
+or anonymised:
+
+- **Enhanced DBS (Disclosure & Barring Service) certificate** — certificate
+  number, issue date, expiry date, and a scanned copy. Retained for the
+  validity period of the certificate plus 12 months for audit purposes.
+- **DVLA driving licence check** — the share-driving-licence check code
+  (last 4 digits visible to staff only) and the timestamp of the most
+  recent successful check. Retained for the duration of your driver
+  account.
+- **Hire & Reward motor insurance certificate** — insurance document and
+  expiry date. Retained for the validity period of the certificate plus
+  12 months for audit purposes.
+- **PHV / private hire operator licence (commercial drivers)** — licence
+  number, issuing council, and expiry date. Retained for the duration of
+  your commercial driver status plus 12 months.
+- **Identity verification (KYC)** — provider name, status, and the
+  timestamp of verification. The actual identity document images are
+  held by the verification provider (e.g. Onfido, Stripe Identity) and
+  are not retained on Saviaj's own systems.
+- **Sanctions / AML screening result** — status (cleared / flagged) and
+  the timestamp of the most recent screen. Retained for the duration of
+  your driver account plus 5 years (in line with HMRC and AML record-
+  keeping rules).
+- **Self-employment / tax acknowledgement** — a timestamped boolean
+  recording that you accepted the self-employment tax notice. Retained
+  for the duration of your driver account plus 6 years (in line with HMRC
+  record-keeping rules for self-employment).

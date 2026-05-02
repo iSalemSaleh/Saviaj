@@ -76,6 +76,61 @@ Preferred communication style: Simple, everyday language.
 - **Source**: `shared/data/uk-councils.ts` lists ~250 UK Local Licensing Authorities (boroughs / unitary councils + TfL for Greater London). `isValidCouncil(name)` validates server-side; the dropdown lives in the signup form's commercial driver step.
 - **Server guards**: `POST /api/auth/register` (server/localAuth.ts), `POST /api/user/upgrade-to-driver` and `POST /api/user/upgrade-to-commercial` (server/routes.ts) all refuse the commercial activation when `licensingCouncil` is missing or not in the curated list. Validation uses `isValidCouncil` from `shared/data/uk-councils`.
 
+### Driver Compliance Stack
+End-to-end UK rideshare compliance for every driver. All status flips
+go through dedicated `storage.*` helpers so we have a single audited
+write path; the FE reads through `GET /api/driver/compliance` (an
+aggregate endpoint that returns one snapshot for the Settings dashboard).
+
+- **Self-employment tax notice** (`users.tax_self_employment_acknowledged`,
+  `tax_acknowledged_at`): captured at signup (`POST /api/auth/register`)
+  and re-checked at `POST /api/user/upgrade-to-driver` and
+  `POST /api/user/upgrade-to-commercial`. UK rideshare drivers are self-
+  employed, NOT employees — we keep timestamped consent for HMRC's
+  6-year record-keeping window. Endpoint: `POST /api/auth/acknowledge-tax-notice`.
+- **DBS (Disclosure & Barring Service)** (`dbs_certificate_number/issue_date/expiry/url`,
+  `dbs_update_service_subscribed`, `background_check_status`):
+  uploaded via `POST /api/driver/dbs` (multer disk storage, same
+  guardrails as driving licence uploads). Submitting a cert flips
+  `background_check_status` to `submitted`; admin or webhook flips it to
+  `approved`. Expiry index `idx_users_dbs_expiry` powers nightly sweeps.
+- **DVLA driving licence check** (`dvla_check_code`, `dvla_check_status`,
+  `dvla_last_checked_at`): the share-driving-licence code is collected
+  during signup. `POST /api/driver/dvla/refresh` records the check
+  result. Real DVLA "Share Driving Licence" partner API integration is
+  deferred — current implementation is admin-action / webhook-ready.
+- **Hire & Reward insurance** (`hire_reward_insurance_url/expiry/verified`):
+  hard legal requirement for ALL drivers (private and commercial) — standard
+  motor insurance does NOT cover paid passengers. Uploaded via
+  `POST /api/driver/hire-reward-insurance`. The
+  `/api/user/upgrade-to-commercial` endpoint refuses if H&R is missing
+  or expired. Expiry index `idx_users_hire_reward_expiry` powers
+  nightly sweeps.
+- **KYC** (`kyc_status`, `kyc_verified_at`, `kyc_provider`):
+  status enum is provider-agnostic so Onfido / Stripe Identity /
+  manual review all use the same column. `POST /api/driver/kyc/start`
+  records the intent; the provider's webhook will flip status to
+  `verified` / `failed` (provider integration deferred).
+- **Sanctions / AML screening** (`sanctions_screening_status`,
+  `sanctions_screened_at`): re-screened periodically while the driver
+  account is active. Required before any high-value payout.
+- **Commercial driver triple-licensing** (already documented above):
+  `licensing_council` + PHV licence + vehicle inspection. The
+  `/api/driver/compliance` endpoint surfaces these alongside the new
+  fields when `is_commercial_driver = true`.
+
+Company-side identifiers live in `shared/data/company-info.ts` as a
+single typed source of truth (`SAVIAJ_COMPANY_INFO`):
+- Company number 16953498, registered office 75 Beverley Road, BS7 0JW
+- ICO ZC129989
+- PHV Operator Licence: pending application — placeholder is null and
+  the legal index page renders "application pending" until populated
+- VAT: not registered (below £90k HMRC threshold) — placeholder is null
+- Data Protection Officer contact
+
+The legal index page (`/legal`) renders all of the above in the footer
+so the canonical operator details are visible alongside every legal doc.
+
 ### Auth Lifecycle Rules
 - **Active-user lookups**: All login, signup, OTP, password-reset, and username-availability paths use `getActiveUserByEmail` / `getActiveUserByUsername` (filter `deleted_at IS NULL`). Use the raw `getUserByEmail` / `getUserByUsername` only when you need to find a soft-deleted shell (e.g., for `releaseEmailForDeletedUser`).
 - **Account deletion**: `softDeleteUser` sets `deleted_at`; followed by `invalidateUserSessions(userId)` to wipe every session row for that user across all session shapes (`sess.userId`, `sess.user.claims.sub`, `sess.user.id`, `sess.passport.user.claims.sub`, `sess.passport.user.id`, `sess.passport.user` as string).

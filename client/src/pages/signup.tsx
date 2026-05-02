@@ -37,6 +37,7 @@ interface FormData {
   driverLicenseNumber: string;
   driverLicenseExpiry: string;
   backgroundCheckConsent: boolean;
+  taxSelfEmploymentAcknowledged: boolean;
   vehicleMake: string;
   vehicleModel: string;
   vehicleYear: string;
@@ -83,6 +84,7 @@ const initialFormData: FormData = {
   driverLicenseNumber: "",
   driverLicenseExpiry: "",
   backgroundCheckConsent: false,
+  taxSelfEmploymentAcknowledged: false,
   vehicleMake: "",
   vehicleModel: "",
   vehicleYear: "",
@@ -252,6 +254,7 @@ export default function Signup() {
         driverLicenseNumber: data.driverLicenseNumber,
         driverLicenseExpiry: data.driverLicenseExpiry,
         backgroundCheckConsent: data.backgroundCheckConsent,
+        taxSelfEmploymentAcknowledged: data.taxSelfEmploymentAcknowledged,
         vehicleMake: data.vehicleMake,
         vehicleModel: data.vehicleModel,
         vehicleYear: data.vehicleYear,
@@ -425,6 +428,10 @@ export default function Signup() {
         return true;
       case 4:
         if (formData.accountType === "driver") {
+          if (!formData.taxSelfEmploymentAcknowledged) {
+            setError("Please acknowledge the self-employment / tax notice before continuing.");
+            return false;
+          }
           if (!formData.driverLicenseNumber || !formData.driverLicenseExpiry || !formData.backgroundCheckConsent) {
             setError("Please complete all driver verification fields");
             return false;
@@ -960,7 +967,34 @@ export default function Signup() {
                     Background Check Consent *
                   </label>
                   <p className="text-sm text-muted-foreground">
-                    I consent to a background check for driver verification purposes.
+                    I consent to an Enhanced DBS (Disclosure &amp; Barring Service) check for
+                    driver verification purposes. You will be able to upload your DBS certificate
+                    after signup from your Settings page.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-2 mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                <Checkbox
+                  id="taxNotice"
+                  checked={formData.taxSelfEmploymentAcknowledged}
+                  onCheckedChange={(checked) => handleChange("taxSelfEmploymentAcknowledged", checked as boolean)}
+                  data-testid="checkbox-tax-notice"
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <label
+                    htmlFor="taxNotice"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Self-Employment &amp; Tax Notice *
+                  </label>
+                  <p className="text-sm text-muted-foreground">
+                    I understand that I am driving on Saviaj as a self-employed
+                    contractor, NOT an employee. I am personally responsible for
+                    declaring my earnings to HMRC and for paying my own income
+                    tax and National Insurance. Saviaj does not deduct PAYE on
+                    my behalf. I also confirm I will hold valid Hire &amp; Reward
+                    motor insurance before carrying any paying passenger.
                   </p>
                 </div>
               </div>

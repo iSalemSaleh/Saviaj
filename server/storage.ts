@@ -393,6 +393,24 @@ export interface IStorage {
   // No-op if `passId` is already set — pass IDs are immutable once issued.
   // Used by the new-signup flow and the backfill script.
   setUserPassIdIfMissing(userId: string, passId: string): Promise<User | undefined>;
+  // Compliance helpers — each one writes a small, focused subset of the
+  // user's compliance state. Routes call these instead of building
+  // ad-hoc UPDATEs so we can audit everywhere a status flips.
+  recordTaxAcknowledgement(userId: string): Promise<User | undefined>;
+  recordDbsCertificate(userId: string, data: {
+    dbsCertificateNumber: string;
+    dbsCertificateIssueDate: string;
+    dbsCertificateExpiry: string;
+    dbsCertificateUrl: string;
+    dbsUpdateServiceSubscribed?: boolean;
+  }): Promise<User | undefined>;
+  recordHireRewardInsurance(userId: string, data: {
+    hireRewardInsuranceUrl: string;
+    hireRewardInsuranceExpiry: string;
+  }): Promise<User | undefined>;
+  recordDvlaCheck(userId: string, status: 'pending' | 'verified' | 'failed' | 'expired'): Promise<User | undefined>;
+  recordKycResult(userId: string, status: 'submitted' | 'verified' | 'failed', provider: string): Promise<User | undefined>;
+  recordSanctionsScreening(userId: string, status: 'cleared' | 'flagged'): Promise<User | undefined>;
   updateUserDriverStatus(id: string, isDriver: boolean, licenseUrl?: string): Promise<User>;
   updateUserStripeCustomerId(id: string, stripeCustomerId: string): Promise<User>;
   completeUserProfile(id: string, data: {
@@ -724,6 +742,109 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ passId, updatedAt: new Date() })
       .where(sql`${users.id} = ${userId} AND ${users.passId} IS NULL`)
+      .returning();
+    return user;
+  }
+
+  // -----------------------------------------------------------
+  // Compliance helpers. Every status flip below also bumps
+  // updatedAt so cache invalidation in the FE works for free.
+  // -----------------------------------------------------------
+
+  async recordTaxAcknowledgement(userId: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        taxSelfEmploymentAcknowledged: true,
+        taxAcknowledgedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async recordDbsCertificate(userId: string, data: {
+    dbsCertificateNumber: string;
+    dbsCertificateIssueDate: string;
+    dbsCertificateExpiry: string;
+    dbsCertificateUrl: string;
+    dbsUpdateServiceSubscribed?: boolean;
+  }): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        dbsCertificateNumber: data.dbsCertificateNumber,
+        dbsCertificateIssueDate: data.dbsCertificateIssueDate,
+        dbsCertificateExpiry: data.dbsCertificateExpiry,
+        dbsCertificateUrl: data.dbsCertificateUrl,
+        dbsUpdateServiceSubscribed: data.dbsUpdateServiceSubscribed ?? false,
+        // Submitting a DBS cert flips background-check status to "submitted"
+        // even though we still need a human / API verification step before
+        // it counts as "approved". This keeps the booking layer pessimistic.
+        backgroundCheckStatus: 'submitted',
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async recordHireRewardInsurance(userId: string, data: {
+    hireRewardInsuranceUrl: string;
+    hireRewardInsuranceExpiry: string;
+  }): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        hireRewardInsuranceUrl: data.hireRewardInsuranceUrl,
+        hireRewardInsuranceExpiry: data.hireRewardInsuranceExpiry,
+        // Verification is a separate admin / underwriter step; uploading
+        // the document just registers it for review.
+        hireRewardInsuranceVerified: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async recordDvlaCheck(userId: string, status: 'pending' | 'verified' | 'failed' | 'expired'): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        dvlaCheckStatus: status,
+        dvlaLastCheckedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async recordKycResult(userId: string, status: 'submitted' | 'verified' | 'failed', provider: string): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        kycStatus: status,
+        kycProvider: provider,
+        kycVerifiedAt: status === 'verified' ? new Date() : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async recordSanctionsScreening(userId: string, status: 'cleared' | 'flagged'): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        sanctionsScreeningStatus: status,
+        sanctionsScreenedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId))
       .returning();
     return user;
   }

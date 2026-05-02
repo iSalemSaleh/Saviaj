@@ -10,6 +10,7 @@ import {
   integer,
   decimal,
   boolean,
+  date,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -90,6 +91,65 @@ export const users = pgTable("users", {
   phvLicenseNumber: varchar("phv_license_number"),
   phvLicenseExpiry: varchar("phv_license_expiry"),
   commercialStatusVerified: boolean("commercial_status_verified").default(false),
+
+  // ===========================================================
+  // Compliance stack — DBS, DVLA, Hire & Reward, KYC, sanctions,
+  // and tax-self-employment acknowledgement. These are all data-
+  // model columns; the verification flips happen via dedicated
+  // endpoints in server/routes.ts. Real third-party provider
+  // integration (Onfido / Stripe Identity / DVLA Share Driving
+  // Licence API) plugs into the same status enums.
+  // ===========================================================
+
+  // DBS (Disclosure and Barring Service) certificate. Enhanced DBS
+  // is the standard for taxi / private hire drivers in the UK and is
+  // typically valid for 3 years (or rolling if subscribed to the
+  // DBS Update Service). We retain the cert number and dates only;
+  // the actual certificate document is stored under uploads/ and
+  // referenced via dbsCertificateUrl.
+  dbsCertificateNumber: varchar("dbs_certificate_number", { length: 20 }),
+  dbsCertificateIssueDate: date("dbs_certificate_issue_date"),
+  dbsCertificateExpiry: date("dbs_certificate_expiry"),
+  dbsCertificateUrl: text("dbs_certificate_url"),
+  dbsUpdateServiceSubscribed: boolean("dbs_update_service_subscribed").default(false),
+
+  // DVLA licence check. We collect the share-driving-licence code
+  // in `dvlaCheckCode` (above) and record the result of the most
+  // recent check here. Real DVLA "Share Driving Licence" API
+  // requires partner status — until then this is recorded by an
+  // admin action.
+  dvlaCheckStatus: varchar("dvla_check_status", { length: 20 }).default("pending"),
+  dvlaLastCheckedAt: timestamp("dvla_last_checked_at"),
+
+  // Hire & Reward insurance. UK private vehicles used for ride-
+  // sharing / private hire MUST have Hire & Reward cover — standard
+  // motor insurance does NOT cover passengers paid for transport.
+  // This is required for BOTH private and commercial drivers.
+  hireRewardInsuranceUrl: text("hire_reward_insurance_url"),
+  hireRewardInsuranceExpiry: date("hire_reward_insurance_expiry"),
+  hireRewardInsuranceVerified: boolean("hire_reward_insurance_verified").default(false),
+
+  // KYC — identity verification. Status enum lets us plug in any
+  // provider (Onfido, Stripe Identity, manual review) without a
+  // schema change. `kycVerifiedAt` is the timestamp of the latest
+  // successful pass, `kycProvider` records who did the check.
+  kycStatus: varchar("kyc_status", { length: 20 }).default("pending"),
+  kycVerifiedAt: timestamp("kyc_verified_at"),
+  kycProvider: varchar("kyc_provider", { length: 40 }),
+
+  // AML / sanctions screening. Required before any high-value
+  // payout (driver earnings >= configured threshold). Re-screened
+  // on a rolling cadence; `sanctionsScreenedAt` is the last clear.
+  sanctionsScreeningStatus: varchar("sanctions_screening_status", { length: 20 }).default("pending"),
+  sanctionsScreenedAt: timestamp("sanctions_screened_at"),
+
+  // Tax / self-employment notice. UK rideshare drivers are self-
+  // employed and personally responsible for their own income tax
+  // and National Insurance. We capture the explicit acknowledgement
+  // (and timestamp) so we have evidence the driver was warned and
+  // accepted the responsibility. Required for ALL drivers.
+  taxSelfEmploymentAcknowledged: boolean("tax_self_employment_acknowledged").default(false),
+  taxAcknowledgedAt: timestamp("tax_acknowledged_at"),
   // Commercial driver rates (flat rate + optional tiered pricing + base minimum)
   ratePerMile: decimal("rate_per_mile", { precision: 5, scale: 2 }), // Flat rate in GBP per mile (used when no tiers set)
   tier1MaxMiles: decimal("tier1_max_miles", { precision: 6, scale: 2 }),  // Max miles for tier 1 (e.g. 5)

@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, FileText, Shield, RefreshCcw, Ban } from "lucide-react";
 import atlasRideLogo from "@assets/AtlasRideLogo_1767134626458.png";
+import { SAVIAJ_COMPANY_INFO, formatRegisteredAddress } from "@shared/data/company-info";
 
 const LEGAL_DOCS = [
   {
@@ -109,9 +110,35 @@ export default function LegalIndexPage() {
             })}
           </div>
 
-          <div className="text-xs text-muted-foreground pt-4 border-t">
-            Sibranet Technologies Ltd · ICO registration ZC129989 · 75 Beverley
-            Road, Bristol BS7 0JW · Data Protection: ssibrahim247@gmail.com
+          <div className="text-xs text-muted-foreground pt-4 border-t space-y-1" data-testid="text-legal-company-info">
+            <div>
+              {SAVIAJ_COMPANY_INFO.legalName} · Company No. {SAVIAJ_COMPANY_INFO.companyNumber} ·
+              ICO registration {SAVIAJ_COMPANY_INFO.ico.registrationNumber}
+            </div>
+            <div>{formatRegisteredAddress()}</div>
+            <div>
+              {SAVIAJ_COMPANY_INFO.phvOperatorLicence.licenceNumber ? (
+                <>PHV Operator Licence: {SAVIAJ_COMPANY_INFO.phvOperatorLicence.licenceNumber}
+                {" "}({SAVIAJ_COMPANY_INFO.phvOperatorLicence.issuingAuthority})</>
+              ) : (
+                <span>PHV Operator Licence: application pending</span>
+              )}
+              {" · "}
+              {SAVIAJ_COMPANY_INFO.vat.vatNumber ? (
+                <>VAT No. {SAVIAJ_COMPANY_INFO.vat.vatNumber}</>
+              ) : (
+                <span>VAT: not yet registered (below HMRC threshold)</span>
+              )}
+            </div>
+            <div>
+              Data Protection Officer:{" "}
+              <a
+                href={`mailto:${SAVIAJ_COMPANY_INFO.dpo.email}`}
+                className="underline hover:text-foreground"
+              >
+                {SAVIAJ_COMPANY_INFO.dpo.email}
+              </a>
+            </div>
           </div>
         </div>
       </main>

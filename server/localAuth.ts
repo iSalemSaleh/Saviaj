@@ -134,6 +134,10 @@ const registerSchema = z.object({
   driverLicenseNumber: z.string().optional(),
   driverLicenseExpiry: z.string().optional(),
   backgroundCheckConsent: z.boolean().optional(),
+  // Tax / self-employment notice — required for any driver signup. Captures
+  // explicit acknowledgement that the driver knows they're self-employed,
+  // not an employee, and is responsible for their own HMRC obligations.
+  taxSelfEmploymentAcknowledged: z.boolean().optional(),
   vehicleMake: z.string().optional(),
   vehicleModel: z.string().optional(),
   vehicleYear: z.string().optional(),
@@ -240,6 +244,11 @@ export function setupLocalAuth(app: Express) {
         if (!validatedData.backgroundCheckConsent) {
           return res.status(400).json({ message: "Background check consent is required for drivers" });
         }
+        if (!validatedData.taxSelfEmploymentAcknowledged) {
+          return res.status(400).json({
+            message: "You must acknowledge that you are responsible for your own tax and National Insurance as a self-employed driver before signing up.",
+          });
+        }
         if (!validatedData.vehicleMake || !validatedData.vehicleModel || !validatedData.vehicleRegistration) {
           return res.status(400).json({ message: "Vehicle information is required for drivers" });
         }
@@ -293,6 +302,11 @@ export function setupLocalAuth(app: Express) {
         driverLicenseExpiry: validatedData.driverLicenseExpiry,
         backgroundCheckConsent: validatedData.backgroundCheckConsent,
         backgroundCheckStatus: validatedData.isDriver ? 'pending' : undefined,
+        // Persist the tax self-employment acknowledgement only for drivers;
+        // this is the timestamped consent record the booking layer
+        // requires before allowing trip acceptance.
+        taxSelfEmploymentAcknowledged: validatedData.isDriver ? !!validatedData.taxSelfEmploymentAcknowledged : false,
+        taxAcknowledgedAt: validatedData.isDriver && validatedData.taxSelfEmploymentAcknowledged ? acceptedAt : null,
         vehicleMake: validatedData.vehicleMake,
         vehicleModel: validatedData.vehicleModel,
         vehicleYear: validatedData.vehicleYear,
