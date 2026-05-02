@@ -22,6 +22,7 @@ import SplashScreen from "@/components/SplashScreen";
 import HistoryPage from "@/pages/history";
 import SettingsPage from "@/pages/settings";
 import LegalPage from "@/pages/legal-page";
+import LegalIndexPage from "@/pages/legal-index";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -154,16 +155,39 @@ function Router() {
       <Route path="/settings">
         <ProtectedRoute component={SettingsPage} />
       </Route>
+      {/* Legal documents — every clean URL variant routes to the same
+          rendered page so we can hand out short links from emails,
+          receipts, deeplinks, etc. without worrying about underscore
+          vs hyphen casing. The /legal index lists them all. */}
+      <Route path="/legal" component={LegalIndexPage} />
       <Route path="/terms">
+        <LegalPage doc="terms" />
+      </Route>
+      <Route path="/terms-of-service">
+        <LegalPage doc="terms" />
+      </Route>
+      <Route path="/terms_of_service">
         <LegalPage doc="terms" />
       </Route>
       <Route path="/privacy">
         <LegalPage doc="privacy" />
       </Route>
+      <Route path="/privacy-policy">
+        <LegalPage doc="privacy" />
+      </Route>
+      <Route path="/privacy_policy">
+        <LegalPage doc="privacy" />
+      </Route>
       <Route path="/refund-policy">
         <LegalPage doc="refund-policy" />
       </Route>
+      <Route path="/refund_policy">
+        <LegalPage doc="refund-policy" />
+      </Route>
       <Route path="/cancellation-policy">
+        <LegalPage doc="cancellation-policy" />
+      </Route>
+      <Route path="/cancellation_policy">
         <LegalPage doc="cancellation-policy" />
       </Route>
       <Route path="/legal/:doc" component={LegalPage} />
