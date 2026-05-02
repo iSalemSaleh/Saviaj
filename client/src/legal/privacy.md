@@ -77,8 +77,26 @@ However, no system is completely secure and absolute security cannot be guarante
 
 We may update this Privacy Policy from time to time. Significant changes will be communicated via the app or website. Continued use of the service constitutes acceptance of the updated policy.
 
-## 11. Contact
+## 11. Data protection registration
+
+Sibranet Technologies Ltd is registered with the **Information Commissioner's Office (ICO)** in the United Kingdom as a data controller.
+
+- **Registered organisation:** Sibranet Technologies Ltd
+- **Registered address:** 75 Beverley Road, Bristol, BS7 0JW, United Kingdom
+- **ICO registration reference:** **ZC129989**
+- **Date of registration:** 21 April 2026
+- **Registration renewed by:** 20 April 2027
+- **Data Protection Officer:** [ssibrahim247@gmail.com](mailto:ssibrahim247@gmail.com)
+
+If you have a concern about how we handle your personal data, please contact us first using the details below. You also have the right to lodge a complaint with the ICO at any time:
+
+- Information Commissioner's Office, Wycliffe House, Water Lane, Wilmslow, Cheshire SK9 5AF
+- Telephone: 0303 123 1113
+- Website: [ico.org.uk](https://ico.org.uk)
+
+## 12. Contact
 
 **Sibranet Technologies Ltd**
+75 Beverley Road, Bristol, BS7 0JW, United Kingdom
 Email: [info@sibranet.co.uk](mailto:info@sibranet.co.uk)
 Phone: +44 7311 972206

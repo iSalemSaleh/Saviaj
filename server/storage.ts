@@ -389,6 +389,10 @@ export interface IStorage {
   getNormalizedUser(id: string): Promise<NormalizedUser | null>;
   createUser(user: UpsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
+  // Sets the Saviaj Pass ID on a user that does not yet have one.
+  // No-op if `passId` is already set — pass IDs are immutable once issued.
+  // Used by the new-signup flow and the backfill script.
+  setUserPassIdIfMissing(userId: string, passId: string): Promise<User | undefined>;
   updateUserDriverStatus(id: string, isDriver: boolean, licenseUrl?: string): Promise<User>;
   updateUserStripeCustomerId(id: string, stripeCustomerId: string): Promise<User>;
   completeUserProfile(id: string, data: {
@@ -708,6 +712,19 @@ export class DatabaseStorage implements IStorage {
       });
     }
     
+    return user;
+  }
+
+  async setUserPassIdIfMissing(userId: string, passId: string): Promise<User | undefined> {
+    // Conditional update: only writes the passId when the column is still
+    // NULL. This protects against a race where two concurrent requests both
+    // try to issue a pass ID for the same user (the second update simply
+    // returns no rows and we discard it).
+    const [user] = await db
+      .update(users)
+      .set({ passId, updatedAt: new Date() })
+      .where(sql`${users.id} = ${userId} AND ${users.passId} IS NULL`)
+      .returning();
     return user;
   }
 

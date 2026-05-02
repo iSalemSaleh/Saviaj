@@ -30,6 +30,12 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
   username: varchar("username", { length: 30 }).unique(),
+  // Saviaj Pass — public-facing human-readable user identifier.
+  // Format: SV + 3-letter city code + YYMMDD + 4-digit daily sequence
+  // e.g. "SVLON2605010042". Issued once at signup, immutable thereafter.
+  // Nullable only to support backfill of legacy users; the application
+  // layer guarantees every new user is assigned one at creation time.
+  passId: varchar("pass_id", { length: 20 }).unique(),
   passwordHash: varchar("password_hash"),
   emailVerified: boolean("email_verified").default(false),
   authProvider: varchar("auth_provider", { length: 20 }).default("local"),
@@ -54,6 +60,12 @@ export const users = pgTable("users", {
   driverLicenseExpiry: varchar("driver_license_expiry"),
   backgroundCheckConsent: boolean("background_check_consent").default(false),
   backgroundCheckStatus: varchar("background_check_status"), // pending, approved, rejected
+  // UK Local Licensing Authority that issued the commercial driver's
+  // PHV / operator's licence. Required before a user can flip
+  // `isCommercialDriver = true`. Used by the booking layer to enforce
+  // the triple-licensing rule (driver + vehicle + operator must share a
+  // council). Stored as the council display name from `shared/data/uk-councils`.
+  licensingCouncil: varchar("licensing_council", { length: 100 }),
   // Vehicle info
   vehicleMake: varchar("vehicle_make"),
   vehicleModel: varchar("vehicle_model"),
@@ -115,6 +127,18 @@ export const users = pgTable("users", {
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Daily counter for Saviaj Pass IDs. One row per (city, YYMMDD) pair.
+// Atomic upsert with `last_seq = last_seq + 1` is what guarantees
+// monotonic, no-collision sequence numbers per day per city, even under
+// concurrent signup load. Sequences are NOT gap-free: if `storage.createUser`
+// fails after the counter has been bumped, that sequence is burned. This
+// is acceptable — the contract is uniqueness, not density.
+export const passIdDailyCounters = pgTable("pass_id_daily_counters", {
+  bucket: varchar("bucket", { length: 12 }).primaryKey(), // e.g. "LON-260501"
+  lastSeq: integer("last_seq").notNull().default(0),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 // ============================================
 // NORMALIZED TABLES (Phase 0 - New Structure)

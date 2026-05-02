@@ -54,8 +54,19 @@ function ensureStrategy(): boolean {
             // First-time Google sign-in is treated as legal acceptance.
             // The Google sign-in button surfaces a clear consent disclaimer
             // linking to /terms and /privacy before this code path is reached.
+            //
+            // Google sign-up does not collect a city, so we generate the
+            // pass ID with `null` city — the generator falls back to the
+            // "ZZZ" code (e.g. SVZZZ2605010001). The user is prompted to
+            // pick their city in onboarding/settings; we deliberately do
+            // NOT re-issue the pass ID after that, because the issuance
+            // date is part of the user's permanent identity.
+            const { generatePassId } = await import("./passIdGenerator");
+            const passId = await generatePassId(null);
+
             const acceptedAt = new Date();
             user = await storage.createUser({
+              passId,
               email,
               authProvider: "google",
               emailVerified: true,

@@ -8,11 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCircle, Camera, Briefcase, Shield, Mail } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCircle, Camera, Briefcase, Shield, Mail, Search, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import atlasRideLogo from "@assets/AtlasRideLogo_1767134626458.png";
 import { EmailVerificationModal } from "@/components/EmailVerificationModal";
 import { CountryPhoneInput } from "@/components/CountryPhoneInput";
+import { ukCityNames } from "@shared/data/uk-cities";
+import { ukCouncilNames } from "@shared/data/uk-councils";
 
 type AccountType = "rider" | "driver";
 
@@ -55,6 +58,9 @@ interface FormData {
   phvLicenseUrl: string;
   phvLicenseNumber: string;
   phvLicenseExpiry: string;
+  // Local Licensing Authority that issues this driver's PHV / taxi
+  // licence — required when isCommercialDriver is true.
+  licensingCouncil: string;
   // Legal acceptance
   acceptedLegal: boolean;
 }
@@ -97,12 +103,61 @@ const initialFormData: FormData = {
   phvLicenseUrl: "",
   phvLicenseNumber: "",
   phvLicenseExpiry: "",
+  licensingCouncil: "",
   acceptedLegal: false,
 };
 
 export default function Signup() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1);
+  const [isLookingUpPostcode, setIsLookingUpPostcode] = useState(false);
+  const [postcodeLookupHint, setPostcodeLookupHint] = useState<string>("");
+
+  // Postcode → city autofill via /api/lookup/postcode/:postcode (proxies
+  // postcodes.io). On success we map the upstream `admin_district` to the
+  // closest entry in our curated UK city dropdown — if no exact match is
+  // found we fall back to leaving the dropdown empty and just hint the
+  // user about what we received.
+  const handlePostcodeLookup = async () => {
+    const compact = formData.postcode.replace(/\s+/g, "").toUpperCase();
+    if (!compact) return;
+    setIsLookingUpPostcode(true);
+    setPostcodeLookupHint("");
+    try {
+      const res = await fetch(`/api/lookup/postcode/${encodeURIComponent(compact)}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({} as any));
+        setPostcodeLookupHint(body?.message || "Postcode not found.");
+        return;
+      }
+      const data: { city?: string; council?: string; postcode?: string } = await res.json();
+      if (data.postcode) {
+        handleChange("postcode", data.postcode);
+      }
+      const upstreamCity = (data.city || "").trim();
+      // Try exact match first, then case-insensitive.
+      let matched = ukCityNames.find((n) => n === upstreamCity);
+      if (!matched) {
+        matched = ukCityNames.find(
+          (n) => n.toLowerCase() === upstreamCity.toLowerCase(),
+        );
+      }
+      if (matched) {
+        handleChange("city", matched);
+        setPostcodeLookupHint(`City set to ${matched}.`);
+      } else if (upstreamCity) {
+        setPostcodeLookupHint(
+          `Postcode area is "${upstreamCity}" — please pick the closest city below.`,
+        );
+      } else {
+        setPostcodeLookupHint("Please pick your city below.");
+      }
+    } catch {
+      setPostcodeLookupHint("Couldn't reach the lookup service. Please pick your city manually.");
+    } finally {
+      setIsLookingUpPostcode(false);
+    }
+  };
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -190,6 +245,7 @@ export default function Signup() {
         homeAddress: data.homeAddress,
         city: data.city,
         postcode: data.postcode,
+        licensingCouncil: data.isCommercialDriver ? data.licensingCouncil : undefined,
         profileImageUrl: data.profileImageUrl,
         isDriver: data.accountType === "driver",
         driverLicenseUrl: data.driverLicenseUrl,
@@ -357,6 +413,11 @@ export default function Signup() {
           setError("Please fill in all required fields");
           return false;
         }
+        if (!formData.city) {
+          // City is required so we can issue a meaningful Saviaj Pass ID.
+          setError("Please select your city — try the postcode lookup or pick from the list");
+          return false;
+        }
         if (formData.accountType === "driver" && !formData.profileImageUrl) {
           setError("Profile photo is required for drivers");
           return false;
@@ -383,7 +444,13 @@ export default function Signup() {
         }
         return true;
       case 6:
-        // Pro Account (Commercial Driver) section is optional
+        // Pro Account section is optional, BUT once the user opts in
+        // they must declare a licensing council so the booking layer can
+        // cross-check their PHV plate at trip time.
+        if (formData.isCommercialDriver && !formData.licensingCouncil) {
+          setError("Please select your Local Licensing Authority (council)");
+          return false;
+        }
         return true;
       default:
         return true;
@@ -625,6 +692,46 @@ export default function Signup() {
                 />
               </div>
 
+              {/* Postcode-first address block. The "Find my address"
+                  button hits /api/lookup/postcode/:postcode which proxies
+                  postcodes.io and returns city + council. We pre-select
+                  the city in the dropdown below so the user just has to
+                  confirm it. The dropdown remains the source of truth
+                  for the `city` field — the postcode value is optional
+                  and stored as-is. */}
+              <div className="space-y-2">
+                <Label htmlFor="postcode">Postcode</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="postcode"
+                    placeholder="SW1A 1AA"
+                    value={formData.postcode}
+                    onChange={(e) => handleChange("postcode", e.target.value.toUpperCase())}
+                    data-testid="input-postcode"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePostcodeLookup}
+                    disabled={isLookingUpPostcode || !formData.postcode}
+                    data-testid="button-postcode-lookup"
+                  >
+                    {isLookingUpPostcode ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                    <span className="ml-2 hidden sm:inline">Find my city</span>
+                  </Button>
+                </div>
+                {postcodeLookupHint && (
+                  <p className="text-xs text-muted-foreground" data-testid="text-postcode-hint">
+                    {postcodeLookupHint}
+                  </p>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="homeAddress">Home Address</Label>
                 <Input
@@ -636,27 +743,26 @@ export default function Signup() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    placeholder="London"
-                    value={formData.city}
-                    onChange={(e) => handleChange("city", e.target.value)}
-                    data-testid="input-city"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="postcode">Postcode</Label>
-                  <Input
-                    id="postcode"
-                    placeholder="SW1A 1AA"
-                    value={formData.postcode}
-                    onChange={(e) => handleChange("postcode", e.target.value)}
-                    data-testid="input-postcode"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="city">City *</Label>
+                <Select
+                  value={formData.city}
+                  onValueChange={(value) => handleChange("city", value)}
+                >
+                  <SelectTrigger id="city" data-testid="select-city">
+                    <SelectValue placeholder="Select your city" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {ukCityNames.map((name) => (
+                      <SelectItem key={name} value={name} data-testid={`option-city-${name}`}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Used to build your Saviaj Pass — your unique member ID.
+                </p>
               </div>
 
               {/* Profile Photo - Required for drivers */}
@@ -956,6 +1062,28 @@ export default function Signup() {
 
             {formData.isCommercialDriver && (
               <div className="space-y-4 animate-in fade-in">
+                <div className="space-y-2">
+                  <Label htmlFor="licensingCouncil">Local Licensing Authority *</Label>
+                  <Select
+                    value={formData.licensingCouncil}
+                    onValueChange={(value) => handleChange("licensingCouncil", value)}
+                  >
+                    <SelectTrigger id="licensingCouncil" data-testid="select-licensing-council">
+                      <SelectValue placeholder="Select the council that issues your PHV / taxi licence" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {ukCouncilNames.map((name) => (
+                        <SelectItem key={name} value={name} data-testid={`option-council-${name}`}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    For Greater London select <strong>Transport for London (TfL)</strong>. Elsewhere, choose your local council.
+                  </p>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="privateHireLicense">Private Hire Driving Licence</Label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -123,7 +123,10 @@ const registerSchema = z.object({
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   phoneNumber: z.string().optional(),
   homeAddress: z.string().optional(),
-  city: z.string().optional(),
+  // City is REQUIRED — the Saviaj Pass ID encodes a 3-letter city code, so
+  // we must have a value at signup. The frontend uses postcodes.io to
+  // autofill this from a UK postcode and falls back to a city dropdown.
+  city: z.string().min(1, "City is required"),
   postcode: z.string().optional(),
   profileImageUrl: z.string().optional(),
   isDriver: z.boolean().default(false),
@@ -152,6 +155,10 @@ const registerSchema = z.object({
   phvLicenseUrl: z.string().optional(),
   phvLicenseNumber: z.string().optional(),
   phvLicenseExpiry: z.string().optional(),
+  // Local Licensing Authority (council, or TfL for Greater London) that
+  // issues this driver's PHV / taxi licence — required when the user
+  // opts into commercial driver status during signup.
+  licensingCouncil: z.string().optional(),
   // Legal acceptance — must be true to register
   acceptedLegal: z.literal(true, {
     errorMap: () => ({
@@ -239,12 +246,32 @@ export function setupLocalAuth(app: Express) {
         if (!validatedData.bankAccountName || !validatedData.bankSortCode || !validatedData.bankAccountNumber) {
           return res.status(400).json({ message: "Bank details are required for drivers" });
         }
+        // Commercial drivers MUST declare a Local Licensing Authority so
+        // the booking layer can later cross-check their PHV plate.
+        if (validatedData.isCommercialDriver) {
+          const { isValidCouncil } = await import("@shared/data/uk-councils");
+          if (!validatedData.licensingCouncil || !isValidCouncil(validatedData.licensingCouncil)) {
+            return res.status(400).json({
+              message:
+                "Please select the Local Licensing Authority (council) that issues your PHV / taxi licence.",
+            });
+          }
+        }
       }
 
       const passwordHash = await bcrypt.hash(validatedData.password, SALT_ROUNDS);
-      
+
+      // Allocate a Saviaj Pass ID up front, before the user row exists.
+      // Doing it this way means the very first SELECT of the new row in
+      // any code path that runs after createUser already sees the
+      // populated `passId`. The generator is atomic over the daily
+      // sequence counter, so concurrent signups don't collide.
+      const { generatePassId } = await import("./passIdGenerator");
+      const passId = await generatePassId(validatedData.city);
+
       const acceptedAt = new Date();
       const user = await storage.createUser({
+        passId,
         email: validatedData.email,
         username: validatedData.username ? validatedData.username.toLowerCase() : undefined,
         passwordHash,
@@ -286,6 +313,7 @@ export function setupLocalAuth(app: Express) {
         phvLicenseUrl: validatedData.phvLicenseUrl,
         phvLicenseNumber: validatedData.phvLicenseNumber,
         phvLicenseExpiry: validatedData.phvLicenseExpiry,
+        licensingCouncil: validatedData.isCommercialDriver ? validatedData.licensingCouncil : undefined,
         // TESTING ONLY: Auto-verify commercial drivers before March 1, 2026
         // This allows testing Pro driver features without manual verification
         // This script expires on March 1, 2026 and should be removed after that date

@@ -205,6 +205,16 @@ function ProfileSection({ user }: { user: any }) {
             />
           </div>
           <p className="text-sm text-muted-foreground">{user?.email}</p>
+          {user?.passId && (
+            <div
+              className="mt-1 inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-mono"
+              data-testid="text-saviaj-pass"
+              title="Your unique Saviaj member identifier"
+            >
+              <span className="text-muted-foreground">Saviaj Pass</span>
+              <span className="font-semibold tracking-wide">{user.passId}</span>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-4">

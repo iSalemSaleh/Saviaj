@@ -336,6 +336,86 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // Setup WebSocket for real-time location tracking on the main server
   setupWebSocket(httpServer);
 
+  // ---- Postcode lookup (postcodes.io proxy) -----------------------------
+  // Used by the signup form to autofill city + licensing council from a UK
+  // postcode. We proxy through the server (rather than calling the public
+  // API from the browser directly) so we can:
+  //   1. Apply our own rate limiting in front of postcodes.io if abuse
+  //      becomes a problem.
+  //   2. Map the upstream response shape to a stable client contract.
+  //   3. Avoid CORS pre-flight latency from the client.
+  //
+  // postcodes.io is free, key-less, and operated by Open Postcode Geo /
+  // Ideal Postcodes — no auth header required.
+  app.get("/api/lookup/postcode/:postcode", async (req, res) => {
+    const raw = String(req.params.postcode || "").trim().toUpperCase();
+    // Normalise: strip whitespace, then validate against the official UK
+    // postcode regex. We reject upstream calls for malformed input so we
+    // don't burn quota on garbage queries.
+    const compact = raw.replace(/\s+/g, "");
+    const ukPostcodeRe = /^[A-Z]{1,2}\d[A-Z\d]?\d[A-Z]{2}$/;
+    if (!ukPostcodeRe.test(compact)) {
+      return res.status(400).json({ message: "Invalid UK postcode format" });
+    }
+    // 5-second hard timeout on the upstream call. Without this a slow
+    // postcodes.io response would tie up our event loop and let an
+    // attacker amplify a single client request into long-lived server work.
+    const ac = new AbortController();
+    const timeoutId = setTimeout(() => ac.abort(), 5000);
+    try {
+      const upstream = await fetch(
+        `https://api.postcodes.io/postcodes/${encodeURIComponent(compact)}`,
+        { method: "GET", signal: ac.signal },
+      );
+      if (upstream.status === 404) {
+        return res.status(404).json({ message: "Postcode not found" });
+      }
+      if (!upstream.ok) {
+        return res.status(502).json({ message: "Postcode lookup failed" });
+      }
+      const body = (await upstream.json()) as {
+        result?: {
+          postcode?: string;
+          admin_district?: string;
+          admin_ward?: string;
+          parish?: string;
+          parliamentary_constituency?: string;
+          region?: string;
+          country?: string;
+          // postcodes.io reports the LLA in `admin_district`. The field
+          // we want for our `users.city` is the largest sensible
+          // populated locality — for postcodes.io that's typically
+          // `parish` for villages and `admin_district` for towns/cities.
+          // Boroughs of London report `admin_district` = "Westminster"
+          // etc, which is what users expect to see as their city.
+        };
+      };
+      const r = body?.result;
+      if (!r) {
+        return res.status(404).json({ message: "Postcode not found" });
+      }
+      return res.json({
+        postcode: r.postcode ?? compact,
+        city: r.admin_district ?? r.parish ?? "",
+        // We surface admin_district as the council suggestion; the
+        // commercial driver onboarding flow validates the final value
+        // against our own LLA list before persisting it.
+        council: r.admin_district ?? "",
+        region: r.region ?? "",
+        country: r.country ?? "",
+      });
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        console.warn("[postcode] upstream timeout for", compact);
+        return res.status(504).json({ message: "Postcode lookup timed out" });
+      }
+      console.error("[postcode] lookup failed:", err);
+      return res.status(502).json({ message: "Postcode lookup failed" });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  });
+
   // Serve uploaded profile images statically (only profiles - NOT licenses which contain PII)
   // Licenses are served through the protected /api/uploads/licenses/:filename endpoint
   const profilesDir = path.join(process.cwd(), 'uploads', 'profiles');
@@ -1376,6 +1456,10 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         phvLicenseUrl,
         phvLicenseNumber,
         phvLicenseExpiry,
+        // The Local Licensing Authority that issued (or will issue) the
+        // driver's PHV / hackney licence. Required for any commercial
+        // driver upgrade — see post-Rotherham triple-licensing rules.
+        licensingCouncil,
       } = req.body;
       
       // Driver-specific validation
@@ -1393,6 +1477,20 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       if (!bankAccountName || !bankSortCode || !bankAccountNumber) {
         return res.status(400).json({ message: "Bank details are required to receive payments" });
+      }
+
+      // Commercial drivers must declare which Local Licensing Authority
+      // (council, or TfL in Greater London) issues their PHV / taxi
+      // plate. We validate against our curated list — typos or freeform
+      // values would defeat downstream cross-checks at booking time.
+      if (isCommercialDriver) {
+        const { isValidCouncil } = await import("@shared/data/uk-councils");
+        if (!licensingCouncil || !isValidCouncil(licensingCouncil)) {
+          return res.status(400).json({
+            message:
+              "Please select the Local Licensing Authority (council) that issues your PHV / taxi licence.",
+          });
+        }
       }
       
       // UK-specific format validations
@@ -1451,6 +1549,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           phvLicenseUrl: isCommercialDriver ? phvLicenseUrl : null,
           phvLicenseNumber: isCommercialDriver ? phvLicenseNumber : null,
           phvLicenseExpiry: isCommercialDriver ? phvLicenseExpiry : null,
+          licensingCouncil: isCommercialDriver ? licensingCouncil : null,
           // TESTING ONLY: Auto-verify commercial drivers before March 1, 2026
           // This allows testing Pro driver features without manual verification
           // This script expires on March 1, 2026 and should be removed after that date

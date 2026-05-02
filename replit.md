@@ -62,6 +62,20 @@ Preferred communication style: Simple, everyday language.
 - **Input Validation**: Extensive use of Zod schemas and helper functions to prevent SQL injection and XSS.
 - **API Security Headers**: Standard headers (X-Frame-Options, X-Content-Type-Options, etc.) to mitigate common web vulnerabilities.
 
+### Saviaj Pass (User Identifier)
+- **Field**: `users.pass_id varchar(20) UNIQUE` (nullable for legacy users; backfilled by `scripts/backfill-pass-ids.ts`).
+- **Format**: `SV` + 3-letter UK city code + `YYMMDD` + 4-digit zero-padded daily sequence (e.g. `SVLON2605010042`). Sequence > 9999 grows to 5+ digits in the same column.
+- **City source**: Required at signup; either chosen from `shared/data/uk-cities.ts` (~200 UK cities, each mapped to a 3-letter code) or autofilled from a UK postcode via `GET /api/lookup/postcode/:postcode` (postcodes.io proxy). Unknown / unmapped cities fall back to the `ZZZ` code so we still issue a valid pass ID.
+- **Atomicity**: `pass_id_daily_counters (bucket varchar(12) PK, last_seq int, updated_at timestamp)` — `bucket` is `<CITY3>-<YYMMDD>`. The generator does an `INSERT ... ON CONFLICT (bucket) DO UPDATE SET last_seq = last_seq + 1 RETURNING last_seq`, so 100 concurrent signups in the same bucket get 100 distinct sequences without app-level locking. Sequences are guaranteed unique but NOT gap-free: a failed `createUser` after counter increment burns that sequence number.
+- **Wired in**: `server/passIdGenerator.ts` is invoked from `createLocalUser` (server/localAuth.ts) and the Google sign-in callback (server/googleAuth.ts) BEFORE `storage.createUser`, so the new row never exists without a pass ID.
+- **Immutability**: Pass IDs are issued once and never re-issued. `storage.setUserPassIdIfMissing` only writes when the column is still NULL (used by the backfill script).
+- **Display**: Shown on the Settings page profile section as a small pill badge, copy-friendly mono font.
+
+### Commercial Driver Licensing Council
+- **Field**: `users.licensing_council varchar(100)` (nullable; required when `is_commercial_driver = true`).
+- **Source**: `shared/data/uk-councils.ts` lists ~250 UK Local Licensing Authorities (boroughs / unitary councils + TfL for Greater London). `isValidCouncil(name)` validates server-side; the dropdown lives in the signup form's commercial driver step.
+- **Server guards**: `POST /api/auth/register` (server/localAuth.ts), `POST /api/user/upgrade-to-driver` and `POST /api/user/upgrade-to-commercial` (server/routes.ts) all refuse the commercial activation when `licensingCouncil` is missing or not in the curated list. Validation uses `isValidCouncil` from `shared/data/uk-councils`.
+
 ### Auth Lifecycle Rules
 - **Active-user lookups**: All login, signup, OTP, password-reset, and username-availability paths use `getActiveUserByEmail` / `getActiveUserByUsername` (filter `deleted_at IS NULL`). Use the raw `getUserByEmail` / `getUserByUsername` only when you need to find a soft-deleted shell (e.g., for `releaseEmailForDeletedUser`).
 - **Account deletion**: `softDeleteUser` sets `deleted_at`; followed by `invalidateUserSessions(userId)` to wipe every session row for that user across all session shapes (`sess.userId`, `sess.user.claims.sub`, `sess.user.id`, `sess.passport.user.claims.sub`, `sess.passport.user.id`, `sess.passport.user` as string).
