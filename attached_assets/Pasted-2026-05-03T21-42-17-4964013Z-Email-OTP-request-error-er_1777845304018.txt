@@ -1,0 +1,50 @@
+2026-05-03T21:42:17.4964013Z Email OTP request error: error: column "pass_id" does not exist
+2026-05-03T21:42:17.4964633Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T21:42:17.496469Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T21:42:17.4964727Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T21:42:17.4964757Z     at async s1.getActiveUserByEmail (/home/site/wwwroot/dist/index.cjs:72:36111)
+2026-05-03T21:42:17.4964787Z     at async /home/site/wwwroot/dist/index.cjs:183:6705 {
+2026-05-03T21:42:17.4964813Z   length: 107,
+2026-05-03T21:42:17.496484Z   severity: 'ERROR',
+2026-05-03T21:42:17.4964864Z   code: '42703',
+2026-05-03T21:42:17.4964889Z   detail: undefined,
+2026-05-03T21:42:17.4965007Z   hint: undefined,
+2026-05-03T21:42:17.4965034Z   position: '35',
+2026-05-03T21:42:17.4965058Z   internalPosition: undefined,
+2026-05-03T21:42:17.4965082Z   internalQuery: undefined,
+2026-05-03T21:42:17.4965105Z   where: undefined,
+2026-05-03T21:42:17.4965131Z   schema: undefined,
+2026-05-03T21:42:17.4965154Z   table: undefined,
+2026-05-03T21:42:17.4965179Z   column: undefined,
+2026-05-03T21:42:17.4965204Z   dataType: undefined,
+2026-05-03T21:42:17.496523Z   constraint: undefined,
+2026-05-03T21:42:17.4965254Z   file: 'parse_relation.c',
+2026-05-03T21:42:17.4965279Z   line: '3647',
+2026-05-03T21:42:17.4965322Z   routine: 'errorMissingColumn'
+2026-05-03T21:42:17.4965349Z }
+2026-05-03T21:42:17.498539Z 9:42:17 PM [express] POST /api/auth/email-otp/request 500 in 39ms :: {"message":"Failed to send verification code"}
+2026-05-03T21:51:40.3160552Z Email OTP request error: error: column "pass_id" does not exist
+2026-05-03T21:51:40.3160923Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T21:51:40.316096Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T21:51:40.3160987Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T21:51:40.3161013Z     at async s1.getActiveUserByEmail (/home/site/wwwroot/dist/index.cjs:72:36111)
+2026-05-03T21:51:40.3161039Z     at async /home/site/wwwroot/dist/index.cjs:183:6705 {
+2026-05-03T21:51:40.3161065Z   length: 107,
+2026-05-03T21:51:40.3161092Z   severity: 'ERROR',
+2026-05-03T21:51:40.3161116Z   code: '42703',
+2026-05-03T21:51:40.3161142Z   detail: undefined,
+2026-05-03T21:51:40.3161168Z   hint: undefined,
+2026-05-03T21:51:40.316121Z   position: '35',
+2026-05-03T21:51:40.3161238Z   internalPosition: undefined,
+2026-05-03T21:51:40.3161264Z   internalQuery: undefined,
+2026-05-03T21:51:40.3161289Z   where: undefined,
+2026-05-03T21:51:40.3161315Z   schema: undefined,
+2026-05-03T21:51:40.3161341Z   table: undefined,
+2026-05-03T21:51:40.3161368Z   column: undefined,
+2026-05-03T21:51:40.3161395Z   dataType: undefined,
+2026-05-03T21:51:40.3161422Z   constraint: undefined,
+2026-05-03T21:51:40.3161447Z   file: 'parse_relation.c',
+2026-05-03T21:51:40.3161474Z   line: '3647',
+2026-05-03T21:51:40.3161502Z   routine: 'errorMissingColumn'
+2026-05-03T21:51:40.3161539Z }
+2026-05-03T21:51:40.322148Z 9:51:40 PM [express] POST /api/auth/email-otp/request 500 in 42ms :: {"message":"Failed to send verification code"}
