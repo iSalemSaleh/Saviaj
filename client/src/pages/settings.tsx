@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck, RefreshCw, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck, RefreshCw, CheckCircle2, XCircle, Clock, TrendingUp } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -1206,9 +1207,20 @@ type PayoutSummary = {
   failedStuckPence: number;
 };
 
+type PayoutTrendPoint = {
+  periodStart: string;
+  paidPence: number;
+};
+
+type PayoutTrend = {
+  period: 'week' | 'month';
+  points: PayoutTrendPoint[];
+};
+
 type PayoutsResponse = {
   payouts: PayoutRow[];
   summary: PayoutSummary;
+  trend: PayoutTrend;
 };
 
 function SummaryCard({
@@ -1243,15 +1255,137 @@ function SummaryCard({
   );
 }
 
+// ============================================================
+// Earnings trend chart. Shows the driver's paid-out totals
+// bucketed by week (last 12) or month (last 6) so they can see
+// at a glance whether earnings are trending up or down. Reuses
+// the same data source as the summary cards (transferred-only,
+// time basis = COALESCE(updated_at, created_at)) so the
+// rightmost bar always matches "Paid this week/month".
+// ============================================================
+function EarningsTrendChart({
+  trend,
+  period,
+  onPeriodChange,
+  isLoading,
+}: {
+  trend: PayoutTrend | undefined;
+  period: 'week' | 'month';
+  onPeriodChange: (p: 'week' | 'month') => void;
+  isLoading: boolean;
+}) {
+  const points = trend?.points ?? [];
+  const totalPence = points.reduce((sum, p) => sum + (p.paidPence || 0), 0);
+  const hasAnyEarnings = totalPence > 0;
+
+  const formatBucketLabel = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    if (period === 'month') {
+      return d.toLocaleDateString(undefined, { month: 'short' });
+    }
+    // Week: show "DD MMM" of the week start
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+  };
+
+  const chartData = points.map((p) => ({
+    label: formatBucketLabel(p.periodStart),
+    paidPounds: p.paidPence / 100,
+    paidPence: p.paidPence,
+    periodStart: p.periodStart,
+  }));
+
+  return (
+    <div className="border rounded-md p-3 space-y-3" data-testid="card-earnings-trend">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <h3 className="font-semibold text-sm" data-testid="heading-earnings-trend">
+            Earnings trend
+          </h3>
+        </div>
+        <div className="inline-flex rounded-md border overflow-hidden text-xs">
+          <button
+            type="button"
+            onClick={() => onPeriodChange('week')}
+            className={`px-2.5 py-1 ${period === 'week' ? 'bg-accent text-accent-foreground' : 'bg-background text-muted-foreground'}`}
+            data-testid="button-trend-period-week"
+          >
+            Weekly
+          </button>
+          <button
+            type="button"
+            onClick={() => onPeriodChange('month')}
+            className={`px-2.5 py-1 border-l ${period === 'month' ? 'bg-accent text-accent-foreground' : 'bg-background text-muted-foreground'}`}
+            data-testid="button-trend-period-month"
+          >
+            Monthly
+          </button>
+        </div>
+      </div>
+      {isLoading && !trend ? (
+        <div className="h-[160px] flex items-center justify-center" data-testid="text-trend-loading">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : !hasAnyEarnings ? (
+        <p className="text-xs text-muted-foreground py-6 text-center" data-testid="text-trend-empty">
+          No paid-out earnings yet. Once your first transfer lands, it'll show up here.
+        </p>
+      ) : (
+        <div className="h-[160px]" data-testid="chart-earnings-trend">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -16 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                fontSize={11}
+                tickFormatter={(v: number) => `£${Math.round(v)}`}
+                width={48}
+              />
+              <Tooltip
+                cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
+                formatter={(value: number | string) => [`£${Number(value).toFixed(2)}`, 'Paid out']}
+                labelFormatter={(label: string | number) => String(label)}
+                contentStyle={{ fontSize: 12 }}
+              />
+              <Bar dataKey="paidPounds" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PayoutHistory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [trendPeriod, setTrendPeriod] = useState<'week' | 'month'>('week');
+  // Custom queryFn so the trendPeriod param is part of the URL.
+  // Keeping the period in the queryKey lets React Query cache each
+  // view separately and still invalidate cleanly via the prefix.
   const { data, isLoading, error } = useQuery<PayoutsResponse>({
-    queryKey: ["/api/driver/payouts"],
+    queryKey: ["/api/driver/payouts", { trendPeriod }],
+    queryFn: async () => {
+      const res = await fetch(`/api/driver/payouts?trendPeriod=${trendPeriod}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      return res.json();
+    },
     refetchInterval: 30_000,
   });
   const payouts = data?.payouts;
   const summary = data?.summary;
+  const trend = data?.trend;
 
   const retryMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -1330,6 +1464,12 @@ function PayoutHistory() {
           />
         </div>
       )}
+      <EarningsTrendChart
+        trend={trend}
+        period={trendPeriod}
+        onPeriodChange={setTrendPeriod}
+        isLoading={isLoading}
+      />
       <div>
         <h3 className="font-semibold text-sm" data-testid="heading-payout-history">Payout history</h3>
         <p className="text-xs text-muted-foreground">

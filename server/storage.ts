@@ -455,6 +455,16 @@ export interface IStorage {
     pendingPence: number;
     failedStuckPence: number;
   }>;
+  // Bucketed paid-out totals for charting an "earnings trend" on the
+  // Payouts page. Buckets are aligned to date_trunc('week'|'month', ...)
+  // in the server TZ (same basis as getDriverPayoutTotals so the chart's
+  // last bar matches the "Paid this week/month" summary card). Empty
+  // periods are filled in as zero so the chart's x-axis is contiguous
+  // even for new drivers with sparse history.
+  getDriverPayoutsByPeriod(
+    driverId: string,
+    opts: { period: 'week' | 'month'; periods: number },
+  ): Promise<Array<{ periodStart: string; paidPence: number }>>;
   updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string | null; bumpRetryCount?: boolean; setLastAttemptAt?: boolean }): Promise<void>;
   // Atomic "claim this failed row for a retry attempt": flips status
   // failed -> pending in a single UPDATE guarded by status='failed'.
@@ -1198,6 +1208,48 @@ export class DatabaseStorage implements IStorage {
       pendingPence: Number(row.pendingPence ?? 0),
       failedStuckPence: Number(row.failedStuckPence ?? 0),
     };
+  }
+
+  async getDriverPayoutsByPeriod(
+    driverId: string,
+    opts: { period: 'week' | 'month'; periods: number },
+  ) {
+    // Clamp inputs to keep generate_series cheap and predictable.
+    const period: 'week' | 'month' = opts.period === 'month' ? 'month' : 'week';
+    const periods = Math.max(1, Math.min(52, Math.floor(opts.periods)));
+    // generate_series builds the contiguous bucket axis (so empty
+    // weeks/months show as zero bars) and we LEFT JOIN the driver's
+    // transferred payouts onto it. Same time basis as
+    // getDriverPayoutTotals: COALESCE(updated_at, created_at), since
+    // updated_at is when status flipped to 'transferred'.
+    const intervalSql = period === 'month' ? sql`'1 month'::interval` : sql`'1 week'::interval`;
+    const periodLiteral = period === 'month' ? sql`'month'` : sql`'week'`;
+    const res = await db.execute(sql`
+      WITH buckets AS (
+        SELECT generate_series(
+          date_trunc(${periodLiteral}, NOW()) - (${periods - 1} * ${intervalSql}),
+          date_trunc(${periodLiteral}, NOW()),
+          ${intervalSql}
+        ) AS period_start
+      )
+      SELECT
+        b.period_start AS "periodStart",
+        COALESCE(SUM(p.amount_pence), 0)::bigint AS "paidPence"
+      FROM buckets b
+      LEFT JOIN driver_payouts p
+        ON p.driver_id = ${driverId}
+        AND p.status = 'transferred'
+        AND date_trunc(${periodLiteral}, COALESCE(p.updated_at, p.created_at)) = b.period_start
+      GROUP BY b.period_start
+      ORDER BY b.period_start ASC
+    `);
+    return (res.rows as Array<{ periodStart: Date | string; paidPence: string | number | null }>)
+      .map((row) => ({
+        periodStart: row.periodStart instanceof Date
+          ? row.periodStart.toISOString()
+          : String(row.periodStart),
+        paidPence: Number(row.paidPence ?? 0),
+      }));
   }
 
   async completeUserProfile(id: string, data: {

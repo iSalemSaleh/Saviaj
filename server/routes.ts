@@ -5356,14 +5356,24 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (!userId) return res.status(401).json({ message: 'Unauthorized' });
       const user = await storage.getUser(userId);
       if (!user?.isDriver) return res.status(403).json({ message: 'Driver account required' });
-      const [payouts, summary] = await Promise.all([
+      // Trend chart period: ?trendPeriod=week|month, default week.
+      // 12 buckets matches the design ("last ~12 weeks") and renders
+      // nicely in the compact card-width chart. For months we shorten
+      // to 6 so the bars stay readable on mobile.
+      const trendPeriod: 'week' | 'month' = req.query?.trendPeriod === 'month' ? 'month' : 'week';
+      const trendPoints = trendPeriod === 'month' ? 6 : 12;
+      const [payouts, summary, trendData] = await Promise.all([
         storage.listDriverPayoutsForDriver(userId),
         storage.getDriverPayoutTotals(userId, { maxRetries: PAYOUT_RETRY_MAX_ATTEMPTS }),
+        storage.getDriverPayoutsByPeriod(userId, { period: trendPeriod, periods: trendPoints }),
       ]);
-      // Response shape changed from a bare array to { payouts, summary }
-      // to add the lifetime-earnings summary header. Only consumer is
+      // Response shape: { payouts, summary, trend }. Only consumer is
       // the driver Payouts page (PayoutHistory in client/src/pages/settings.tsx).
-      res.json({ payouts, summary });
+      res.json({
+        payouts,
+        summary,
+        trend: { period: trendPeriod, points: trendData },
+      });
     } catch (err: any) {
       console.error('[payouts/list] error', err);
       res.status(500).json({ message: 'Failed to load payouts' });
