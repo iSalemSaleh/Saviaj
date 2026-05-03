@@ -1,0 +1,148 @@
+2026-05-03T20:14:44.9881674Z    _____
+2026-05-03T20:14:44.9883324Z   /  _  \ __________ _________   ____
+2026-05-03T20:14:44.9883407Z  /  /_\  \\___   /  |  \_  __ \_/ __ \
+2026-05-03T20:14:44.9883448Z /    |    \/    /|  |  /|  | \/\  ___/
+2026-05-03T20:14:44.9883521Z \____|__  /_____ \____/ |__|    \___  >
+2026-05-03T20:14:44.9883565Z         \/      \/                  \/
+2026-05-03T20:14:44.9883599Z A P P   S E R V I C E   O N   L I N U X
+2026-05-03T20:14:44.9883631Z
+2026-05-03T20:14:44.9883669Z Documentation    : http://aka.ms/webapp-linux
+2026-05-03T20:14:44.9883707Z NodeJS quickstart: https://aka.ms/node-qs
+2026-05-03T20:14:44.9883742Z NodeJS Version   : v24.13.0
+2026-05-03T20:14:44.9883785Z Instance Name    : pl0sdlwk001DFA
+2026-05-03T20:14:44.9883823Z Instance Id      : 180768af8d5f37afa6ee9320e07f55ffb654f2d3d303b4e4753535d3ea6b11df
+2026-05-03T20:14:44.9883852Z
+2026-05-03T20:14:44.9883884Z Note: Any data outside '/home' is not persisted
+2026-05-03T20:14:46.6122135Z  * Starting OpenBSD Secure Shell server sshd
+2026-05-03T20:14:46.6282416Z    ...done.
+2026-05-03T20:14:46.6353333Z WEBSITES_INCLUDE_CLOUD_CERTS is not set to true.
+2026-05-03T20:14:46.6667439Z Updating certificates in /etc/ssl/certs...
+2026-05-03T20:14:53.8544889Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-ECC.pem
+2026-05-03T20:14:53.8553863Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-RSA.pem
+2026-05-03T20:14:54.0302179Z rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
+2026-05-03T20:14:54.044739Z 4 added, 0 removed; done.
+2026-05-03T20:14:54.0455959Z Running hooks in /etc/ca-certificates/update.d...
+2026-05-03T20:14:54.0492648Z done.
+2026-05-03T20:14:54.0557546Z CA certificates copied and updated successfully.
+2026-05-03T20:14:54.0977532Z  * Starting periodic command scheduler cron
+2026-05-03T20:14:54.1035019Z    ...done.
+2026-05-03T20:14:54.1768398Z Found build manifest file at '/home/site/wwwroot/oryx-manifest.toml'. Deserializing it...
+2026-05-03T20:14:54.1820145Z Could not find operation ID in manifest. Generating an operation id...
+2026-05-03T20:14:54.1820414Z Build Operation ID: 18fffb22-1793-4796-9523-7913e87095e8
+2026-05-03T20:14:55.2120334Z Environment Variables for Application Insight's IPA Codeless Configuration exists..
+2026-05-03T20:14:55.2389422Z Writing output script to '/opt/startup/startup.sh'
+2026-05-03T20:14:55.280069Z Running #!/bin/sh
+2026-05-03T20:14:55.2801182Z
+2026-05-03T20:14:55.2801233Z # Enter the source directory to make sure the script runs where the user expects
+2026-05-03T20:14:55.2801286Z cd "/home/site/wwwroot"
+2026-05-03T20:14:55.280132Z
+2026-05-03T20:14:55.280141Z export NODE_PATH=/usr/local/lib/node_modules:$NODE_PATH
+2026-05-03T20:14:55.2801444Z if [ -z "$PORT" ]; then
+2026-05-03T20:14:55.2801477Z 		export PORT=8080
+2026-05-03T20:14:55.2801508Z fi
+2026-05-03T20:14:55.2801543Z
+2026-05-03T20:14:55.2801584Z echo Found tar.gz based node_modules.
+2026-05-03T20:14:55.2801621Z extractionCommand="tar -xzf node_modules.tar.gz -C /node_modules"
+2026-05-03T20:14:55.2801671Z echo "Removing existing modules directory from root..."
+2026-05-03T20:14:55.2801708Z rm -fr /node_modules
+2026-05-03T20:14:55.2801745Z mkdir -p /node_modules
+2026-05-03T20:14:55.280178Z echo Extracting modules...
+2026-05-03T20:14:55.2801817Z $extractionCommand
+2026-05-03T20:14:55.2801883Z export NODE_PATH="/node_modules":$NODE_PATH
+2026-05-03T20:14:55.280192Z export PATH=/node_modules/.bin:$PATH
+2026-05-03T20:14:55.2801969Z if [ -d node_modules ]; then
+2026-05-03T20:14:55.2802008Z     mv -f node_modules _del_node_modules || true
+2026-05-03T20:14:55.2802045Z fi
+2026-05-03T20:14:55.2802082Z
+2026-05-03T20:14:55.2802118Z if [ -d /node_modules ]; then
+2026-05-03T20:14:55.2802154Z     ln -sfn /node_modules ./node_modules
+2026-05-03T20:14:55.2802193Z fi
+2026-05-03T20:14:55.2802248Z
+2026-05-03T20:14:55.2802291Z echo "Done."
+2026-05-03T20:14:55.2802328Z npm start
+2026-05-03T20:14:55.2859614Z Found tar.gz based node_modules.
+2026-05-03T20:14:55.2868734Z Removing existing modules directory from root...
+2026-05-03T20:14:55.2952225Z Extracting modules...
+2026-05-03T20:15:02.9532378Z Done.
+2026-05-03T20:15:03.4120221Z npm info using npm@10.9.2
+2026-05-03T20:15:03.4124424Z npm info using node@v24.13.0
+2026-05-03T20:15:04.2751934Z
+2026-05-03T20:15:04.2752461Z > rest-express@1.0.0 start
+2026-05-03T20:15:04.275252Z > NODE_ENV=production node dist/index.cjs
+2026-05-03T20:15:04.2752564Z
+2026-05-03T20:15:04.7531654Z Initializing Stripe schema...
+2026-05-03T20:15:04.9538122Z Stripe schema ready
+2026-05-03T20:15:05.1928046Z { autoExpandLists: undefined, stripeApiVersion: undefined } StripeSync initialized
+2026-05-03T20:15:05.1928714Z Setting up managed webhook...
+2026-05-03T20:15:05.512732Z Webhook configured: https://saviaj-eag6c8epg9hzaze6.canadacentral-01.azurewebsites.net/api/stripe/webhook/a0d06d7d-3714-49e7-9d30-d756a3123967 (UUID: a0d06d7d-3714-49e7-9d30-d756a3123967)
+2026-05-03T20:15:05.5127898Z Syncing Stripe data...
+2026-05-03T20:15:05.5191234Z [auth] REPL_ID not set — skipping Replit OIDC setup (Azure/external host mode)
+2026-05-03T20:15:05.5197955Z [auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set — Google sign-in disabled
+2026-05-03T20:15:05.5205263Z [WebSocket] Server initialized
+2026-05-03T20:15:05.5604838Z 8:15:05 PM [express] Payment timeout and expired rides cleanup job scheduled (every 5 minutes)
+2026-05-03T20:15:05.5612744Z 8:15:05 PM [express] Recurring schedule generation job scheduled (every 6 hours)
+2026-05-03T20:15:05.5631089Z 8:15:05 PM [express] serving on port 8080
+2026-05-03T20:15:05.564694Z Syncing products
+2026-05-03T20:15:05.5884099Z Fetching items to sync from Stripe
+2026-05-03T20:15:05.7374434Z Sync complete: 0 items synced
+2026-05-03T20:15:05.7375684Z Syncing prices
+2026-05-03T20:15:05.7464589Z Fetching items to sync from Stripe
+2026-05-03T20:15:05.8878532Z Sync complete: 0 items synced
+2026-05-03T20:15:05.8880314Z Syncing plans
+2026-05-03T20:15:05.9040746Z Fetching items to sync from Stripe
+2026-05-03T20:15:06.0575284Z Sync complete: 0 items synced
+2026-05-03T20:15:06.0576808Z Syncing customers
+2026-05-03T20:15:06.0607811Z Incremental sync from cursor: 1767014803
+2026-05-03T20:15:06.0644446Z Fetching items to sync from Stripe
+2026-05-03T20:15:06.2328566Z Upserting final batch of 1 items
+2026-05-03T20:15:06.2427205Z Sync complete: 1 items synced
+2026-05-03T20:15:06.2432096Z Syncing subscriptions
+2026-05-03T20:15:06.2472964Z Fetching items to sync from Stripe
+2026-05-03T20:15:06.396443Z Sync complete: 0 items synced
+2026-05-03T20:15:06.3967512Z Syncing subscription schedules
+2026-05-03T20:15:06.4011739Z Fetching items to sync from Stripe
+2026-05-03T20:15:06.5316516Z Sync complete: 0 items synced
+2026-05-03T20:15:06.5320224Z Syncing invoices
+2026-05-03T20:15:06.5366429Z Fetching items to sync from Stripe
+2026-05-03T20:15:06.6844786Z Sync complete: 0 items synced
+2026-05-03T20:15:06.6845143Z Syncing charges
+2026-05-03T20:15:06.686187Z Incremental sync from cursor: 1767309687
+2026-05-03T20:15:06.6901929Z Fetching items to sync from Stripe
+2026-05-03T20:15:06.952837Z Upserting final batch of 1 items
+2026-05-03T20:15:06.9623041Z Sync complete: 1 items synced
+2026-05-03T20:15:06.9624612Z Syncing setup_intents
+2026-05-03T20:15:06.9663216Z Fetching items to sync from Stripe
+2026-05-03T20:15:07.0983075Z Sync complete: 0 items synced
+2026-05-03T20:15:07.0987991Z Syncing payment method
+2026-05-03T20:15:07.1009686Z Getting payment methods for 1 customers
+2026-05-03T20:15:07.1017476Z Fetching items to sync from Stripe
+2026-05-03T20:15:07.2381842Z Sync complete: 0 items synced
+2026-05-03T20:15:07.2384231Z Syncing payment_intents
+2026-05-03T20:15:07.2407421Z Incremental sync from cursor: 1767309686
+2026-05-03T20:15:07.242963Z Fetching items to sync from Stripe
+2026-05-03T20:15:07.4356333Z Upserting final batch of 1 items
+2026-05-03T20:15:07.4461459Z Sync complete: 1 items synced
+2026-05-03T20:15:07.4463915Z Syncing tax_ids
+2026-05-03T20:15:07.4476957Z Fetching items to sync from Stripe
+2026-05-03T20:15:07.5752304Z Sync complete: 0 items synced
+2026-05-03T20:15:07.5757715Z Syncing credit notes
+2026-05-03T20:15:07.580913Z Fetching items to sync from Stripe
+2026-05-03T20:15:07.724746Z Sync complete: 0 items synced
+2026-05-03T20:15:07.7250915Z Syncing disputes
+2026-05-03T20:15:07.7298621Z Fetching items to sync from Stripe
+2026-05-03T20:15:07.8658883Z Sync complete: 0 items synced
+2026-05-03T20:15:07.8662447Z Syncing early fraud warnings
+2026-05-03T20:15:07.8707912Z Fetching items to sync from Stripe
+2026-05-03T20:15:08.0571177Z Sync complete: 0 items synced
+2026-05-03T20:15:08.0571798Z Syncing refunds
+2026-05-03T20:15:08.0580764Z Incremental sync from cursor: 1767293574
+2026-05-03T20:15:08.0614044Z Fetching items to sync from Stripe
+2026-05-03T20:15:08.242194Z Upserting final batch of 1 items
+2026-05-03T20:15:08.2502175Z Sync complete: 1 items synced
+2026-05-03T20:15:08.2503908Z Syncing checkout sessions
+2026-05-03T20:15:08.2522302Z Incremental sync from cursor: 1767309610
+2026-05-03T20:15:08.2545388Z Fetching items to sync from Stripe
+2026-05-03T20:15:08.4290057Z Upserting final batch of 1 items
+2026-05-03T20:15:08.6038089Z Sync complete: 1 items synced
+2026-05-03T20:15:08.6039051Z Stripe data synced
+2026-05-03T20:29:47.223Z No new trace in the past 1 min(s).
