@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { relations } from 'drizzle-orm';
 import {
   index,
+  uniqueIndex,
   jsonb,
   pgTable,
   timestamp,
@@ -176,6 +177,26 @@ export const users = pgTable("users", {
   totalRatingsAsRider: integer("total_ratings_as_rider").default(0),
   totalRatingsAsDriver: integer("total_ratings_as_driver").default(0),
   stripeCustomerId: varchar("stripe_customer_id"),
+  // Stripe Connect Express - driver payout account. `accountId` is the
+  // acct_xxx returned by Stripe; `onboarded` flips true once the driver
+  // completes the hosted onboarding flow; `chargesEnabled` /
+  // `payoutsEnabled` are mirrored from Stripe's account.updated webhook
+  // (we gate driver actions on `payoutsEnabled` specifically because
+  // Stripe can flip it off independently if KYC fails). `requirementsDue`
+  // is a JSON snapshot of `requirements.currently_due` so the FE can
+  // tell the driver what info Stripe still needs.
+  stripeConnectAccountId: varchar("stripe_connect_account_id"),
+  stripeConnectOnboarded: boolean("stripe_connect_onboarded").default(false),
+  stripeConnectChargesEnabled: boolean("stripe_connect_charges_enabled").default(false),
+  stripeConnectPayoutsEnabled: boolean("stripe_connect_payouts_enabled").default(false),
+  stripeConnectRequirementsDue: jsonb("stripe_connect_requirements_due"),
+  stripeConnectUpdatedAt: timestamp("stripe_connect_updated_at"),
+  // Stripe Identity - KYC. `kycStatus` / `kycProvider` already exist
+  // above (provider-agnostic); these add Stripe-specific tracking so
+  // we can resume / inspect a session and surface failure reasons.
+  stripeIdentitySessionId: varchar("stripe_identity_session_id"),
+  stripeIdentityLastAttemptAt: timestamp("stripe_identity_last_attempt_at"),
+  stripeIdentityFailureReason: varchar("stripe_identity_failure_reason", { length: 200 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   // Admin and soft-delete fields
@@ -184,6 +205,40 @@ export const users = pgTable("users", {
   deletedReason: varchar("deleted_reason"),
   deletedBy: varchar("deleted_by"), // 'self' or admin userId
 });
+
+// Driver payouts - one row per Stripe Transfer we initiate (typically
+// after PATCH /api/rides/:id/complete). Provides an audit trail
+// independent of Stripe so we can reconcile / display earnings to the
+// driver, and so reversed transfers (after refunds) can be tracked
+// even when the original transfer is gone. `amountPence` mirrors
+// `rides.driver_payout_pence` at the moment of transfer so a later
+// rate change cannot rewrite history.
+export const driverPayouts = pgTable("driver_payouts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  rideId: integer("ride_id").notNull().references(() => rides.id),
+  driverId: varchar("driver_id").notNull().references(() => users.id),
+  stripeTransferId: varchar("stripe_transfer_id", { length: 80 }),
+  amountPence: integer("amount_pence").notNull(),
+  // 'pending' (about to call Stripe) | 'transferred' (Stripe accepted)
+  // | 'failed' (Stripe rejected) | 'reversed' (refund triggered a
+  // reversal) | 'reversed_with_debt' (reversal could not fully
+  // recoup, driver owes platform).
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  failureReason: varchar("failure_reason", { length: 300 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  // Concurrency-safe payout idempotency: at most ONE active payout
+  // (pending or transferred) per ride. A second concurrent
+  // /complete will lose this insert with a unique-violation and
+  // skip its transfer. Failed/reversed rows are excluded so retries
+  // are still possible after a genuine failure.
+  oneActivePayoutPerRide: uniqueIndex("driver_payouts_one_active_per_ride")
+    .on(table.rideId)
+    .where(sql`status IN ('pending', 'transferred')`),
+}));
+
+export type DriverPayout = typeof driverPayouts.$inferSelect;
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -632,6 +687,13 @@ export const driverRoutes = pgTable("driver_routes", {
   paymentTimeoutMinutes: integer("payment_timeout_minutes").default(5),
   status: varchar("status", { length: 50 }).default("active"),
   scheduleId: integer("schedule_id").references(() => recurringSchedules.id),
+  // Casual driver flat platform fee allocation. The first paid ride on
+  // this route owes the £1.50 platform fee; subsequent rides pay £0.
+  // `platformFeeCollectedForRideId` records which ride paid it so we can
+  // re-allocate to a later ride if the first one is refunded/cancelled.
+  // `platformFeeCollectedPence` is a running tally for accounting.
+  platformFeeCollectedForRideId: integer("platform_fee_collected_for_ride_id"),
+  platformFeeCollectedPence: integer("platform_fee_collected_pence").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -693,6 +755,15 @@ export const rides = pgTable("rides", {
   updatedAt: timestamp("updated_at").defaultNow(),
   hiddenByRider: boolean("hidden_by_rider").default(false),
   hiddenByDriver: boolean("hidden_by_driver").default(false),
+  // Platform fee accounting. Computed once at PaymentIntent creation
+  // and never changed. `feeCalculationVersion` is PLATFORM_FEES.version
+  // at time of computation - lets us audit which rate was applied even
+  // after the rates change. `feeBasis` records WHICH rule applied (see
+  // shared/data/platform-fees.ts FeeBasis type). All amounts in pence.
+  platformFeePence: integer("platform_fee_pence"),
+  driverPayoutPence: integer("driver_payout_pence"),
+  feeCalculationVersion: varchar("fee_calculation_version", { length: 20 }),
+  feeBasis: varchar("fee_basis", { length: 40 }),
 });
 
 export const ridesRelations = relations(rides, ({ one }) => ({

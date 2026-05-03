@@ -2473,7 +2473,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     try {
       const userId = req.session?.userId || req.user?.claims?.sub;
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
-      
+
       // Prevent self-dealing: driver cannot bid on their own ride request
       const offer = await storage.getRiderOfferById(req.body.riderOfferId);
       if (!offer) {
@@ -2482,12 +2482,27 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (offer.riderId === userId) {
         return res.status(400).json({ message: "You cannot bid on your own ride request" });
       }
-      
+
+      // Block bidding until the driver has completed Stripe Connect
+      // onboarding - otherwise we couldn't pay them when the ride
+      // completes. Returns a structured error so the FE can show a
+      // "Set up payouts" CTA inline.
+      const driverForBid = await storage.getUser(userId);
+      const { canDriverEarn } = await import('./stripeConnect');
+      const earnCheck = canDriverEarn(driverForBid as any);
+      if (!earnCheck.allowed) {
+        return res.status(403).json({
+          message: earnCheck.reason,
+          code: earnCheck.code,
+          stripeConnectRequired: true,
+        });
+      }
+
       const validatedData = insertBidSchema.parse({
         ...req.body,
         driverId: userId,
       });
-      
+
       const bid = await storage.createBid(validatedData);
       res.status(201).json(bid);
     } catch (error: any) {
@@ -2615,20 +2630,42 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         });
       }
       
+      // Compute platform fee BEFORE creating the PaymentIntent so we can
+      // store it in Stripe metadata (useful for debugging) and persist it
+      // on the new ride row. Bid-flow rides have no driver_route_id, so
+      // casual drivers always pay the flat £1.50; commercial drivers pay
+      // the percentage commission.
+      const ridePricePence = Math.round(price * 100);
+      const { computeRideFeeForDriver } = await import('./feeAllocation');
+      const feeCalc = await computeRideFeeForDriver({
+        driverId: existingBid.driverId,
+        ridePricePence,
+        driverRouteId: null,
+      });
+
       // Create PaymentIntent with Stripe
       const paymentIntent = await stripeService.createPaymentIntent(
-        Math.round(price * 100), // Convert to pence
+        ridePricePence,
         'gbp',
-        { 
+        {
           rideOfferId: offer.id.toString(),
           bidId: bidId.toString(),
           riderId: offer.riderId,
-          driverId: existingBid.driverId
+          driverId: existingBid.driverId,
+          platformFeePence: feeCalc.feePence.toString(),
+          driverPayoutPence: feeCalc.driverPayoutPence.toString(),
+          feeBasis: feeCalc.feeBasis,
+          feeCalculationVersion: feeCalc.feeCalculationVersion,
         }
       );
-      
+
       // Execute the transactional bid acceptance
-      const result = await storage.acceptBidWithTransaction(bidId, paymentIntent.id);
+      const result = await storage.acceptBidWithTransaction(bidId, paymentIntent.id, {
+        platformFeePence: feeCalc.feePence,
+        driverPayoutPence: feeCalc.driverPayoutPence,
+        feeCalculationVersion: feeCalc.feeCalculationVersion,
+        feeBasis: feeCalc.feeBasis,
+      });
       
       // Note: Driver daily activity is tracked at ride COMPLETION, not acceptance
       // This prevents cancelled rides from counting towards limits
@@ -2924,15 +2961,46 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         }
       }
       
+      // Block accept until the driver can be paid out (consistent
+      // with /api/bids and /api/driver/online-status).
+      {
+        const driverForGate = await storage.getUser(negotiation.driverId);
+        const { canDriverEarn } = await import('./stripeConnect');
+        const earnCheck = canDriverEarn(driverForGate as any);
+        if (!earnCheck.allowed) {
+          return res.status(403).json({
+            message: `Driver cannot accept yet: ${earnCheck.reason}`,
+            code: earnCheck.code,
+            stripeConnectRequired: true,
+          });
+        }
+      }
+
+      // Compute platform fee. Route-flow rides: casual drivers' £1.50
+      // flat fee gets attached to the FIRST paid ride on the route;
+      // subsequent rides on the same route pay £0. Commercial drivers
+      // pay the percentage commission on every ride.
+      const ridePricePence = Math.round(agreedPrice * 100);
+      const { computeRideFeeForDriver, claimRouteFlatFeeIfApplicable } = await import('./feeAllocation');
+      const feeCalc = await computeRideFeeForDriver({
+        driverId: negotiation.driverId,
+        ridePricePence,
+        driverRouteId: negotiation.driverRouteId,
+      });
+
       // Create payment intent
       const paymentIntent = await stripeService.createPaymentIntent(
-        Math.round(agreedPrice * 100),
+        ridePricePence,
         'gbp',
         {
           negotiationId: negotiationId.toString(),
           routeId: negotiation.driverRouteId.toString(),
           riderId: negotiation.riderId,
           driverId: negotiation.driverId,
+          platformFeePence: feeCalc.feePence.toString(),
+          driverPayoutPence: feeCalc.driverPayoutPence.toString(),
+          feeBasis: feeCalc.feeBasis,
+          feeCalculationVersion: feeCalc.feeCalculationVersion,
         }
       );
       
@@ -2952,7 +3020,19 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         status: 'pending_payment',
         seatsRequested: negotiation.seatsRequested,
         paymentIntentId: paymentIntent.id,
-      });
+        platformFeePence: feeCalc.feePence,
+        driverPayoutPence: feeCalc.driverPayoutPence,
+        feeCalculationVersion: feeCalc.feeCalculationVersion,
+        feeBasis: feeCalc.feeBasis,
+      } as any);
+
+      // NOTE: We deliberately do NOT claim the route's flat-fee slot
+      // here. Acceptance is too early - if this ride never pays
+      // (timeout/cancel) the slot would be permanently locked. The
+      // canonical claim now happens at payment-confirmed time via
+      // `finalizeFeeOnPaymentConfirmed`. The fee fields persisted on
+      // the ride above are tentative and may be rebalanced then.
+      void claimRouteFlatFeeIfApplicable;
       
       // Update negotiation
       await storage.updateRouteNegotiation(negotiationId, {
@@ -3284,14 +3364,43 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       const agreedPrice = parseFloat(latestOffer.amount);
       
+      // Block accept until the driver can be paid out.
+      {
+        const driverForGate = await storage.getUser(negotiation.driverId);
+        const { canDriverEarn } = await import('./stripeConnect');
+        const earnCheck = canDriverEarn(driverForGate as any);
+        if (!earnCheck.allowed) {
+          return res.status(403).json({
+            message: `Driver cannot accept yet: ${earnCheck.reason}`,
+            code: earnCheck.code,
+            stripeConnectRequired: true,
+          });
+        }
+      }
+
+      // Compute platform fee. Pro negotiations always involve a
+      // commercial driver (enforced at creation time), so this will
+      // always be the percentage commission.
+      const ridePricePence = Math.round(agreedPrice * 100);
+      const { computeRideFeeForDriver } = await import('./feeAllocation');
+      const feeCalc = await computeRideFeeForDriver({
+        driverId: negotiation.driverId,
+        ridePricePence,
+        driverRouteId: null,
+      });
+
       // Create payment intent
       const paymentIntent = await stripeService.createPaymentIntent(
-        Math.round(agreedPrice * 100),
+        ridePricePence,
         'gbp',
         {
           proNegotiationId: negotiationId.toString(),
           riderId: negotiation.riderId,
           driverId: negotiation.driverId,
+          platformFeePence: feeCalc.feePence.toString(),
+          driverPayoutPence: feeCalc.driverPayoutPence.toString(),
+          feeBasis: feeCalc.feeBasis,
+          feeCalculationVersion: feeCalc.feeCalculationVersion,
         }
       );
       
@@ -3309,7 +3418,11 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         scheduledTime: new Date(),
         status: 'pending_payment',
         paymentIntentId: paymentIntent.id,
-      });
+        platformFeePence: feeCalc.feePence,
+        driverPayoutPence: feeCalc.driverPayoutPence,
+        feeCalculationVersion: feeCalc.feeCalculationVersion,
+        feeBasis: feeCalc.feeBasis,
+      } as any);
       
       await storage.updateProHireNegotiation(negotiationId, {
         status: 'accepted',
@@ -3722,6 +3835,15 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         paymentIntentId: paymentIntentId
       });
 
+      // Casual-route flat-fee slot is claimed AT payment confirmation,
+      // not at acceptance, so cancelled/expired rides don't lock the £1.50.
+      try {
+        const { finalizeFeeOnPaymentConfirmed } = await import('./feeAllocation');
+        await finalizeFeeOnPaymentConfirmed(rideId);
+      } catch (feeErr) {
+        console.error(`[finalize-fee] ride ${rideId}:`, feeErr);
+      }
+
       // Notify driver via WebSocket
       if (ride.driverId) {
         const { broadcast } = await import('./websocket');
@@ -3844,6 +3966,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         paymentStatus: paymentIntent.status === 'succeeded' ? 'paid' : 'authorized',
         paymentIntentId: paymentIntentId
       });
+
+      // Casual-route flat-fee slot is claimed AT payment confirmation,
+      // not at acceptance, so cancelled/expired rides don't lock the £1.50.
+      if (paymentIntent.status === 'succeeded') {
+        try {
+          const { finalizeFeeOnPaymentConfirmed } = await import('./feeAllocation');
+          await finalizeFeeOnPaymentConfirmed(rideId);
+        } catch (feeErr) {
+          console.error(`[finalize-fee] ride ${rideId}:`, feeErr);
+        }
+      }
 
       // If this ride came from a rider offer, update the offer status
       if (ride.riderOfferId) {
@@ -4103,6 +4236,19 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       if (!user.driverVerified && !user.commercialStatusVerified) {
         return res.status(403).json({ message: "Your driver account must be verified before going online" });
+      }
+
+      // Block going online for hire until the driver can be paid out.
+      if (isOnlineForHire) {
+        const { canDriverEarn } = await import('./stripeConnect');
+        const earnCheck = canDriverEarn(user as any);
+        if (!earnCheck.allowed) {
+          return res.status(403).json({
+            message: earnCheck.reason,
+            code: earnCheck.code,
+            stripeConnectRequired: true,
+          });
+        }
       }
       
       // Rate per mile is required when going online (either flat rate or at least tier 1 rate)
@@ -4553,8 +4699,85 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (!ride) return res.status(404).json({ message: "Ride not found" });
       if (ride.driverId !== userId) return res.status(403).json({ message: "Unauthorized" });
       
+      // Idempotency: a ride may legitimately receive multiple /complete
+      // calls (driver retry, websocket double-tap, simultaneous tabs).
+      // The fast-path is the status check; the *authoritative* guard
+      // is the unique partial index `driver_payouts_one_active_per_ride`
+      // which makes a duplicate active payout insert raise a 23505
+      // unique-violation. We catch that and skip the transfer instead
+      // of letting two Stripe transfers fire.
+      if (ride.status === 'completed') {
+        return res.json(ride);
+      }
+
       const updatedRide = await storage.updateRideStatus(id, 'completed');
-      
+
+      // Trigger Stripe Connect transfer of the driver's net earnings
+      // (rides.driver_payout_pence, computed at PaymentIntent time).
+      // If the driver has no Connect account or the transfer fails we
+      // still mark the ride completed - the failure is recorded on
+      // driver_payouts so support / a retry job can re-attempt later.
+      if (ride.driverId && (ride as any).driverPayoutPence > 0 && (ride as any).paymentStatus === 'paid') {
+        try {
+          const driver = await storage.getUser(ride.driverId);
+          if (!driver?.stripeConnectAccountId || !driver?.stripeConnectPayoutsEnabled) {
+            try {
+              await storage.createDriverPayout({
+                rideId: id,
+                driverId: ride.driverId,
+                amountPence: (ride as any).driverPayoutPence,
+                status: 'failed',
+                failureReason: 'No active Stripe Connect account at completion time',
+              });
+            } catch (e: any) {
+              if (e?.code !== '23505') throw e;
+            }
+            console.warn(`[payout] ride ${id}: driver ${ride.driverId} has no active Connect account; payout NOT sent`);
+          } else {
+            let payoutRow;
+            try {
+              payoutRow = await storage.createDriverPayout({
+                rideId: id,
+                driverId: ride.driverId,
+                amountPence: (ride as any).driverPayoutPence,
+                status: 'pending',
+              });
+            } catch (insertErr: any) {
+              if (insertErr?.code === '23505') {
+                console.log(`[payout] ride ${id}: active payout already exists; skipping duplicate transfer`);
+                payoutRow = null;
+              } else {
+                throw insertErr;
+              }
+            }
+            if (payoutRow) {
+              try {
+                const { transferToDriver } = await import('./stripeConnect');
+                const transfer = await transferToDriver({
+                  destinationAccountId: driver.stripeConnectAccountId,
+                  amountPence: (ride as any).driverPayoutPence,
+                  rideId: id,
+                  driverId: ride.driverId,
+                });
+                await storage.updateDriverPayoutStatus(payoutRow.id, {
+                  status: 'transferred',
+                  stripeTransferId: transfer.id,
+                });
+                console.log(`[payout] ride ${id}: transferred ${(ride as any).driverPayoutPence}p to ${driver.stripeConnectAccountId} (transfer ${transfer.id})`);
+              } catch (transferErr: any) {
+                await storage.updateDriverPayoutStatus(payoutRow.id, {
+                  status: 'failed',
+                  failureReason: transferErr?.message?.slice(0, 290) || 'Stripe transfer failed',
+                });
+                console.error(`[payout] ride ${id}: transfer failed`, transferErr);
+              }
+            }
+          }
+        } catch (payoutErr) {
+          console.error(`[payout] ride ${id}: payout pipeline crashed`, payoutErr);
+        }
+      }
+
       // Track driver daily activity at completion (for private driver limits)
       if (ride.driverId && ride.agreedPrice) {
         const price = parseFloat(ride.agreedPrice);
@@ -4628,6 +4851,46 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         } catch (refundError) {
           console.error(`Failed to process refund for ride ${id}:`, refundError);
           return res.status(500).json({ message: "Failed to process refund. Please contact support." });
+        }
+
+        // Reverse any Stripe Connect transfer that already left for
+        // the driver. If their connected balance is too low Stripe
+        // creates a debit-pending balance transaction; we record that
+        // so support can chase it manually.
+        try {
+          const payouts = await storage.getDriverPayoutsForRide(id);
+          const { reverseDriverTransfer } = await import('./stripeConnect');
+          for (const p of payouts) {
+            if (p.status === 'transferred' && p.stripeTransferId) {
+              try {
+                await reverseDriverTransfer({
+                  stripeTransferId: p.stripeTransferId,
+                  amountPence: p.amountPence,
+                  reason: 'ride_refunded',
+                });
+                await storage.updateDriverPayoutStatus(p.id, { status: 'reversed' });
+                console.log(`[payout] ride ${id}: reversed transfer ${p.stripeTransferId}`);
+              } catch (reverseErr: any) {
+                await storage.updateDriverPayoutStatus(p.id, {
+                  status: 'reversed_with_debt',
+                  failureReason: reverseErr?.message?.slice(0, 290) || 'Reversal failed',
+                });
+                console.error(`[payout] ride ${id}: reversal failed`, reverseErr);
+              }
+            }
+          }
+        } catch (reversalPipelineErr) {
+          console.error(`[payout] ride ${id}: reversal pipeline crashed`, reversalPipelineErr);
+        }
+
+        // Re-allocate the casual-route £1.50 slot if this ride owned
+        // it - so the platform doesn't lose the route fee just
+        // because the original first-payer cancelled.
+        try {
+          const { reallocateRouteFeeOnRefund } = await import('./feeAllocation');
+          await reallocateRouteFeeOnRefund(id);
+        } catch (reallocErr) {
+          console.error(`[fee-realloc] ride ${id}:`, reallocErr);
         }
       }
       
@@ -4966,6 +5229,117 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     } catch (error) {
       console.error("Error uploading license:", error);
       res.status(500).json({ message: "Failed to upload license" });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Stripe Connect Express - driver payout account onboarding & status
+  // ─────────────────────────────────────────────────────────────────────
+  app.post('/api/driver/connect/onboard', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      if (!user.isDriver) return res.status(403).json({ message: 'Driver account required' });
+      if (!user.email) return res.status(400).json({ message: 'Email required to set up payouts' });
+
+      const { ensureExpressAccountForDriver, createOnboardingLink } = await import('./stripeConnect');
+      const accountId = await ensureExpressAccountForDriver({ userId, email: user.email });
+      const url = await createOnboardingLink(accountId);
+      res.json({ url, accountId });
+    } catch (err: any) {
+      console.error('[connect/onboard] error', err);
+      res.status(500).json({ message: err?.message || 'Failed to start Stripe onboarding' });
+    }
+  });
+
+  app.get('/api/driver/connect/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      if (!user.isDriver) return res.status(403).json({ message: 'Driver account required' });
+      res.json({
+        hasAccount: !!user.stripeConnectAccountId,
+        onboarded: !!user.stripeConnectOnboarded,
+        chargesEnabled: !!user.stripeConnectChargesEnabled,
+        payoutsEnabled: !!user.stripeConnectPayoutsEnabled,
+        requirementsDue: user.stripeConnectRequirementsDue ?? [],
+        updatedAt: user.stripeConnectUpdatedAt,
+      });
+    } catch (err: any) {
+      console.error('[connect/status] error', err);
+      res.status(500).json({ message: 'Failed to read Stripe Connect status' });
+    }
+  });
+
+  app.post('/api/driver/connect/refresh', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const user = await storage.getUser(userId);
+      if (!user?.isDriver) return res.status(403).json({ message: 'Driver account required' });
+      if (!user?.stripeConnectAccountId) {
+        return res.status(400).json({ message: 'No Stripe Connect account exists yet' });
+      }
+      const { syncAccountFromStripe } = await import('./stripeConnect');
+      const account = await syncAccountFromStripe(user.stripeConnectAccountId);
+      res.json({
+        onboarded: !!account.details_submitted,
+        chargesEnabled: !!account.charges_enabled,
+        payoutsEnabled: !!account.payouts_enabled,
+        requirementsDue: account.requirements?.currently_due ?? [],
+      });
+    } catch (err: any) {
+      console.error('[connect/refresh] error', err);
+      res.status(500).json({ message: err?.message || 'Failed to refresh Stripe Connect status' });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Stripe Identity - hosted KYC verification
+  // ─────────────────────────────────────────────────────────────────────
+  app.post('/api/driver/kyc/stripe-identity/start', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      if (!user.isDriver) return res.status(403).json({ message: 'Driver account required' });
+
+      const { startIdentityVerification } = await import('./stripeIdentity');
+      const { clientSecret, sessionId } = await startIdentityVerification({
+        userId,
+        email: user.email,
+      });
+      res.json({ clientSecret, sessionId });
+    } catch (err: any) {
+      console.error('[kyc/stripe-identity/start] error', err);
+      res.status(500).json({ message: err?.message || 'Failed to start identity verification' });
+    }
+  });
+
+  app.get('/api/driver/kyc/status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      if (!user.isDriver) return res.status(403).json({ message: 'Driver account required' });
+      res.json({
+        kycStatus: user.kycStatus ?? 'pending',
+        kycProvider: user.kycProvider ?? null,
+        kycVerifiedAt: user.kycVerifiedAt ?? null,
+        sessionId: user.stripeIdentitySessionId ?? null,
+        lastAttemptAt: user.stripeIdentityLastAttemptAt ?? null,
+        failureReason: user.stripeIdentityFailureReason ?? null,
+      });
+    } catch (err: any) {
+      console.error('[kyc/status] error', err);
+      res.status(500).json({ message: 'Failed to read KYC status' });
     }
   });
 }

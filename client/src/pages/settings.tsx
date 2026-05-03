@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck } from "lucide-react";
+import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -51,7 +51,7 @@ export default function SettingsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={user?.isDriver ? "grid w-full grid-cols-4" : "grid w-full grid-cols-3"}>
+          <TabsList className={user?.isDriver ? "grid w-full grid-cols-5" : "grid w-full grid-cols-3"}>
             <TabsTrigger value="profile" data-testid="tab-profile">
               <User className="h-4 w-4 mr-2" />
               Profile
@@ -64,6 +64,12 @@ export default function SettingsPage() {
               <TabsTrigger value="compliance" data-testid="tab-compliance">
                 <ShieldCheck className="h-4 w-4 mr-2" />
                 Compliance
+              </TabsTrigger>
+            )}
+            {user?.isDriver && (
+              <TabsTrigger value="payouts" data-testid="tab-payouts">
+                <Wallet className="h-4 w-4 mr-2" />
+                Payouts
               </TabsTrigger>
             )}
             <TabsTrigger value="account" data-testid="tab-account">
@@ -83,6 +89,14 @@ export default function SettingsPage() {
           {user?.isDriver && (
             <TabsContent value="compliance">
               <ComplianceSection />
+            </TabsContent>
+          )}
+
+          {user?.isDriver && (
+            <TabsContent value="payouts">
+              <PayoutsSection />
+              <div className="h-6" />
+              <IdentityVerificationSection />
             </TabsContent>
           )}
 
@@ -1028,6 +1042,241 @@ function AccountSection() {
         <p className="text-xs text-muted-foreground mt-4 text-center">
           If you need help recovering your account, contact support within 30 days.
         </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Payouts (Stripe Connect Express) — driver-only.
+// Surfaces onboarding state from /api/driver/connect/status and
+// either CTAs the driver to start onboarding or shows a green
+// "Payouts active" badge once Stripe has approved the account.
+// Drivers cannot earn (bid, go online, complete a paid ride
+// payout) until this is in the green state — matches the
+// server-side gate in canDriverEarn().
+// ============================================================
+function PayoutsSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/driver/connect/status"],
+    refetchInterval: 15_000,
+  });
+
+  const onboardMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/driver/connect/onboard", {});
+      return res.json();
+    },
+    onSuccess: (resp: any) => {
+      if (resp?.url) {
+        window.location.href = resp.url;
+      } else {
+        toast({ title: "Couldn't start onboarding", description: "No link returned by Stripe", variant: "destructive" });
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: "Onboarding failed", description: err?.message || "Try again later", variant: "destructive" });
+    },
+  });
+
+  const refreshMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/driver/connect/refresh", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/connect/status"] });
+      toast({ title: "Status refreshed" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Refresh failed", description: err?.message || "Try again later", variant: "destructive" });
+    },
+  });
+
+  const onboarded = !!data?.onboarded;
+  const payoutsEnabled = !!data?.payoutsEnabled;
+  const requirementsDue: string[] = Array.isArray(data?.requirementsDue) ? data.requirementsDue : [];
+
+  return (
+    <Card data-testid="card-payouts">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Wallet className="h-5 w-5" />
+          Driver Payouts
+        </CardTitle>
+        <CardDescription>
+          We pay your earnings (ride price minus the platform fee) into the bank account
+          you set up here. Stripe Express handles ID + bank details on their side — we
+          never see them. Until this is active, you can't bid, go online, or get paid.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : payoutsEnabled && onboarded ? (
+          <>
+            <Badge className="bg-green-600 hover:bg-green-700" data-testid="badge-payouts-active">
+              <BadgeCheck className="h-3 w-3 mr-1" />
+              Payouts active
+            </Badge>
+            <p className="text-sm text-muted-foreground">
+              You're all set. Earnings transfer to your bank automatically after each
+              completed ride, on Stripe's standard payout schedule.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refreshMutation.mutate()}
+              disabled={refreshMutation.isPending}
+              data-testid="button-refresh-payout-status"
+            >
+              {refreshMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Refresh status
+            </Button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm" data-testid="alert-payouts-incomplete">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-amber-900">
+                  {data?.hasAccount ? "Onboarding not finished yet" : "Set up payouts to start earning"}
+                </p>
+                {requirementsDue.length > 0 && (
+                  <p className="text-amber-800 mt-1">
+                    Stripe still needs: {requirementsDue.join(", ")}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => onboardMutation.mutate()}
+                disabled={onboardMutation.isPending}
+                data-testid="button-start-onboarding"
+              >
+                {onboardMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {data?.hasAccount ? "Continue onboarding" : "Set up payouts with Stripe"}
+              </Button>
+              {data?.hasAccount && (
+                <Button
+                  variant="outline"
+                  onClick={() => refreshMutation.mutate()}
+                  disabled={refreshMutation.isPending}
+                  data-testid="button-refresh-payout-status"
+                >
+                  Refresh status
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============================================================
+// Identity verification (Stripe Identity) — driver-only.
+// Hosted KYC flow. Clicking the button creates a verification
+// session server-side, opens Stripe's hosted modal via
+// stripe-js, and the result is webhook-driven. Polls
+// /api/driver/kyc/status after the modal closes so the badge
+// flips without a refresh.
+// ============================================================
+function IdentityVerificationSection() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data, isLoading } = useQuery<any>({
+    queryKey: ["/api/driver/kyc/status"],
+    refetchInterval: 20_000,
+  });
+  const [verifying, setVerifying] = useState(false);
+
+  const status: string = data?.kycStatus || "pending";
+  const verified = status === "verified";
+
+  const startMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/driver/kyc/stripe-identity/start", {});
+      return res.json();
+    },
+    onSuccess: async (resp: any) => {
+      if (!resp?.clientSecret) {
+        toast({ title: "Couldn't start verification", variant: "destructive" });
+        return;
+      }
+      setVerifying(true);
+      try {
+        const publishableKeyRes = await fetch("/api/stripe/publishable-key").then(r => r.json()).catch(() => null);
+        const pk = publishableKeyRes?.publishableKey;
+        if (!pk) {
+          toast({ title: "Stripe not configured", description: "Missing publishable key", variant: "destructive" });
+          return;
+        }
+        const { loadStripe } = await import("@stripe/stripe-js");
+        const stripe = await loadStripe(pk);
+        if (!stripe) {
+          toast({ title: "Couldn't load Stripe", variant: "destructive" });
+          return;
+        }
+        const result = await stripe.verifyIdentity(resp.clientSecret);
+        if (result.error) {
+          toast({ title: "Verification cancelled", description: result.error.message, variant: "destructive" });
+        } else {
+          toast({ title: "Verification submitted", description: "Stripe is reviewing your documents." });
+        }
+        queryClient.invalidateQueries({ queryKey: ["/api/driver/kyc/status"] });
+      } finally {
+        setVerifying(false);
+      }
+    },
+    onError: (err: any) => {
+      toast({ title: "Couldn't start verification", description: err?.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Card data-testid="card-identity">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <BadgeCheck className="h-5 w-5" />
+          Identity Verification
+        </CardTitle>
+        <CardDescription>
+          Verify your identity with Stripe so passengers (and the law) know who's
+          driving. You'll upload a photo of your ID and take a selfie inside Stripe's
+          hosted flow — we never see the documents.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : verified ? (
+          <Badge className="bg-green-600 hover:bg-green-700" data-testid="badge-identity-verified">
+            <BadgeCheck className="h-3 w-3 mr-1" />
+            Identity verified{data?.kycVerifiedAt ? ` on ${new Date(data.kycVerifiedAt).toLocaleDateString()}` : ""}
+          </Badge>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 text-sm" data-testid="text-identity-status">
+              <Badge variant="outline">Status: {status}</Badge>
+              {data?.failureReason && (
+                <span className="text-muted-foreground">— {data.failureReason}</span>
+              )}
+            </div>
+            <Button
+              onClick={() => startMutation.mutate()}
+              disabled={startMutation.isPending || verifying}
+              data-testid="button-start-identity"
+            >
+              {(startMutation.isPending || verifying) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {status === "in_progress" || status === "requires_input" ? "Resume verification" : "Start verification"}
+            </Button>
+          </>
+        )}
       </CardContent>
     </Card>
   );

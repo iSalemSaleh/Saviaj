@@ -413,6 +413,31 @@ export interface IStorage {
   recordSanctionsScreening(userId: string, status: 'cleared' | 'flagged'): Promise<User | undefined>;
   updateUserDriverStatus(id: string, isDriver: boolean, licenseUrl?: string): Promise<User>;
   updateUserStripeCustomerId(id: string, stripeCustomerId: string): Promise<User>;
+  updateUserStripeConnect(id: string, fields: {
+    accountId: string;
+    chargesEnabled: boolean;
+    payoutsEnabled: boolean;
+    onboarded: boolean;
+    requirementsDue: any;
+  }): Promise<User>;
+  updateUserStripeIdentity(id: string, fields: {
+    sessionId?: string;
+    lastAttemptAt?: Date;
+    kycStatus: string;
+    kycProvider?: string;
+    failureReason?: string | null;
+    verifiedAt?: Date | null;
+  }): Promise<User>;
+  createDriverPayout(payout: {
+    rideId: number;
+    driverId: string;
+    amountPence: number;
+    status: string;
+    stripeTransferId?: string;
+    failureReason?: string;
+  }): Promise<{ id: number }>;
+  getDriverPayoutsForRide(rideId: number): Promise<Array<{ id: number; status: string; stripeTransferId: string | null; amountPence: number }>>;
+  updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string }): Promise<void>;
   completeUserProfile(id: string, data: {
     firstName: string;
     lastName: string;
@@ -486,7 +511,21 @@ export interface IStorage {
     rider: { id: string; firstName: string | null; lastName: string | null; profileImageUrl: string | null; riderRating: string | null } | null;
   }>>;
   updateBidStatus(id: number, status: string): Promise<Bid>;
-  acceptBidWithTransaction(bidId: number, paymentIntentId: string): Promise<{
+  claimRouteFlatFee(args: { driverRouteId: number; rideId: number; feePence: number }): Promise<boolean>;
+  resetRideFeeToZero(rideId: number): Promise<void>;
+  clearRouteFeeClaim(driverRouteId: number): Promise<void>;
+  findEarliestPaidSiblingOwingRouteFee(driverRouteId: number, excludeRideId: number): Promise<{ id: number; agreedPrice: string } | undefined>;
+  setRideFeeFields(rideId: number, fields: { platformFeePence: number; driverPayoutPence: number; feeBasis: string; feeCalculationVersion: string }): Promise<void>;
+  acceptBidWithTransaction(
+    bidId: number,
+    paymentIntentId: string,
+    feeFields: {
+      platformFeePence: number;
+      driverPayoutPence: number;
+      feeCalculationVersion: string;
+      feeBasis: string;
+    },
+  ): Promise<{
     bid: Bid;
     ride: Ride;
     offer: RiderOffer;
@@ -883,6 +922,94 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async updateUserStripeConnect(id: string, fields: {
+    accountId: string;
+    chargesEnabled: boolean;
+    payoutsEnabled: boolean;
+    onboarded: boolean;
+    requirementsDue: any;
+  }): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        stripeConnectAccountId: fields.accountId,
+        stripeConnectChargesEnabled: fields.chargesEnabled,
+        stripeConnectPayoutsEnabled: fields.payoutsEnabled,
+        stripeConnectOnboarded: fields.onboarded,
+        stripeConnectRequirementsDue: fields.requirementsDue,
+        stripeConnectUpdatedAt: new Date(),
+        updatedAt: new Date(),
+      } as any)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async updateUserStripeIdentity(id: string, fields: {
+    sessionId?: string;
+    lastAttemptAt?: Date;
+    kycStatus: string;
+    kycProvider?: string;
+    failureReason?: string | null;
+    verifiedAt?: Date | null;
+  }): Promise<User> {
+    const updates: any = {
+      kycStatus: fields.kycStatus,
+      updatedAt: new Date(),
+    };
+    if (fields.sessionId !== undefined) updates.stripeIdentitySessionId = fields.sessionId;
+    if (fields.lastAttemptAt !== undefined) updates.stripeIdentityLastAttemptAt = fields.lastAttemptAt;
+    if (fields.kycProvider !== undefined) updates.kycProvider = fields.kycProvider;
+    if (fields.failureReason !== undefined) updates.stripeIdentityFailureReason = fields.failureReason;
+    if (fields.verifiedAt !== undefined) updates.kycVerifiedAt = fields.verifiedAt;
+    const [user] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async createDriverPayout(payout: {
+    rideId: number;
+    driverId: string;
+    amountPence: number;
+    status: string;
+    stripeTransferId?: string;
+    failureReason?: string;
+  }): Promise<{ id: number }> {
+    const res = await db.execute(sql`
+      INSERT INTO driver_payouts (
+        ride_id, driver_id, amount_pence, status,
+        stripe_transfer_id, failure_reason, created_at, updated_at
+      ) VALUES (
+        ${payout.rideId}, ${payout.driverId}, ${payout.amountPence}, ${payout.status},
+        ${payout.stripeTransferId ?? null}, ${payout.failureReason ?? null},
+        NOW(), NOW()
+      ) RETURNING id
+    `);
+    return { id: (res.rows[0] as any).id as number };
+  }
+
+  async getDriverPayoutsForRide(rideId: number): Promise<Array<{ id: number; status: string; stripeTransferId: string | null; amountPence: number }>> {
+    const res = await db.execute(sql`
+      SELECT id, status, stripe_transfer_id AS "stripeTransferId", amount_pence AS "amountPence"
+      FROM driver_payouts WHERE ride_id = ${rideId}
+    `);
+    return res.rows as any;
+  }
+
+  async updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string }): Promise<void> {
+    await db.execute(sql`
+      UPDATE driver_payouts
+      SET status = ${fields.status},
+          stripe_transfer_id = COALESCE(${fields.stripeTransferId ?? null}, stripe_transfer_id),
+          failure_reason = COALESCE(${fields.failureReason ?? null}, failure_reason),
+          updated_at = NOW()
+      WHERE id = ${id}
+    `);
   }
 
   async completeUserProfile(id: string, data: {
@@ -1284,6 +1411,79 @@ export class DatabaseStorage implements IStorage {
     return ride;
   }
 
+  async claimRouteFlatFee(args: { driverRouteId: number; rideId: number; feePence: number }): Promise<boolean> {
+    // Atomic claim: only the first ride to update this route wins the
+    // £1.50 fee assignment. Subsequent concurrent attempts get 0 rows
+    // updated, signalling they should reset their own ride fee to 0.
+    const res = await db.execute(sql`
+      UPDATE driver_routes
+      SET platform_fee_collected_for_ride_id = ${args.rideId},
+          platform_fee_collected_pence = ${args.feePence},
+          updated_at = NOW()
+      WHERE id = ${args.driverRouteId}
+        AND platform_fee_collected_for_ride_id IS NULL
+    `);
+    return (res.rowCount ?? 0) > 0;
+  }
+
+  async resetRideFeeToZero(rideId: number): Promise<void> {
+    // Used when we lost a race for the casual-route flat-fee claim:
+    // bump our ride's fee to 0 and refund the driver payout to the
+    // full ride price. feeBasis becomes "casual_route_subsequent".
+    await db.execute(sql`
+      UPDATE rides
+      SET platform_fee_pence = 0,
+          driver_payout_pence = ROUND(agreed_price * 100)::int,
+          fee_basis = 'casual_route_subsequent',
+          updated_at = NOW()
+      WHERE id = ${rideId}
+    `);
+  }
+
+  async clearRouteFeeClaim(driverRouteId: number): Promise<void> {
+    await db.execute(sql`
+      UPDATE driver_routes
+      SET platform_fee_collected_for_ride_id = NULL,
+          platform_fee_collected_pence = 0,
+          updated_at = NOW()
+      WHERE id = ${driverRouteId}
+    `);
+  }
+
+  async findEarliestPaidSiblingOwingRouteFee(
+    driverRouteId: number,
+    excludeRideId: number,
+  ): Promise<{ id: number; agreedPrice: string } | undefined> {
+    const res = await db.execute(sql`
+      SELECT id, agreed_price AS "agreedPrice"
+      FROM rides
+      WHERE driver_route_id = ${driverRouteId}
+        AND id <> ${excludeRideId}
+        AND payment_status = 'paid'
+        AND fee_basis = 'casual_route_subsequent'
+        AND status NOT IN ('cancelled', 'cancelled_by_rider', 'cancelled_by_driver')
+      ORDER BY created_at ASC
+      LIMIT 1
+    `);
+    const row = res.rows[0] as any;
+    return row ? { id: row.id, agreedPrice: row.agreedPrice } : undefined;
+  }
+
+  async setRideFeeFields(
+    rideId: number,
+    fields: { platformFeePence: number; driverPayoutPence: number; feeBasis: string; feeCalculationVersion: string },
+  ): Promise<void> {
+    await db.execute(sql`
+      UPDATE rides
+      SET platform_fee_pence = ${fields.platformFeePence},
+          driver_payout_pence = ${fields.driverPayoutPence},
+          fee_basis = ${fields.feeBasis},
+          fee_calculation_version = ${fields.feeCalculationVersion},
+          updated_at = NOW()
+      WHERE id = ${rideId}
+    `);
+  }
+
   async updateRide(id: number, updates: Partial<{ status: string; paymentStatus: string; paymentIntentId: string }>): Promise<Ride> {
     const [ride] = await db
       .update(rides)
@@ -1367,7 +1567,16 @@ export class DatabaseStorage implements IStorage {
     return bid;
   }
 
-  async acceptBidWithTransaction(bidId: number, paymentIntentId: string): Promise<{
+  async acceptBidWithTransaction(
+    bidId: number,
+    paymentIntentId: string,
+    feeFields: {
+      platformFeePence: number;
+      driverPayoutPence: number;
+      feeCalculationVersion: string;
+      feeBasis: string;
+    },
+  ): Promise<{
     bid: Bid;
     ride: Ride;
     offer: RiderOffer;
@@ -1422,15 +1631,22 @@ export class DatabaseStorage implements IStorage {
         ['accepted', bid.driver_id, bid.rider_offer_id]
       );
       
-      // Create the ride with pending_payment status
+      // Create the ride with pending_payment status. Fee fields are
+      // computed at the route layer (where we know if driver is
+      // commercial) and persisted here so they're immutable for the
+      // life of the ride.
       const paymentDeadline = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
       const rideResult = await client.query(
         `INSERT INTO rides (
           rider_id, driver_id, pickup_location, dropoff_location,
           pickup_lat, pickup_lng, dropoff_lat, dropoff_lng,
           agreed_price, scheduled_time, status, payment_status,
-          rider_offer_id, payment_deadline, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
+          rider_offer_id, payment_deadline,
+          payment_intent_id,
+          platform_fee_pence, driver_payout_pence,
+          fee_calculation_version, fee_basis,
+          created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
         RETURNING *`,
         [
           offer.rider_id,
@@ -1446,7 +1662,12 @@ export class DatabaseStorage implements IStorage {
           'pending_payment',
           'pending',
           offer.id,
-          paymentDeadline
+          paymentDeadline,
+          paymentIntentId,
+          feeFields.platformFeePence,
+          feeFields.driverPayoutPence,
+          feeFields.feeCalculationVersion,
+          feeFields.feeBasis,
         ]
       );
       
