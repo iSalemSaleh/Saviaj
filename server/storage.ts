@@ -439,6 +439,11 @@ export interface IStorage {
   getDriverPayoutsForRide(rideId: number): Promise<Array<{ id: number; status: string; stripeTransferId: string | null; amountPence: number }>>;
   getDriverPayoutById(id: number): Promise<{ id: number; rideId: number; driverId: string; status: string; stripeTransferId: string | null; amountPence: number; failureReason: string | null; retryCount: number; lastAttemptAt: Date | null; createdAt: Date | null; updatedAt: Date | null } | null>;
   listDriverPayoutsForDriver(driverId: string): Promise<Array<{ id: number; rideId: number; status: string; stripeTransferId: string | null; amountPence: number; failureReason: string | null; retryCount: number; lastAttemptAt: Date | null; createdAt: Date | null; updatedAt: Date | null; pickupLocation: string | null; dropoffLocation: string | null; rideCompletedAt: Date | null }>>;
+  // Unbounded variant of listDriverPayoutsForDriver, restricted to
+  // status='transferred' rows. Powers the CSV export on the Payouts
+  // page — drivers need every row that actually paid out for tax /
+  // self-assessment, not just the most recent 200 like the UI list.
+  listTransferredPayoutsForDriverForExport(driverId: string): Promise<Array<{ id: number; rideId: number; amountPence: number; stripeTransferId: string | null; pickupLocation: string | null; dropoffLocation: string | null; rideCompletedAt: Date | null; paidAt: Date | null }>>;
   // Aggregate totals (in pence) for a single driver's payouts. Used to
   // power the summary header on the Payouts page so drivers can see
   // "paid this week / this month / lifetime / pending / failed-and-stuck"
@@ -1157,6 +1162,31 @@ export class DatabaseStorage implements IStorage {
       WHERE p.driver_id = ${driverId}
       ORDER BY p.created_at DESC
       LIMIT 200
+    `);
+    return res.rows as any;
+  }
+
+  async listTransferredPayoutsForDriverForExport(driverId: string) {
+    // No LIMIT — drivers exporting for tax need every transferred row.
+    // Restricted to status='transferred' so the CSV only contains
+    // money that actually paid out (pending/failed/reversed rows
+    // would just confuse a self-assessment spreadsheet). Ordered
+    // chronologically (oldest first) since that's the natural
+    // direction for an accounting ledger.
+    const res = await db.execute(sql`
+      SELECT p.id,
+             p.ride_id            AS "rideId",
+             p.amount_pence       AS "amountPence",
+             p.stripe_transfer_id AS "stripeTransferId",
+             r.pickup_location    AS "pickupLocation",
+             r.dropoff_location   AS "dropoffLocation",
+             r.completed_at       AS "rideCompletedAt",
+             COALESCE(p.updated_at, p.created_at) AS "paidAt"
+      FROM driver_payouts p
+      LEFT JOIN rides r ON r.id = p.ride_id
+      WHERE p.driver_id = ${driverId}
+        AND p.status = 'transferred'
+      ORDER BY COALESCE(p.updated_at, p.created_at) ASC, p.id ASC
     `);
     return res.rows as any;
   }

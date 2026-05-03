@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck, RefreshCw, CheckCircle2, XCircle, Clock, TrendingUp } from "lucide-react";
+import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck, RefreshCw, CheckCircle2, XCircle, Clock, TrendingUp, Download } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -1406,6 +1406,39 @@ function PayoutHistory() {
     },
   });
 
+  // CSV export. We hit the endpoint with credentials, then synthesise
+  // a download via an object URL so the browser respects our
+  // Content-Disposition filename without navigating away from the
+  // Payouts page (a plain <a href> would still work but loses the
+  // SPA context if the request errors).
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const res = await fetch('/api/driver/payouts/export.csv', { credentials: 'include' });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      const blob = await res.blob();
+      // Prefer the server-supplied filename from Content-Disposition;
+      // fall back to a sensible default if it's missing.
+      const disp = res.headers.get('Content-Disposition') || '';
+      const match = disp.match(/filename="?([^";]+)"?/i);
+      const today = new Date().toISOString().slice(0, 10);
+      const filename = match?.[1] || `saviaj-payouts-${today}.csv`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast({ title: 'Export failed', description: err?.message || 'Try again later', variant: 'destructive' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const formatAmount = (pence: number) => `£${(pence / 100).toFixed(2)}`;
   const formatDate = (iso: string | null) => {
     if (!iso) return "";
@@ -1431,8 +1464,29 @@ function PayoutHistory() {
     return <Badge variant="outline">{status}</Badge>;
   };
 
+  // Disable the export button when there's nothing transferred to
+  // export — saves the driver from downloading an empty CSV.
+  const hasTransferred = (summary?.paidLifetimePence ?? 0) > 0;
+
   return (
     <CardContent className="border-t pt-6 space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-semibold text-sm" data-testid="heading-payout-summary">Earnings summary</h3>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleExportCsv}
+          disabled={isExporting || !hasTransferred}
+          data-testid="button-export-payouts-csv"
+        >
+          {isExporting ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4 mr-1" />
+          )}
+          Download CSV
+        </Button>
+      </div>
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" data-testid="summary-payout-totals">
           <SummaryCard

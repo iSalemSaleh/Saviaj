@@ -5380,6 +5380,77 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // CSV export of every transferred payout for the signed-in driver.
+  // Drivers need this for self-assessment / accounting — the on-page
+  // list is capped at 200 rows and isn't easy to paste into a
+  // spreadsheet by hand. We stream a small enough payload (one row
+  // per transferred payout) that buffering it in memory is fine.
+  app.get('/api/driver/payouts/export.csv', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const user = await storage.getUser(userId);
+      if (!user?.isDriver) return res.status(403).json({ message: 'Driver account required' });
+
+      const rows = await storage.listTransferredPayoutsForDriverForExport(userId);
+
+      // Minimal CSV writer: quote every field, double internal quotes,
+      // CRLF line endings (RFC 4180). Keeps Excel happy without
+      // pulling in a dependency. We also neutralize spreadsheet
+      // formula injection by prefixing a single quote to any value
+      // that starts with =, +, -, @, tab, or CR — otherwise a
+      // malicious pickup/dropoff string like "=HYPERLINK(...)" could
+      // execute when the driver opens the CSV in Excel/Sheets.
+      const escape = (v: unknown): string => {
+        if (v === null || v === undefined) return '""';
+        let s = String(v);
+        if (s.length > 0 && /^[=+\-@\t\r]/.test(s)) {
+          s = `'${s}`;
+        }
+        return `"${s.replace(/"/g, '""')}"`;
+      };
+      const header = ['ride_id', 'completed_at', 'paid_at', 'pickup', 'dropoff', 'amount_gbp', 'status', 'stripe_transfer_id'];
+      const lines: string[] = [header.map(escape).join(',')];
+      for (const r of rows as Array<{
+        rideId: number;
+        amountPence: number;
+        stripeTransferId: string | null;
+        pickupLocation: string | null;
+        dropoffLocation: string | null;
+        rideCompletedAt: Date | string | null;
+        paidAt: Date | string | null;
+      }>) {
+        const completed = r.rideCompletedAt ? new Date(r.rideCompletedAt).toISOString() : '';
+        const paid = r.paidAt ? new Date(r.paidAt).toISOString() : '';
+        const amountGbp = (Number(r.amountPence || 0) / 100).toFixed(2);
+        lines.push([
+          r.rideId,
+          completed,
+          paid,
+          r.pickupLocation ?? '',
+          r.dropoffLocation ?? '',
+          amountGbp,
+          'transferred',
+          r.stripeTransferId ?? '',
+        ].map(escape).join(','));
+      }
+      const csv = lines.join('\r\n') + '\r\n';
+
+      // YYYY-MM-DD in UTC — stable across timezones, matches the
+      // filename pattern in the task spec.
+      const today = new Date().toISOString().slice(0, 10);
+      const filename = `saviaj-payouts-${today}.csv`;
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      // Don't let browsers/proxies cache a financial export.
+      res.setHeader('Cache-Control', 'no-store');
+      res.send(csv);
+    } catch (err: any) {
+      console.error('[payouts/export] error', err);
+      res.status(500).json({ message: 'Failed to export payouts' });
+    }
+  });
+
   app.post('/api/driver/payouts/:id/retry', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session?.userId || req.user?.claims?.sub;
