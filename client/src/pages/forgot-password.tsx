@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Eye, EyeOff, Loader2, Mail, KeyRound, CheckCircle } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, Mail, KeyRound, CheckCircle, UserPlus, LogIn } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import atlasRideLogo from "@assets/AtlasRideLogo_1767134626458.png";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
@@ -24,28 +24,64 @@ export default function ForgotPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [noAccount, setNoAccount] = useState(false);
+  const [oauthOnly, setOauthOnly] = useState<{ provider: string } | null>(null);
+  const [incompleteAccount, setIncompleteAccount] = useState<{ supportEmail: string } | null>(null);
   const [codeLength, setCodeLength] = useState(8);
 
   const requestOtpMutation = useMutation({
     mutationFn: async (data: { email: string }) => {
-      const response = await apiRequest("POST", "/api/auth/password-reset/request", data);
-      return response.json();
+      // Direct fetch (not apiRequest) so we can parse the JSON body for
+      // 404 (noAccount) and 409 (oauthOnly) responses without it throwing.
+      const res = await fetch("/api/auth/password-reset/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      const body = await res.json().catch(() => ({}));
+      return { status: res.status, body };
     },
-    onSuccess: (data: any) => {
-      if (data.continuationToken) {
-        setContinuationToken(data.continuationToken);
-        setCodeLength(data.codeLength || 8);
+    onSuccess: ({ status, body }: any) => {
+      setError("");
+      setSuccessMessage("");
+      setNoAccount(false);
+      setOauthOnly(null);
+      setIncompleteAccount(null);
+
+      if (status === 404 && body.noAccount) {
+        setNoAccount(true);
+        return;
+      }
+      if (status === 409 && body.oauthOnly) {
+        setOauthOnly({ provider: body.provider || "google" });
+        return;
+      }
+      if (status === 409 && body.incompleteAccount) {
+        setIncompleteAccount({ supportEmail: body.supportEmail || "support@saviaj.com" });
+        return;
+      }
+      if (status === 429) {
+        setError(body.message || "Please wait before requesting another code.");
+        return;
+      }
+      if (status >= 400) {
+        setError(body.message || "Failed to send reset code. Please try again.");
+        return;
+      }
+
+      // Success path: code was actually sent
+      if (body.continuationToken) {
+        setContinuationToken(body.continuationToken);
+        setCodeLength(body.codeLength || 8);
         setStep("verify");
-        setError("");
-        setSuccessMessage(`A verification code has been sent to ${email}`);
+        setSuccessMessage(`A verification code has been sent to ${email}. Please check your inbox.`);
       } else {
-        // Email doesn't exist - use generic message to prevent account enumeration
-        setError("");
-        setSuccessMessage("If an account exists with this email, a verification code has been sent. Please check your inbox.");
+        setError("Unexpected response from server. Please try again.");
       }
     },
-    onError: (error: any) => {
-      setError(error.message || "Failed to send reset code. Please try again.");
+    onError: (err: any) => {
+      setError(err.message || "Failed to send reset code. Please try again.");
       setSuccessMessage("");
     },
   });
@@ -145,13 +181,70 @@ export default function ForgotPassword() {
               </CardHeader>
               <CardContent>
                 {error && (
-                  <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+                  <div className="mb-4 p-3 bg-destructive/10 text-destructive rounded-lg text-sm" data-testid="text-reset-error">
                     {error}
                   </div>
                 )}
-                {successMessage && (
-                  <div className="mb-4 p-3 bg-green-500/10 text-green-600 rounded-lg text-sm">
+                {successMessage && !noAccount && !oauthOnly && !incompleteAccount && (
+                  <div className="mb-4 p-3 bg-green-500/10 text-green-600 rounded-lg text-sm" data-testid="text-reset-success">
                     {successMessage}
+                  </div>
+                )}
+                {incompleteAccount && (
+                  <div className="mb-4 space-y-3" data-testid="card-incomplete-account">
+                    <div className="p-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
+                      This account was started but never finished setup. Please sign up with a different email, or email <a href={`mailto:${incompleteAccount.supportEmail}`} className="underline font-medium">{incompleteAccount.supportEmail}</a> to recover this one.
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() => setLocation("/signup")}
+                      data-testid="button-incomplete-go-to-signup"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Sign up with a different email
+                    </Button>
+                  </div>
+                )}
+                {noAccount && (
+                  <div className="mb-4 space-y-3" data-testid="card-no-account">
+                    <div className="p-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg text-sm border border-amber-200 dark:border-amber-800">
+                      No account found with <span className="font-medium">{email}</span>. Would you like to create one?
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() => setLocation("/signup")}
+                      data-testid="button-go-to-signup"
+                    >
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Create an account
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => { setNoAccount(false); setEmail(""); }}
+                      data-testid="button-try-different-reset-email"
+                    >
+                      Try a different email
+                    </Button>
+                  </div>
+                )}
+                {oauthOnly && (
+                  <div className="mb-4 space-y-3" data-testid="card-oauth-only">
+                    <div className="p-3 bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-lg text-sm border border-blue-200 dark:border-blue-800">
+                      This account was created with <span className="font-medium capitalize">{oauthOnly.provider}</span> sign-in, so it doesn't have a password to reset. Please sign in with {oauthOnly.provider === "google" ? "Google" : oauthOnly.provider} instead.
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      onClick={() => setLocation("/login")}
+                      data-testid="button-oauth-go-to-login"
+                    >
+                      <LogIn className="h-4 w-4 mr-2" />
+                      Go to login
+                    </Button>
                   </div>
                 )}
                 <form onSubmit={handleEmailSubmit} className="space-y-4">

@@ -963,22 +963,36 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         }
       }
 
-      // Generic success response used in every "no code will be sent" path
-      // so we never leak whether the email exists or which auth provider it uses.
-      const genericSuccess = {
-        success: true,
-        message: "If an account exists with this email, you will receive a verification code.",
-      };
-
       // Lookup active (non-soft-deleted) user.
       const existingUser = await storage.getActiveUserByEmail(normalizedEmail);
 
-      // No matching user OR user has no local password (OAuth-only) — silently
-      // skip sending a code. Returning generic success preserves no-enumeration
-      // and steers OAuth users back to their original sign-in method
-      // (they'll never receive a code so they'll naturally try Google/etc).
-      if (!existingUser || !existingUser.passwordHash) {
-        return res.json(genericSuccess);
+      // No account at all — tell the user explicitly so they can sign up.
+      // (Trades email-enumeration protection for clearer UX, per product
+      // decision.)
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          noAccount: true,
+          message: "No account found with this email. Please sign up to create one.",
+          signupUrl: "/signup",
+        });
+      }
+
+      // Account exists but was created via OAuth (Google) and has no local
+      // password — point them back to their original sign-in method instead
+      // of pretending we sent a code that will never arrive.
+      // NOTE: only block for genuine OAuth providers. A "local" user with no
+      // passwordHash is an incomplete/orphaned signup — let them proceed
+      // through the reset flow so they can set a password for the first time.
+      const provider = existingUser.authProvider || "local";
+      if (!existingUser.passwordHash && provider !== "local") {
+        return res.status(409).json({
+          success: false,
+          oauthOnly: true,
+          provider,
+          message: `This account was created with ${provider === "google" ? "Google" : provider} sign-in. Please use that to log in instead of resetting a password.`,
+          loginUrl: "/login",
+        });
       }
       
       // User exists and has a password — try Entra SIGN-IN OTP first.
@@ -987,29 +1001,44 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // Entra. Fall back to the SIGN-UP OTP flow so the user can still receive
       // a code; we record which flow we used so verify uses the matching
       // /signup vs /signin continue endpoint.
+      // Track whether BOTH Entra flows actually ran and returned a business
+      // failure (as opposed to throwing an infra/network/JSON exception).
+      // Only the both-flows-failed-cleanly state is a true "orphan account"
+      // signal; thrown exceptions are transient and should map to 5xx.
+      let bothFlowsFailedCleanly = false;
       try {
         const { initiateEmailOtpSignIn, initiateEmailOtpSignUp } = await import("./entraEmailOtp");
 
         let flowType: 'signin' | 'signup' = 'signin';
-        let result = await initiateEmailOtpSignIn(normalizedEmail);
+        let result;
+        try {
+          result = await initiateEmailOtpSignIn(normalizedEmail);
+        } catch (signinErr: any) {
+          // Entra sometimes returns an empty body for unknown users which
+          // throws a JSON parse error here. Treat as a non-success so we
+          // proceed to the sign-up fallback.
+          result = { success: false, error: signinErr.message };
+        }
 
-        // Entra's behaviour for unknown users varies (sometimes a typed error
-        // like "user_not_found", sometimes a 4xx with an empty body that
-        // throws a JSON parse error). Since at this point we already know
-        // the account exists locally with a password, ANY failure of the
-        // sign-in flow means the user just isn't in Entra yet — fall back to
-        // the sign-up flow so they can still receive an OTP and reset their
-        // password. The flow_type column ensures verify uses the correct
-        // /signup vs /signin continue endpoint.
+        // Since at this point we already know the account exists locally,
+        // ANY failure of the sign-in flow means the user just isn't in
+        // Entra yet — fall back to the sign-up flow so they can still
+        // receive an OTP. The flow_type column ensures verify uses the
+        // correct /signup vs /signin continue endpoint.
         if (!result.success) {
           flowType = 'signup';
-          const fallback = await initiateEmailOtpSignUp(normalizedEmail);
+          let fallback;
+          try {
+            fallback = await initiateEmailOtpSignUp(normalizedEmail);
+          } catch (signupErr: any) {
+            fallback = { success: false, error: signupErr.message };
+          }
           if (fallback.success) {
             result = fallback;
           } else {
-            // If signup ALSO fails (e.g., user_already_exists in Entra but
-            // signin still failed for a transient reason), preserve the
-            // original error for the user-facing message.
+            // Both flows ran and both reported business-level failure.
+            // This is the orphan-account signal we care about.
+            bothFlowsFailedCleanly = true;
             result = result.error ? result : fallback;
           }
         }
@@ -1044,7 +1073,27 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         }
       } catch (entraError: any) {
         console.error("Password reset OTP error:", entraError.message);
-        return res.status(500).json({ 
+
+        // Orphan-account case: BOTH Entra flows ran and BOTH returned a
+        // business-level failure for a local user with no password. This
+        // means the row exists in our DB and Entra but the signup was
+        // never completed. Direct the user to support / re-signup.
+        // Note: thrown infra/network exceptions are caught inside the inner
+        // try blocks above and converted to non-success results, so
+        // bothFlowsFailedCleanly is only true for genuine business failures.
+        if (bothFlowsFailedCleanly && !existingUser.passwordHash && provider === "local") {
+          return res.status(409).json({
+            success: false,
+            incompleteAccount: true,
+            message: "This account was started but never completed. Please sign up with a different email, or contact support to recover this one.",
+            supportEmail: "support@saviaj.com",
+          });
+        }
+
+        // Anything else (DB write failure, dynamic import failure, etc.)
+        // is a transient/infra error — return 5xx so the user retries
+        // rather than being told their account is broken.
+        return res.status(503).json({
           message: "Failed to send verification code. Please try again."
         });
       }
