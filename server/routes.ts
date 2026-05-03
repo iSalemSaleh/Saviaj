@@ -347,6 +347,7 @@ const profileImageUpload = multer({
 // can import it without pulling in the entire route surface.
 import { notifyDriverPayoutFailed } from './payoutNotify';
 import { attemptPayoutRetry, PAYOUT_RETRY_MAX_ATTEMPTS } from './payoutRetry';
+import { resolveTimezone, parseYmdInZone } from '@shared/timezone';
 
 export async function registerRoutes(app: Express, httpServer: Server): Promise<void> {
   // Auth middleware
@@ -5394,17 +5395,29 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
       // Optional date-range filter. Drivers picking a tax year / month
       // pass `from` and/or `to` as YYYY-MM-DD (or any ISO timestamp).
-      // We treat bare dates as UTC day boundaries — `from` snaps to
-      // 00:00:00Z of that day and `to` snaps to 23:59:59.999Z so the
-      // end day is inclusive (otherwise "to=2026-04-05" would miss
-      // anything paid that afternoon). Invalid input → 400 rather
-      // than silently exporting everything.
+      // For bare YYYY-MM-DD we interpret the day in the driver's
+      // stored timezone (falling back to Europe/London, then UTC) so
+      // a payout made just before midnight in their local time lands
+      // in the day they expect — a UTC-only slice would push late-
+      // evening BST payouts into the next day, and would be even
+      // more wrong for non-UK drivers. Full ISO timestamps are
+      // honoured as-is. Invalid input → 400 rather than silently
+      // exporting everything.
+      const tz = resolveTimezone(user.timezone);
       const parseBound = (raw: unknown, end: boolean): Date | undefined => {
         if (raw === undefined || raw === null || raw === '') return undefined;
         if (typeof raw !== 'string') throw new Error('invalid date');
-        const ymd = /^\d{4}-\d{2}-\d{2}$/.test(raw);
-        const iso = ymd ? (end ? `${raw}T23:59:59.999Z` : `${raw}T00:00:00.000Z`) : raw;
-        const d = new Date(iso);
+        // If the input *looks* like a bare YYYY-MM-DD, only the zoned
+        // parser is allowed to accept it — falling through to
+        // `new Date()` for a YYYY-MM-DD that failed calendar validation
+        // (e.g. 2026-02-31) would let invalid dates slip past instead
+        // of producing the documented 400.
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+          const zoned = parseYmdInZone(raw, end, tz);
+          if (!zoned) throw new Error('invalid date');
+          return zoned;
+        }
+        const d = new Date(raw);
         if (Number.isNaN(d.getTime())) throw new Error('invalid date');
         return d;
       };

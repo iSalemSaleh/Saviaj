@@ -197,6 +197,13 @@ export const users = pgTable("users", {
   stripeIdentitySessionId: varchar("stripe_identity_session_id"),
   stripeIdentityLastAttemptAt: timestamp("stripe_identity_last_attempt_at"),
   stripeIdentityFailureReason: varchar("stripe_identity_failure_reason", { length: 200 }),
+  // IANA timezone identifier (e.g. "Europe/London", "America/New_York").
+  // Used to interpret bare YYYY-MM-DD bounds (CSV date-range filter,
+  // tax-year presets) in the driver's local time so a payout made
+  // late at night doesn't fall in the wrong day's slice. Nullable —
+  // when unset we fall back to Europe/London (the launch market) and
+  // ultimately to UTC if the zone string is unrecognised.
+  timezone: varchar("timezone", { length: 64 }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   // Admin and soft-delete fields

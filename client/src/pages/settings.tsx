@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { COUNTRY_CODES, type CountryCode } from "@/lib/countryCodes";
+import { resolveTimezone, todayYmdInZone } from "@shared/timezone";
 
 export default function SettingsPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -1369,6 +1370,7 @@ function EarningsTrendChart({
 function PayoutHistory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [trendPeriod, setTrendPeriod] = useState<'week' | 'month'>('week');
   // Custom queryFn so the trendPeriod param is part of the URL.
   // Keeping the period in the queryKey lets React Query cache each
@@ -1423,27 +1425,36 @@ function PayoutHistory() {
 
   // UK tax year: 6 April → 5 April. If today is before 6 April, the
   // current tax year started on 6 April of the previous calendar year.
-  const ymd = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
+  // Presets must agree with the server on which calendar day each
+  // bound represents. The server now interprets bare YYYY-MM-DD in
+  // the driver's stored timezone (falling back to Europe/London),
+  // so the client uses the same zone when picking "today" — otherwise
+  // a driver browsing from another timezone could see "this tax year"
+  // resolve to the wrong window for a few hours either side of
+  // midnight on 5/6 April.
+  const tz = resolveTimezone(user?.timezone ?? null);
   const computePresetRange = (preset: ExportPreset): { from?: string; to?: string } => {
-    const now = new Date();
     if (preset === 'all') return {};
+    const today = todayYmdInZone(tz);
     if (preset === 'this-tax-year') {
-      const beforeApril6 = now.getMonth() < 3 || (now.getMonth() === 3 && now.getDate() < 6);
-      const startYear = beforeApril6 ? now.getFullYear() - 1 : now.getFullYear();
+      const beforeApril6 = today.month < 4 || (today.month === 4 && today.day < 6);
+      const startYear = beforeApril6 ? today.year - 1 : today.year;
       const from = `${startYear}-04-06`;
       const to = `${startYear + 1}-04-05`;
       return { from, to };
     }
     if (preset === 'last-month') {
-      const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastMonthEnd = new Date(firstOfThisMonth.getTime() - 1);
-      const lastMonthStart = new Date(lastMonthEnd.getFullYear(), lastMonthEnd.getMonth(), 1);
-      return { from: ymd(lastMonthStart), to: ymd(lastMonthEnd) };
+      const lastMonth = today.month === 1 ? 12 : today.month - 1;
+      const lastMonthYear = today.month === 1 ? today.year - 1 : today.year;
+      // Last day of `lastMonth` = day 0 of the following month, computed
+      // in UTC so DST has no chance to skew it (we only care about the
+      // calendar arithmetic, not an instant in time).
+      const lastDay = new Date(Date.UTC(lastMonthYear, lastMonth, 0)).getUTCDate();
+      const mm = String(lastMonth).padStart(2, '0');
+      return {
+        from: `${lastMonthYear}-${mm}-01`,
+        to: `${lastMonthYear}-${mm}-${String(lastDay).padStart(2, '0')}`,
+      };
     }
     return { from: customFrom || undefined, to: customTo || undefined };
   };
