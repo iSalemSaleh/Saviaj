@@ -444,6 +444,12 @@ export interface IStorage {
   // page — drivers need every row that actually paid out for tax /
   // self-assessment, not just the most recent 200 like the UI list.
   listTransferredPayoutsForDriverForExport(driverId: string, range?: { from?: Date; to?: Date }): Promise<Array<{ id: number; rideId: number; amountPence: number; stripeTransferId: string | null; pickupLocation: string | null; dropoffLocation: string | null; rideCompletedAt: Date | null; paidAt: Date | null }>>;
+  // Aggregate-only sibling of listTransferredPayoutsForDriverForExport.
+  // Returns just the row count and total pence that *would* be exported
+  // for the given range — used by the export popover to show a live
+  // "12 payouts · £1,438.20" preview without paying for the full row
+  // set on every keystroke.
+  getTransferredPayoutExportSummaryForDriver(driverId: string, range?: { from?: Date; to?: Date }): Promise<{ count: number; totalPence: number }>;
   // Aggregate totals (in pence) for a single driver's payouts. Used to
   // power the summary header on the Payouts page so drivers can see
   // "paid this week / this month / lifetime / pending / failed-and-stuck"
@@ -1199,6 +1205,30 @@ export class DatabaseStorage implements IStorage {
       ORDER BY COALESCE(p.updated_at, p.created_at) ASC, p.id ASC
     `);
     return res.rows as any;
+  }
+
+  async getTransferredPayoutExportSummaryForDriver(driverId: string, range?: { from?: Date; to?: Date }) {
+    // Mirror exactly the WHERE used by listTransferredPayoutsForDriverForExport
+    // so the preview can never disagree with the CSV the driver actually
+    // downloads. Single COUNT/SUM round-trip — cheap to call on every
+    // popover open or custom-date keystroke (debounced client-side).
+    const from = range?.from ?? null;
+    const to = range?.to ?? null;
+    const res = await db.execute(sql`
+      SELECT
+        COUNT(*)::bigint AS "count",
+        COALESCE(SUM(amount_pence), 0)::bigint AS "totalPence"
+      FROM driver_payouts p
+      WHERE p.driver_id = ${driverId}
+        AND p.status = 'transferred'
+        AND (${from}::timestamptz IS NULL OR COALESCE(p.updated_at, p.created_at) >= ${from}::timestamptz)
+        AND (${to}::timestamptz   IS NULL OR COALESCE(p.updated_at, p.created_at) <= ${to}::timestamptz)
+    `);
+    const row = (res.rows[0] ?? { count: 0, totalPence: 0 }) as { count: string | number; totalPence: string | number };
+    return {
+      count: Number(row.count) || 0,
+      totalPence: Number(row.totalPence) || 0,
+    };
   }
 
   async getDriverPayoutTotals(driverId: string, opts: { maxRetries: number }) {

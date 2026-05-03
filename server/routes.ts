@@ -5503,6 +5503,54 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // Live preview for the export popover. Same `from`/`to` semantics as
+  // /api/driver/payouts/export.csv (bare YYYY-MM-DD interpreted in the
+  // driver's timezone, full ISO honoured as-is, invalid → 400) so a
+  // driver can never see a preview that disagrees with the CSV they
+  // download. Returns just `{ count, totalPence }` from a single
+  // COUNT/SUM query — cheap enough to call on every keystroke (the
+  // client debounces the custom-date inputs anyway).
+  app.get('/api/driver/payouts/export-summary', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const user = await storage.getUser(userId);
+      if (!user?.isDriver) return res.status(403).json({ message: 'Driver account required' });
+
+      const tz = resolveTimezone(user.timezone);
+      const parseBound = (raw: unknown, end: boolean): Date | undefined => {
+        if (raw === undefined || raw === null || raw === '') return undefined;
+        if (typeof raw !== 'string') throw new Error('invalid date');
+        if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+          const zoned = parseYmdInZone(raw, end, tz);
+          if (!zoned) throw new Error('invalid date');
+          return zoned;
+        }
+        const d = new Date(raw);
+        if (Number.isNaN(d.getTime())) throw new Error('invalid date');
+        return d;
+      };
+      let from: Date | undefined;
+      let to: Date | undefined;
+      try {
+        from = parseBound(req.query.from, false);
+        to = parseBound(req.query.to, true);
+      } catch {
+        return res.status(400).json({ message: 'Invalid from/to date' });
+      }
+      if (from && to && from.getTime() > to.getTime()) {
+        return res.status(400).json({ message: '`from` must be on or before `to`' });
+      }
+
+      const summary = await storage.getTransferredPayoutExportSummaryForDriver(userId, { from, to });
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(summary);
+    } catch (err: any) {
+      console.error('[payouts/export-summary] error', err);
+      res.status(500).json({ message: 'Failed to load export summary' });
+    }
+  });
+
   app.post('/api/driver/payouts/:id/retry', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session?.userId || req.user?.claims?.sub;

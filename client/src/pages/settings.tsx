@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/layout/Navbar";
@@ -1459,6 +1459,51 @@ function PayoutHistory() {
     return { from: customFrom || undefined, to: customTo || undefined };
   };
 
+  // Live preview of how many rows / £ total the current range will
+  // export. Fetched from a cheap COUNT/SUM endpoint that mirrors the
+  // CSV's filter exactly. We debounce the custom-date inputs (350ms)
+  // so a driver typing a year out doesn't trigger five intermediate
+  // requests.
+  const currentRange = computePresetRange(exportPreset);
+  const currentFrom = currentRange.from;
+  const currentTo = currentRange.to;
+  const [debouncedRange, setDebouncedRange] = useState<{ from?: string; to?: string }>(currentRange);
+  // Track the resolved `from`/`to` (which already fold in `tz` for
+  // presets) rather than just the raw input fields, so a late
+  // timezone hydration that shifts e.g. "this tax year" can't leave
+  // the preview stale relative to what Download will actually export.
+  useEffect(() => {
+    if (exportPreset !== 'custom') {
+      setDebouncedRange({ from: currentFrom, to: currentTo });
+      return;
+    }
+    const t = setTimeout(() => setDebouncedRange({ from: currentFrom, to: currentTo }), 350);
+    return () => clearTimeout(t);
+  }, [exportPreset, currentFrom, currentTo]);
+
+  const previewRangeValid =
+    !(exportPreset === 'custom' && debouncedRange.from && debouncedRange.to && debouncedRange.from > debouncedRange.to);
+
+  const previewQs = (() => {
+    const params = new URLSearchParams();
+    if (debouncedRange.from) params.set('from', debouncedRange.from);
+    if (debouncedRange.to) params.set('to', debouncedRange.to);
+    return params.toString();
+  })();
+
+  const { data: exportPreview, isFetching: isPreviewFetching, error: previewError } = useQuery<{ count: number; totalPence: number }>({
+    queryKey: ['/api/driver/payouts/export-summary', { qs: previewQs }],
+    queryFn: async () => {
+      const res = await fetch(`/api/driver/payouts/export-summary${previewQs ? `?${previewQs}` : ''}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      return res.json();
+    },
+    enabled: exportOpen && previewRangeValid,
+    staleTime: 15_000,
+  });
+
   const handleExportCsv = async () => {
     const { from, to } = computePresetRange(exportPreset);
     if (exportPreset === 'custom' && from && to && from > to) {
@@ -1587,11 +1632,47 @@ function PayoutHistory() {
                 </div>
               </div>
             )}
+            <div
+              className="rounded-md border bg-muted/40 px-2.5 py-2 text-xs"
+              data-testid="text-export-preview"
+            >
+              {!previewRangeValid ? (
+                <span className="text-destructive" data-testid="text-export-preview-invalid">
+                  “From” must be on or before “To”.
+                </span>
+              ) : previewError ? (
+                <span className="text-destructive" data-testid="text-export-preview-error">
+                  Couldn't load preview.
+                </span>
+              ) : !exportPreview || isPreviewFetching ? (
+                <span
+                  className="text-muted-foreground inline-flex items-center"
+                  data-testid="text-export-preview-loading"
+                >
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Calculating…
+                </span>
+              ) : exportPreview.count === 0 ? (
+                <span className="text-muted-foreground" data-testid="text-export-preview-empty">
+                  No payouts in this range.
+                </span>
+              ) : (
+                <span data-testid="text-export-preview-summary">
+                  <span className="font-medium" data-testid="text-export-preview-count">
+                    {exportPreview.count} payout{exportPreview.count === 1 ? '' : 's'}
+                  </span>
+                  {' · '}
+                  <span className="font-medium" data-testid="text-export-preview-total">
+                    £{(exportPreview.totalPence / 100).toFixed(2)}
+                  </span>
+                </span>
+              )}
+            </div>
             <Button
               size="sm"
               className="w-full"
               onClick={handleExportCsv}
-              disabled={isExporting}
+              disabled={isExporting || !previewRangeValid}
               data-testid="button-confirm-export-payouts-csv"
             >
               {isExporting ? (
@@ -1599,7 +1680,9 @@ function PayoutHistory() {
               ) : (
                 <Download className="h-4 w-4 mr-1" />
               )}
-              Download
+              {exportPreview && exportPreview.count === 0 && previewRangeValid
+                ? 'Header-only CSV'
+                : 'Download'}
             </Button>
           </PopoverContent>
         </Popover>
