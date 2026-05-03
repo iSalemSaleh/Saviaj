@@ -437,9 +437,22 @@ export interface IStorage {
     failureReason?: string;
   }): Promise<{ id: number }>;
   getDriverPayoutsForRide(rideId: number): Promise<Array<{ id: number; status: string; stripeTransferId: string | null; amountPence: number }>>;
-  getDriverPayoutById(id: number): Promise<{ id: number; rideId: number; driverId: string; status: string; stripeTransferId: string | null; amountPence: number; failureReason: string | null; createdAt: Date | null; updatedAt: Date | null } | null>;
-  listDriverPayoutsForDriver(driverId: string): Promise<Array<{ id: number; rideId: number; status: string; stripeTransferId: string | null; amountPence: number; failureReason: string | null; createdAt: Date | null; updatedAt: Date | null; pickupLocation: string | null; dropoffLocation: string | null; rideCompletedAt: Date | null }>>;
-  updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string | null }): Promise<void>;
+  getDriverPayoutById(id: number): Promise<{ id: number; rideId: number; driverId: string; status: string; stripeTransferId: string | null; amountPence: number; failureReason: string | null; retryCount: number; lastAttemptAt: Date | null; createdAt: Date | null; updatedAt: Date | null } | null>;
+  listDriverPayoutsForDriver(driverId: string): Promise<Array<{ id: number; rideId: number; status: string; stripeTransferId: string | null; amountPence: number; failureReason: string | null; retryCount: number; lastAttemptAt: Date | null; createdAt: Date | null; updatedAt: Date | null; pickupLocation: string | null; dropoffLocation: string | null; rideCompletedAt: Date | null }>>;
+  updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string | null; bumpRetryCount?: boolean; setLastAttemptAt?: boolean }): Promise<void>;
+  // Atomic "claim this failed row for a retry attempt": flips status
+  // failed -> pending in a single UPDATE guarded by status='failed'.
+  // Returns the claimed row on success or null if some other worker
+  // (or a concurrent /complete + transient race) already moved it.
+  // This is what prevents two retry workers from double-transferring
+  // the same payout — the partial unique index on (ride_id) does NOT
+  // protect against in-place updates.
+  claimFailedPayoutForRetry(id: number): Promise<{ id: number; rideId: number; driverId: string; amountPence: number; retryCount: number } | null>;
+  // Failed payouts that the background retry job (or webhook trigger)
+  // should attempt next. Joined with users to ensure the driver's
+  // Connect account is currently payouts-enabled. The backoff/cap is
+  // applied here in SQL so the caller stays simple.
+  listFailedPayoutsToRetry(opts: { driverId?: string; maxRetries: number; backoffBaseMinutes: number; ignoreBackoff?: boolean; limit?: number }): Promise<Array<{ id: number; rideId: number; driverId: string; amountPence: number; retryCount: number }>>;
   completeUserProfile(id: string, data: {
     firstName: string;
     lastName: string;
@@ -1003,12 +1016,14 @@ export class DatabaseStorage implements IStorage {
     return res.rows as any;
   }
 
-  async updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string | null }): Promise<void> {
+  async updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string | null; bumpRetryCount?: boolean; setLastAttemptAt?: boolean }): Promise<void> {
     // Note: failure_reason uses COALESCE with NULL-as-keep semantics ONLY
     // when the caller passes undefined. An explicit `null` is a request
     // to clear the reason (used on a successful retry); we encode that
     // with a sentinel-string check via `clear_failure_reason`.
     const clearReason = fields.failureReason === null;
+    const bumpRetry = fields.bumpRetryCount === true;
+    const setLastAttempt = fields.setLastAttemptAt === true;
     await db.execute(sql`
       UPDATE driver_payouts
       SET status = ${fields.status},
@@ -1017,9 +1032,65 @@ export class DatabaseStorage implements IStorage {
             WHEN ${clearReason} THEN NULL
             ELSE COALESCE(${fields.failureReason ?? null}, failure_reason)
           END,
+          retry_count = CASE WHEN ${bumpRetry} THEN retry_count + 1 ELSE retry_count END,
+          last_attempt_at = CASE WHEN ${setLastAttempt} THEN NOW() ELSE last_attempt_at END,
           updated_at = NOW()
       WHERE id = ${id}
     `);
+  }
+
+  async claimFailedPayoutForRetry(id: number) {
+    // Single-statement state transition: only the worker whose UPDATE
+    // matches a row still in 'failed' wins. Concurrent retries lose
+    // the race and get null back, so they short-circuit before
+    // calling Stripe. last_attempt_at is stamped here so backoff
+    // applies even to the lost-race observer.
+    const res = await db.execute(sql`
+      UPDATE driver_payouts
+      SET status = 'pending',
+          failure_reason = NULL,
+          last_attempt_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${id} AND status = 'failed'
+      RETURNING id,
+                ride_id      AS "rideId",
+                driver_id    AS "driverId",
+                amount_pence AS "amountPence",
+                retry_count  AS "retryCount"
+    `);
+    return (res.rows[0] as any) ?? null;
+  }
+
+  async listFailedPayoutsToRetry(opts: { driverId?: string; maxRetries: number; backoffBaseMinutes: number; ignoreBackoff?: boolean; limit?: number }) {
+    // Backoff: minutes since last attempt must exceed
+    // backoffBaseMinutes * 2^retry_count. Webhook-driven retries pass
+    // ignoreBackoff=true because the trigger (account.updated) is
+    // itself the signal that something materially changed.
+    const limit = opts.limit ?? 50;
+    const driverFilter = opts.driverId
+      ? sql`AND p.driver_id = ${opts.driverId}`
+      : sql``;
+    const backoffFilter = opts.ignoreBackoff
+      ? sql``
+      : sql`AND (p.last_attempt_at IS NULL
+              OR p.last_attempt_at < NOW() - (interval '1 minute' * (${opts.backoffBaseMinutes} * power(2, p.retry_count)::int)))`;
+    const res = await db.execute(sql`
+      SELECT p.id,
+             p.ride_id      AS "rideId",
+             p.driver_id    AS "driverId",
+             p.amount_pence AS "amountPence",
+             p.retry_count  AS "retryCount"
+      FROM driver_payouts p
+      JOIN users u ON u.id = p.driver_id
+      WHERE p.status = 'failed'
+        AND p.retry_count < ${opts.maxRetries}
+        AND COALESCE(u.stripe_connect_payouts_enabled, false) = true
+        ${driverFilter}
+        ${backoffFilter}
+      ORDER BY p.updated_at ASC
+      LIMIT ${limit}
+    `);
+    return res.rows as any;
   }
 
   async getDriverPayoutById(id: number) {
@@ -1031,6 +1102,8 @@ export class DatabaseStorage implements IStorage {
              stripe_transfer_id AS "stripeTransferId",
              amount_pence       AS "amountPence",
              failure_reason     AS "failureReason",
+             retry_count        AS "retryCount",
+             last_attempt_at    AS "lastAttemptAt",
              created_at         AS "createdAt",
              updated_at         AS "updatedAt"
       FROM driver_payouts WHERE id = ${id}
@@ -1046,6 +1119,8 @@ export class DatabaseStorage implements IStorage {
              p.stripe_transfer_id AS "stripeTransferId",
              p.amount_pence       AS "amountPence",
              p.failure_reason     AS "failureReason",
+             p.retry_count        AS "retryCount",
+             p.last_attempt_at    AS "lastAttemptAt",
              p.created_at         AS "createdAt",
              p.updated_at         AS "updatedAt",
              r.pickup_location    AS "pickupLocation",

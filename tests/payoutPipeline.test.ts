@@ -368,6 +368,318 @@ describe("PATCH /api/rides/:id/cancel — route first-payer refund promotes a si
   });
 });
 
+describe("Background auto-retry of failed payouts", () => {
+  it("scheduled sweep retries an eligible failed payout and marks it transferred", async () => {
+    seedHappyDriver();
+    seedRider();
+    const ride = storage.seedRide({
+      riderId: "rdr1",
+      driverId: "drv1",
+      agreedPrice: "10.00",
+      paymentStatus: "paid",
+      status: "completed",
+      driverPayoutPence: 875,
+      platformFeePence: 125,
+    });
+    storage.payouts.push({
+      id: 500,
+      rideId: ride.id,
+      driverId: "drv1",
+      amountPence: 875,
+      status: "failed",
+      stripeTransferId: null,
+      failureReason: "Stripe rate-limited",
+      retryCount: 0,
+      lastAttemptAt: null,
+    });
+    stripe.transfers.create.mockResolvedValueOnce({
+      id: "tr_recovered",
+      object: "transfer",
+      amount: 875,
+      destination: "acct_drv1",
+    } as any);
+
+    const { retryStuckPayouts } = await import("../server/payoutRetry");
+    const result = await retryStuckPayouts();
+
+    expect(result).toEqual({ attempted: 1, recovered: 1 });
+    expect(stripe.transfers.create).toHaveBeenCalledTimes(1);
+    const row = storage.payouts.find((p) => p.id === 500)!;
+    expect(row.status).toBe("transferred");
+    expect(row.stripeTransferId).toBe("tr_recovered");
+    expect(row.retryCount).toBe(1);
+    expect(row.failureReason).toBeNull();
+  });
+
+  it("scheduled sweep skips payouts whose driver is not currently payouts-enabled", async () => {
+    storage.seedUser({
+      id: "drv1",
+      email: "drv1@test.dev",
+      stripeConnectAccountId: "acct_drv1",
+      stripeConnectPayoutsEnabled: false, // capability still down
+      stripeConnectOnboarded: true,
+    });
+    seedRider();
+    const ride = storage.seedRide({
+      riderId: "rdr1",
+      driverId: "drv1",
+      agreedPrice: "10.00",
+      paymentStatus: "paid",
+      status: "completed",
+      driverPayoutPence: 875,
+      platformFeePence: 125,
+    });
+    storage.payouts.push({
+      id: 501,
+      rideId: ride.id,
+      driverId: "drv1",
+      amountPence: 875,
+      status: "failed",
+      stripeTransferId: null,
+      failureReason: "Account restricted",
+      retryCount: 0,
+      lastAttemptAt: null,
+    });
+
+    const { retryStuckPayouts } = await import("../server/payoutRetry");
+    const result = await retryStuckPayouts();
+
+    expect(result).toEqual({ attempted: 0, recovered: 0 });
+    expect(stripe.transfers.create).not.toHaveBeenCalled();
+    expect(storage.payouts.find((p) => p.id === 501)?.status).toBe("failed");
+  });
+
+  it("scheduled sweep stops retrying after the max-attempts cap", async () => {
+    seedHappyDriver();
+    seedRider();
+    const ride = storage.seedRide({
+      riderId: "rdr1",
+      driverId: "drv1",
+      agreedPrice: "10.00",
+      paymentStatus: "paid",
+      status: "completed",
+      driverPayoutPence: 875,
+      platformFeePence: 125,
+    });
+    storage.payouts.push({
+      id: 502,
+      rideId: ride.id,
+      driverId: "drv1",
+      amountPence: 875,
+      status: "failed",
+      stripeTransferId: null,
+      failureReason: "Permanently broken",
+      retryCount: 5, // already at the cap
+      lastAttemptAt: null,
+    });
+
+    const { retryStuckPayouts } = await import("../server/payoutRetry");
+    const result = await retryStuckPayouts();
+
+    expect(result).toEqual({ attempted: 0, recovered: 0 });
+    expect(stripe.transfers.create).not.toHaveBeenCalled();
+  });
+
+  it("scheduled sweep records a failed retry and bumps retry_count without exceeding the cap", async () => {
+    seedHappyDriver();
+    seedRider();
+    const ride = storage.seedRide({
+      riderId: "rdr1",
+      driverId: "drv1",
+      agreedPrice: "10.00",
+      paymentStatus: "paid",
+      status: "completed",
+      driverPayoutPence: 875,
+      platformFeePence: 125,
+    });
+    storage.payouts.push({
+      id: 503,
+      rideId: ride.id,
+      driverId: "drv1",
+      amountPence: 875,
+      status: "failed",
+      stripeTransferId: null,
+      failureReason: "Earlier rate-limit",
+      retryCount: 1,
+      lastAttemptAt: null,
+    });
+    stripe.transfers.create.mockRejectedValueOnce(new Error("Still rate-limited"));
+
+    const { retryStuckPayouts } = await import("../server/payoutRetry");
+    const result = await retryStuckPayouts();
+
+    expect(result).toEqual({ attempted: 1, recovered: 0 });
+    const row = storage.payouts.find((p) => p.id === 503)!;
+    expect(row.status).toBe("failed");
+    expect(row.retryCount).toBe(2);
+    expect(row.failureReason).toMatch(/Still rate-limited/);
+  });
+
+  it("account.updated webhook flipping payouts_enabled true triggers a per-driver sweep", async () => {
+    seedHappyDriver(); // user already has stripeConnectAccountId, but we flip enabled below
+    const u = storage.users.get("drv1")!;
+    u.stripeConnectPayoutsEnabled = false;
+    seedRider();
+    const ride = storage.seedRide({
+      riderId: "rdr1",
+      driverId: "drv1",
+      agreedPrice: "10.00",
+      paymentStatus: "paid",
+      status: "completed",
+      driverPayoutPence: 875,
+      platformFeePence: 125,
+    });
+    storage.payouts.push({
+      id: 600,
+      rideId: ride.id,
+      driverId: "drv1",
+      amountPence: 875,
+      status: "failed",
+      stripeTransferId: null,
+      failureReason: "Account restricted",
+      retryCount: 0,
+      lastAttemptAt: null,
+    });
+
+    // Stub the storage method handleAccountUpdatedWebhook reaches for.
+    (storage as any).updateUserStripeConnect = async (id: string, fields: any) => {
+      const usr = storage.users.get(id)!;
+      usr.stripeConnectAccountId = fields.accountId ?? usr.stripeConnectAccountId;
+      usr.stripeConnectChargesEnabled = !!fields.chargesEnabled;
+      usr.stripeConnectPayoutsEnabled = !!fields.payoutsEnabled;
+      usr.stripeConnectOnboarded = !!fields.onboarded;
+      return usr;
+    };
+    (storage as any).getUser = async (id: string) => storage.users.get(id) ?? null;
+
+    stripe.transfers.create.mockResolvedValueOnce({
+      id: "tr_webhook_recovered",
+      object: "transfer",
+      amount: 875,
+      destination: "acct_drv1",
+    } as any);
+
+    const { handleAccountUpdatedWebhook } = await import("../server/stripeConnect");
+    await handleAccountUpdatedWebhook({
+      id: "acct_drv1",
+      object: "account",
+      payouts_enabled: true,
+      charges_enabled: true,
+      details_submitted: true,
+      requirements: { currently_due: [] } as any,
+      metadata: { userId: "drv1" },
+    } as any);
+
+    // The sweep is fire-and-forget; give the microtask queue a chance.
+    await new Promise((r) => setTimeout(r, 100));
+
+    const row = storage.payouts.find((p) => p.id === 600)!;
+    expect(row.status).toBe("transferred");
+    expect(row.stripeTransferId).toBe("tr_webhook_recovered");
+  });
+
+  it("two concurrent retries on the same payout fire exactly one Stripe transfer", async () => {
+    seedHappyDriver();
+    seedRider();
+    const ride = storage.seedRide({
+      riderId: "rdr1",
+      driverId: "drv1",
+      agreedPrice: "10.00",
+      paymentStatus: "paid",
+      status: "completed",
+      driverPayoutPence: 875,
+      platformFeePence: 125,
+    });
+    storage.payouts.push({
+      id: 800,
+      rideId: ride.id,
+      driverId: "drv1",
+      amountPence: 875,
+      status: "failed",
+      stripeTransferId: null,
+      failureReason: "Earlier rate-limit",
+      retryCount: 0,
+      lastAttemptAt: null,
+    });
+
+    // Slow down the first transfer so the second attempt enters the
+    // claim-and-transfer critical section while the first is mid-flight.
+    let releaseFirst!: () => void;
+    const firstStarted = new Promise<void>((res) => (releaseFirst = res));
+    let callCount = 0;
+    stripe.transfers.create.mockImplementation(async (args: any) => {
+      callCount++;
+      if (callCount === 1) await firstStarted;
+      return {
+        id: `tr_concurrent_${callCount}`,
+        object: "transfer",
+        amount: args.amount,
+        destination: args.destination,
+      } as any;
+    });
+
+    const { attemptPayoutRetry } = await import("../server/payoutRetry");
+    const a = attemptPayoutRetry(800);
+    // Yield so `a` reaches the claim before `b` starts.
+    await new Promise((r) => setTimeout(r, 20));
+    const b = attemptPayoutRetry(800);
+    await new Promise((r) => setTimeout(r, 20));
+    releaseFirst();
+
+    const [r1, r2] = await Promise.all([a, b]);
+    // Exactly one transfer hit Stripe — the second attempt lost the
+    // claim race and short-circuited before calling Stripe.
+    expect(stripe.transfers.create).toHaveBeenCalledTimes(1);
+    const outcomes = [r1.status, r2.status].sort();
+    expect(outcomes).toEqual(["skipped", "transferred"]);
+    const row = storage.payouts.find((p) => p.id === 800)!;
+    expect(row.status).toBe("transferred");
+    expect(row.stripeTransferId).toBe("tr_concurrent_1");
+  });
+
+  it("manual POST /api/driver/payouts/:id/retry funnels through the same helper and bumps retry_count", async () => {
+    seedHappyDriver();
+    seedRider();
+    const ride = storage.seedRide({
+      riderId: "rdr1",
+      driverId: "drv1",
+      agreedPrice: "10.00",
+      paymentStatus: "paid",
+      status: "completed",
+      driverPayoutPence: 875,
+      platformFeePence: 125,
+    });
+    storage.payouts.push({
+      id: 700,
+      rideId: ride.id,
+      driverId: "drv1",
+      amountPence: 875,
+      status: "failed",
+      stripeTransferId: null,
+      failureReason: "Earlier failure",
+      retryCount: 0,
+      lastAttemptAt: null,
+    });
+    stripe.transfers.create.mockResolvedValueOnce({
+      id: "tr_manual",
+      object: "transfer",
+      amount: 875,
+      destination: "acct_drv1",
+    } as any);
+
+    const res = await request(app)
+      .post("/api/driver/payouts/700/retry")
+      .set("x-test-user", "drv1")
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: "transferred", stripeTransferId: "tr_manual" });
+    const row = storage.payouts.find((p) => p.id === 700)!;
+    expect(row.status).toBe("transferred");
+    expect(row.retryCount).toBe(1);
+  });
+});
+
 describe("POST /api/bids — driver without active Connect cannot accept", () => {
   it("rejects bid creation for a driver who has not finished Connect onboarding", async () => {
     storage.seedUser({

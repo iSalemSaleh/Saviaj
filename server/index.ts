@@ -253,4 +253,21 @@ async function initStripe() {
   }, 6 * 60 * 60 * 1000); // 6 hours
 
   log('Recurring schedule generation job scheduled (every 6 hours)');
+
+  // Background auto-retry for stuck driver payouts (runs every 5 minutes).
+  // Most transfer failures are transient (Stripe rate-limit, brief
+  // account-restriction lifted by an `account.updated` webhook). Rather
+  // than waiting for the driver to click "Retry", we sweep failed
+  // driver_payouts whose driver currently has payouts_enabled = true,
+  // honoring per-row exponential backoff and a max-attempts cap.
+  setInterval(async () => {
+    try {
+      const { retryStuckPayouts } = await import('./payoutRetry');
+      await retryStuckPayouts();
+    } catch (error) {
+      console.error('Driver payout auto-retry job failed:', error);
+    }
+  }, 5 * 60 * 1000);
+
+  log('Driver payout auto-retry job scheduled (every 5 minutes)');
 })();

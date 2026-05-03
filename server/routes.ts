@@ -343,43 +343,10 @@ const profileImageUpload = multer({
   },
 });
 
-// Notify a driver that a payout failed so the money doesn't sit
-// invisible. We persist a notification row (badge + list pickup) and
-// fire a websocket nudge so any open client refreshes the payouts
-// query without waiting for the 15s poll. Best-effort: errors here
-// must not break the surrounding payout pipeline, so callers should
-// already be inside a try/catch — we additionally swallow internally.
-async function notifyDriverPayoutFailed(args: {
-  driverId: string;
-  rideId: number;
-  amountPence: number;
-  reason: string;
-}): Promise<void> {
-  try {
-    const pounds = (args.amountPence / 100).toFixed(2);
-    await storage.createNotification({
-      userId: args.driverId,
-      type: 'payout_failed',
-      title: 'Payout failed',
-      message: `Your £${pounds} payout for ride #${args.rideId} couldn't be sent: ${args.reason}. Open Settings → Payouts to retry.`,
-      relatedRideId: args.rideId,
-      read: false,
-    });
-    try {
-      const { broadcast } = await import('./websocket');
-      broadcast({
-        type: 'PAYOUT_FAILED',
-        rideId: args.rideId,
-        amountPence: args.amountPence,
-        reason: args.reason,
-      }, args.driverId);
-    } catch (wsErr) {
-      console.warn('[payout] websocket broadcast failed', wsErr);
-    }
-  } catch (notifErr) {
-    console.error('[payout] failed to notify driver of payout failure', notifErr);
-  }
-}
+// notifyDriverPayoutFailed lives in ./payoutNotify so server/payoutRetry.ts
+// can import it without pulling in the entire route surface.
+import { notifyDriverPayoutFailed } from './payoutNotify';
+import { attemptPayoutRetry } from './payoutRetry';
 
 export async function registerRoutes(app: Express, httpServer: Server): Promise<void> {
   // Auth middleware
@@ -5419,37 +5386,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         });
       }
 
-      // Flip to pending so a concurrent /complete (very unlikely on a
-      // failed row, but possible after admin intervention) collides on
-      // the unique index instead of double-transferring.
-      await storage.updateDriverPayoutStatus(payoutId, { status: 'pending', failureReason: null });
-
-      try {
-        const { transferToDriver } = await import('./stripeConnect');
-        const transfer = await transferToDriver({
-          destinationAccountId: driver.stripeConnectAccountId,
-          amountPence: payout.amountPence,
-          rideId: payout.rideId,
-          driverId: userId,
-        });
-        await storage.updateDriverPayoutStatus(payoutId, {
-          status: 'transferred',
-          stripeTransferId: transfer.id,
-        });
-        console.log(`[payout] retry ride ${payout.rideId}: transferred ${payout.amountPence}p (transfer ${transfer.id})`);
-        return res.json({ status: 'transferred', stripeTransferId: transfer.id });
-      } catch (transferErr: any) {
-        const reason = transferErr?.message?.slice(0, 290) || 'Stripe transfer failed';
-        await storage.updateDriverPayoutStatus(payoutId, { status: 'failed', failureReason: reason });
-        await notifyDriverPayoutFailed({
-          driverId: userId,
-          rideId: payout.rideId,
-          amountPence: payout.amountPence,
-          reason,
-        });
-        console.error(`[payout] retry ride ${payout.rideId}: transfer failed`, transferErr);
-        return res.status(502).json({ status: 'failed', message: reason });
+      // Funnel through the same helper the background job and webhook
+      // sweep use, so manual + automatic retries can never diverge in
+      // their state machine, backoff bookkeeping, or notification rules.
+      const outcome = await attemptPayoutRetry(payoutId, { notifyOnFailure: true });
+      if (outcome.status === 'transferred') {
+        return res.json({ status: 'transferred', stripeTransferId: outcome.stripeTransferId });
       }
+      if (outcome.status === 'failed') {
+        return res.status(502).json({ status: 'failed', message: outcome.reason });
+      }
+      return res.status(409).json({ status: 'skipped', message: outcome.reason });
     } catch (err: any) {
       console.error('[payouts/retry] error', err);
       res.status(500).json({ message: err?.message || 'Failed to retry payout' });

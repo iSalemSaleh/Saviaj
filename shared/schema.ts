@@ -225,6 +225,12 @@ export const driverPayouts = pgTable("driver_payouts", {
   // recoup, driver owes platform).
   status: varchar("status", { length: 30 }).notNull().default("pending"),
   failureReason: varchar("failure_reason", { length: 300 }),
+  // Background auto-retry bookkeeping. `retryCount` bounds total
+  // attempts (initial + retries). `lastAttemptAt` is set on every
+  // transfer attempt and is what the scheduled retry job uses to
+  // implement bounded exponential backoff between attempts.
+  retryCount: integer("retry_count").notNull().default(0),
+  lastAttemptAt: timestamp("last_attempt_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({

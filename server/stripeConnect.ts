@@ -169,6 +169,11 @@ export async function handleAccountUpdatedWebhook(account: Stripe.Account): Prom
     console.warn(`[stripeConnect] account.updated for ${account.id} has no userId metadata`);
     return;
   }
+  // Snapshot the prior payouts flag so we can detect a false -> true
+  // edge and trigger an immediate sweep of any failed payouts that
+  // were waiting on this driver's Connect account to come back.
+  const priorUser = await storage.getUser(userId);
+  const wasPayoutsEnabled = !!priorUser?.stripeConnectPayoutsEnabled;
   await storage.updateUserStripeConnect(userId, {
     accountId: account.id,
     chargesEnabled: !!account.charges_enabled,
@@ -179,6 +184,20 @@ export async function handleAccountUpdatedWebhook(account: Stripe.Account): Prom
   console.log(
     `[stripeConnect] synced ${userId}: charges=${account.charges_enabled} payouts=${account.payouts_enabled} onboarded=${account.details_submitted}`,
   );
+
+  if (!wasPayoutsEnabled && !!account.payouts_enabled) {
+    // Fire-and-forget: webhook handler must return promptly so Stripe
+    // doesn't time out and replay the event. Errors are logged inside
+    // retryFailedPayoutsForDriver and on the catch below.
+    void (async () => {
+      try {
+        const { retryFailedPayoutsForDriver } = await import('./payoutRetry');
+        await retryFailedPayoutsForDriver(userId);
+      } catch (err) {
+        console.error(`[stripeConnect] auto-retry sweep failed for ${userId}`, err);
+      }
+    })();
+  }
 }
 
 /**

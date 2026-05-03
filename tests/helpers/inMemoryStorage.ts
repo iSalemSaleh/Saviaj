@@ -59,6 +59,8 @@ export interface InMemoryPayout {
   status: string;
   stripeTransferId: string | null;
   failureReason: string | null;
+  retryCount?: number;
+  lastAttemptAt?: Date | null;
 }
 
 export interface InMemoryNotification {
@@ -186,6 +188,8 @@ export class InMemoryStorage {
       status: p.status,
       stripeTransferId: p.stripeTransferId ?? null,
       failureReason: p.failureReason ?? null,
+      retryCount: 0,
+      lastAttemptAt: null,
     };
     this.payouts.push(row);
     return { id: row.id };
@@ -193,7 +197,7 @@ export class InMemoryStorage {
 
   async updateDriverPayoutStatus(
     id: number,
-    fields: { status: string; stripeTransferId?: string; failureReason?: string | null },
+    fields: { status: string; stripeTransferId?: string; failureReason?: string | null; bumpRetryCount?: boolean; setLastAttemptAt?: boolean },
   ): Promise<void> {
     const row = this.payouts.find((p) => p.id === id);
     if (!row) throw new Error(`payout ${id} not found`);
@@ -201,6 +205,78 @@ export class InMemoryStorage {
     if (fields.stripeTransferId !== undefined) row.stripeTransferId = fields.stripeTransferId;
     if (fields.failureReason === null) row.failureReason = null;
     else if (fields.failureReason !== undefined) row.failureReason = fields.failureReason;
+    if (fields.bumpRetryCount) row.retryCount = (row.retryCount ?? 0) + 1;
+    if (fields.setLastAttemptAt) row.lastAttemptAt = new Date();
+  }
+
+  async claimFailedPayoutForRetry(id: number) {
+    // Atomic in JS land because the event loop is single-threaded —
+    // this find+mutate sequence cannot be interleaved with another
+    // call's find+mutate. Mirrors the Postgres
+    // `UPDATE ... WHERE id=? AND status='failed' RETURNING ...`
+    // semantics: only the first concurrent caller gets a non-null
+    // result; subsequent callers see status='pending' and get null.
+    const row = this.payouts.find((p) => p.id === id);
+    if (!row || row.status !== 'failed') return null;
+    row.status = 'pending';
+    row.failureReason = null;
+    row.lastAttemptAt = new Date();
+    return {
+      id: row.id,
+      rideId: row.rideId,
+      driverId: row.driverId,
+      amountPence: row.amountPence,
+      retryCount: row.retryCount ?? 0,
+    };
+  }
+
+  async listFailedPayoutsToRetry(opts: {
+    driverId?: string;
+    maxRetries: number;
+    backoffBaseMinutes: number;
+    ignoreBackoff?: boolean;
+    limit?: number;
+  }) {
+    const now = Date.now();
+    const limit = opts.limit ?? 50;
+    return this.payouts
+      .filter((p) => {
+        if (p.status !== 'failed') return false;
+        if ((p.retryCount ?? 0) >= opts.maxRetries) return false;
+        if (opts.driverId && p.driverId !== opts.driverId) return false;
+        const u = this.users.get(p.driverId);
+        if (!u?.stripeConnectPayoutsEnabled) return false;
+        if (opts.ignoreBackoff) return true;
+        if (!p.lastAttemptAt) return true;
+        const waitMs = opts.backoffBaseMinutes * 60 * 1000 * Math.pow(2, p.retryCount ?? 0);
+        return now - p.lastAttemptAt.getTime() >= waitMs;
+      })
+      .slice(0, limit)
+      .map((p) => ({
+        id: p.id,
+        rideId: p.rideId,
+        driverId: p.driverId,
+        amountPence: p.amountPence,
+        retryCount: p.retryCount ?? 0,
+      }));
+  }
+
+  async getDriverPayoutById(id: number) {
+    const p = this.payouts.find((x) => x.id === id);
+    if (!p) return null;
+    return {
+      id: p.id,
+      rideId: p.rideId,
+      driverId: p.driverId,
+      status: p.status,
+      stripeTransferId: p.stripeTransferId,
+      amountPence: p.amountPence,
+      failureReason: p.failureReason,
+      retryCount: p.retryCount ?? 0,
+      lastAttemptAt: p.lastAttemptAt ?? null,
+      createdAt: null,
+      updatedAt: null,
+    };
   }
 
   async getDriverPayoutsForRide(rideId: number) {
