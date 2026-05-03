@@ -1,0 +1,135 @@
+2026-05-03T17:10:41.5251807Z Documentation    : http://aka.ms/webapp-linux
+2026-05-03T17:10:41.5251845Z NodeJS quickstart: https://aka.ms/node-qs
+2026-05-03T17:10:41.5251879Z NodeJS Version   : v24.13.0
+2026-05-03T17:10:41.525192Z Instance Name    : pl0sdlwk001DFA
+2026-05-03T17:10:41.5251959Z Instance Id      : 180768af8d5f37afa6ee9320e07f55ffb654f2d3d303b4e4753535d3ea6b11df
+2026-05-03T17:10:41.5251989Z
+2026-05-03T17:10:41.5252022Z Note: Any data outside '/home' is not persisted
+2026-05-03T17:10:44.5665265Z  * Starting OpenBSD Secure Shell server sshd
+2026-05-03T17:10:44.6087299Z    ...done.
+2026-05-03T17:10:44.6210052Z WEBSITES_INCLUDE_CLOUD_CERTS is not set to true.
+2026-05-03T17:10:44.6481217Z Updating certificates in /etc/ssl/certs...
+2026-05-03T17:10:50.8355144Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-ECC.pem
+2026-05-03T17:10:50.8355906Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-RSA.pem
+2026-05-03T17:10:51.0123788Z rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
+2026-05-03T17:10:51.0399868Z 4 added, 0 removed; done.
+2026-05-03T17:10:51.0400307Z Running hooks in /etc/ca-certificates/update.d...
+2026-05-03T17:10:51.0463642Z done.
+2026-05-03T17:10:51.0624686Z CA certificates copied and updated successfully.
+2026-05-03T17:10:51.15455Z  * Starting periodic command scheduler cron
+2026-05-03T17:10:51.1654736Z    ...done.
+2026-05-03T17:10:51.2766104Z Found build manifest file at '/home/site/wwwroot/oryx-manifest.toml'. Deserializing it...
+2026-05-03T17:10:51.2766998Z Could not find operation ID in manifest. Generating an operation id...
+2026-05-03T17:10:51.2767123Z Build Operation ID: 82317e64-6664-47ac-8023-8aaa83bbd06b
+2026-05-03T17:10:51.5587046Z Environment Variables for Application Insight's IPA Codeless Configuration exists..
+2026-05-03T17:10:51.6138509Z Writing output script to '/opt/startup/startup.sh'
+2026-05-03T17:10:51.6801223Z Running #!/bin/sh
+2026-05-03T17:10:51.6801736Z
+2026-05-03T17:10:51.6801809Z # Enter the source directory to make sure the script runs where the user expects
+2026-05-03T17:10:51.6801863Z cd "/home/site/wwwroot"
+2026-05-03T17:10:51.6801972Z
+2026-05-03T17:10:51.6802014Z export NODE_PATH=/usr/local/lib/node_modules:$NODE_PATH
+2026-05-03T17:10:51.6802053Z if [ -z "$PORT" ]; then
+2026-05-03T17:10:51.6802091Z 		export PORT=8080
+2026-05-03T17:10:51.6802124Z fi
+2026-05-03T17:10:51.6802159Z
+2026-05-03T17:10:51.6802195Z echo Found tar.gz based node_modules.
+2026-05-03T17:10:51.6802251Z extractionCommand="tar -xzf node_modules.tar.gz -C /node_modules"
+2026-05-03T17:10:51.6802296Z echo "Removing existing modules directory from root..."
+2026-05-03T17:10:51.6802336Z rm -fr /node_modules
+2026-05-03T17:10:51.6802375Z mkdir -p /node_modules
+2026-05-03T17:10:51.6802411Z echo Extracting modules...
+2026-05-03T17:10:51.6802446Z $extractionCommand
+2026-05-03T17:10:51.6802519Z export NODE_PATH="/node_modules":$NODE_PATH
+2026-05-03T17:10:51.6802564Z export PATH=/node_modules/.bin:$PATH
+2026-05-03T17:10:51.6802605Z if [ -d node_modules ]; then
+2026-05-03T17:10:51.6802644Z     mv -f node_modules _del_node_modules || true
+2026-05-03T17:10:51.680268Z fi
+2026-05-03T17:10:51.6802712Z
+2026-05-03T17:10:51.6802747Z if [ -d /node_modules ]; then
+2026-05-03T17:10:51.6802782Z     ln -sfn /node_modules ./node_modules
+2026-05-03T17:10:51.6802827Z fi
+2026-05-03T17:10:51.6802858Z
+2026-05-03T17:10:51.6802893Z echo "Done."
+2026-05-03T17:10:51.680293Z npm start
+2026-05-03T17:10:51.6832166Z Found tar.gz based node_modules.
+2026-05-03T17:10:51.6832325Z Removing existing modules directory from root...
+2026-05-03T17:10:51.7267681Z Extracting modules...
+2026-05-03T17:11:00.1779882Z Done.
+2026-05-03T17:11:00.7177858Z npm info using npm@10.9.2
+2026-05-03T17:11:00.7180877Z npm info using node@v24.13.0
+2026-05-03T17:11:01.0955534Z
+2026-05-03T17:11:01.0956061Z > rest-express@1.0.0 start
+2026-05-03T17:11:01.0956126Z > NODE_ENV=production node dist/index.cjs
+2026-05-03T17:11:01.0956176Z
+2026-05-03T17:11:01.7196663Z Initializing Stripe schema...
+2026-05-03T17:11:01.8636488Z Stripe schema ready
+2026-05-03T17:11:02.0812919Z { autoExpandLists: undefined, stripeApiVersion: undefined } StripeSync initialized
+2026-05-03T17:11:02.0819655Z Setting up managed webhook...
+2026-05-03T17:11:02.805399Z Webhook configured: https://saviaj-eag6c8epg9hzaze6.canadacentral-01.azurewebsites.net/api/stripe/webhook/a0d06d7d-3714-49e7-9d30-d756a3123967 (UUID: a0d06d7d-3714-49e7-9d30-d756a3123967)
+2026-05-03T17:11:02.8054463Z Syncing Stripe data...
+2026-05-03T17:11:02.805962Z Syncing products
+2026-05-03T17:11:02.8113985Z [auth] REPL_ID not set — skipping Replit OIDC setup (Azure/external host mode)
+2026-05-03T17:11:02.8122592Z [auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set — Google sign-in disabled
+2026-05-03T17:11:02.8126095Z [WebSocket] Server initialized
+2026-05-03T17:11:02.8895284Z 5:11:02 PM [express] Payment timeout and expired rides cleanup job scheduled (every 5 minutes)
+2026-05-03T17:11:02.8906945Z 5:11:02 PM [express] Recurring schedule generation job scheduled (every 6 hours)
+2026-05-03T17:11:02.8945433Z 5:11:02 PM [express] serving on port 8080
+2026-05-03T17:11:02.8996104Z Fetching items to sync from Stripe
+2026-05-03T17:11:03.0354819Z Sync complete: 0 items synced
+2026-05-03T17:11:03.035788Z Syncing prices
+2026-05-03T17:11:03.0389425Z Fetching items to sync from Stripe
+2026-05-03T17:11:03.2236843Z Sync complete: 0 items synced
+2026-05-03T17:11:03.2241299Z Syncing plans
+2026-05-03T17:11:03.2275897Z Fetching items to sync from Stripe
+2026-05-03T17:11:03.3682798Z Sync complete: 0 items synced
+2026-05-03T17:11:03.3686426Z Syncing customers
+2026-05-03T17:11:03.3737864Z Fetching items to sync from Stripe
+2026-05-03T17:11:03.5377715Z Upserting final batch of 1 items
+2026-05-03T17:11:03.5549827Z Sync complete: 1 items synced
+2026-05-03T17:11:03.5551124Z Syncing subscriptions
+2026-05-03T17:11:03.5583029Z Fetching items to sync from Stripe
+2026-05-03T17:11:03.698927Z Sync complete: 0 items synced
+2026-05-03T17:11:03.6991836Z Syncing subscription schedules
+2026-05-03T17:11:03.7035924Z Fetching items to sync from Stripe
+2026-05-03T17:11:03.8345173Z Sync complete: 0 items synced
+2026-05-03T17:11:03.8347775Z Syncing invoices
+2026-05-03T17:11:03.8380874Z Fetching items to sync from Stripe
+2026-05-03T17:11:03.9799017Z Sync complete: 0 items synced
+2026-05-03T17:11:03.9799293Z Syncing charges
+2026-05-03T17:11:03.983318Z Fetching items to sync from Stripe
+2026-05-03T17:11:05.1099326Z Upserting final batch of 20 items
+2026-05-03T17:11:05.1913695Z Sync complete: 20 items synced
+2026-05-03T17:11:05.1917778Z Syncing setup_intents
+2026-05-03T17:11:05.1944605Z Fetching items to sync from Stripe
+2026-05-03T17:11:05.3248357Z Sync complete: 0 items synced
+2026-05-03T17:11:05.3251971Z Syncing payment method
+2026-05-03T17:11:05.3265079Z Getting payment methods for 1 customers
+2026-05-03T17:11:05.3267698Z Fetching items to sync from Stripe
+2026-05-03T17:11:05.4602683Z Sync complete: 0 items synced
+2026-05-03T17:11:05.4606002Z Syncing payment_intents
+2026-05-03T17:11:05.4640164Z Fetching items to sync from Stripe
+2026-05-03T17:11:06.5019238Z Upserting final batch of 37 items
+2026-05-03T17:11:06.5819472Z Sync complete: 37 items synced
+2026-05-03T17:11:06.5823758Z Syncing tax_ids
+2026-05-03T17:11:06.5824379Z Fetching items to sync from Stripe
+2026-05-03T17:11:06.7144154Z Sync complete: 0 items synced
+2026-05-03T17:11:06.7147189Z Syncing credit notes
+2026-05-03T17:11:06.7182717Z Fetching items to sync from Stripe
+2026-05-03T17:11:06.8460878Z Sync complete: 0 items synced
+2026-05-03T17:11:06.8462144Z Syncing disputes
+2026-05-03T17:11:06.8494188Z Fetching items to sync from Stripe
+2026-05-03T17:11:06.9863579Z Sync complete: 0 items synced
+2026-05-03T17:11:06.9866625Z Syncing early fraud warnings
+2026-05-03T17:11:06.9895396Z Fetching items to sync from Stripe
+2026-05-03T17:11:07.1189373Z Sync complete: 0 items synced
+2026-05-03T17:11:07.1190583Z Syncing refunds
+2026-05-03T17:11:07.1222711Z Fetching items to sync from Stripe
+2026-05-03T17:11:07.3751604Z Upserting final batch of 4 items
+2026-05-03T17:11:07.3971352Z Sync complete: 4 items synced
+2026-05-03T17:11:07.3972686Z Syncing checkout sessions
+2026-05-03T17:11:07.4005333Z Fetching items to sync from Stripe
+2026-05-03T17:11:07.6354244Z Upserting final batch of 9 items
+2026-05-03T17:11:10.3499337Z Sync complete: 9 items synced
+2026-05-03T17:11:10.3499812Z Stripe data synced
+2026-05-03T17:15:18.689Z No new trace in the past 1 min(s).
