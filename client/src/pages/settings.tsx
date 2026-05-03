@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1412,10 +1413,55 @@ function PayoutHistory() {
   // Payouts page (a plain <a href> would still work but loses the
   // SPA context if the request errors).
   const [isExporting, setIsExporting] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  type ExportPreset = 'all' | 'this-tax-year' | 'last-month' | 'custom';
+  const EXPORT_PRESETS: readonly ExportPreset[] = ['all', 'this-tax-year', 'last-month', 'custom'] as const;
+  const isExportPreset = (v: string): v is ExportPreset => (EXPORT_PRESETS as readonly string[]).includes(v);
+  const [exportPreset, setExportPreset] = useState<ExportPreset>('this-tax-year');
+  const [customFrom, setCustomFrom] = useState<string>('');
+  const [customTo, setCustomTo] = useState<string>('');
+
+  // UK tax year: 6 April → 5 April. If today is before 6 April, the
+  // current tax year started on 6 April of the previous calendar year.
+  const ymd = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const computePresetRange = (preset: ExportPreset): { from?: string; to?: string } => {
+    const now = new Date();
+    if (preset === 'all') return {};
+    if (preset === 'this-tax-year') {
+      const beforeApril6 = now.getMonth() < 3 || (now.getMonth() === 3 && now.getDate() < 6);
+      const startYear = beforeApril6 ? now.getFullYear() - 1 : now.getFullYear();
+      const from = `${startYear}-04-06`;
+      const to = `${startYear + 1}-04-05`;
+      return { from, to };
+    }
+    if (preset === 'last-month') {
+      const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthEnd = new Date(firstOfThisMonth.getTime() - 1);
+      const lastMonthStart = new Date(lastMonthEnd.getFullYear(), lastMonthEnd.getMonth(), 1);
+      return { from: ymd(lastMonthStart), to: ymd(lastMonthEnd) };
+    }
+    return { from: customFrom || undefined, to: customTo || undefined };
+  };
+
   const handleExportCsv = async () => {
+    const { from, to } = computePresetRange(exportPreset);
+    if (exportPreset === 'custom' && from && to && from > to) {
+      toast({ title: 'Invalid range', description: '“From” must be on or before “To”.', variant: 'destructive' });
+      return;
+    }
     setIsExporting(true);
     try {
-      const res = await fetch('/api/driver/payouts/export.csv', { credentials: 'include' });
+      const params = new URLSearchParams();
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      const qs = params.toString();
+      const url0 = `/api/driver/payouts/export.csv${qs ? `?${qs}` : ''}`;
+      const res = await fetch(url0, { credentials: 'include' });
       if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
       const blob = await res.blob();
       // Prefer the server-supplied filename from Content-Disposition;
@@ -1432,6 +1478,7 @@ function PayoutHistory() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      setExportOpen(false);
     } catch (err: any) {
       toast({ title: 'Export failed', description: err?.message || 'Try again later', variant: 'destructive' });
     } finally {
@@ -1472,20 +1519,79 @@ function PayoutHistory() {
     <CardContent className="border-t pt-6 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-semibold text-sm" data-testid="heading-payout-summary">Earnings summary</h3>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleExportCsv}
-          disabled={isExporting || !hasTransferred}
-          data-testid="button-export-payouts-csv"
-        >
-          {isExporting ? (
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-          ) : (
-            <Download className="h-4 w-4 mr-1" />
-          )}
-          Download CSV
-        </Button>
+        <Popover open={exportOpen} onOpenChange={setExportOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!hasTransferred}
+              data-testid="button-export-payouts-csv"
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Download CSV
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-72 space-y-3" data-testid="popover-export-payouts">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Export payouts</p>
+              <p className="text-xs text-muted-foreground">
+                Pick a date range — only paid (transferred) rows are included.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="export-preset" className="text-xs">Range</Label>
+              <Select value={exportPreset} onValueChange={(v) => { if (isExportPreset(v)) setExportPreset(v); }}>
+                <SelectTrigger id="export-preset" data-testid="select-export-preset">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="this-tax-year" data-testid="option-export-this-tax-year">This tax year (UK)</SelectItem>
+                  <SelectItem value="last-month" data-testid="option-export-last-month">Last month</SelectItem>
+                  <SelectItem value="custom" data-testid="option-export-custom">Custom range</SelectItem>
+                  <SelectItem value="all" data-testid="option-export-all">All time</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {exportPreset === 'custom' && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="export-from" className="text-xs">From</Label>
+                  <Input
+                    id="export-from"
+                    type="date"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                    data-testid="input-export-from"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="export-to" className="text-xs">To</Label>
+                  <Input
+                    id="export-to"
+                    type="date"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                    data-testid="input-export-to"
+                  />
+                </div>
+              </div>
+            )}
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={handleExportCsv}
+              disabled={isExporting}
+              data-testid="button-confirm-export-payouts-csv"
+            >
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-1" />
+              )}
+              Download
+            </Button>
+          </PopoverContent>
+        </Popover>
       </div>
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" data-testid="summary-payout-totals">

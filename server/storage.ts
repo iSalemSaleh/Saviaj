@@ -443,7 +443,7 @@ export interface IStorage {
   // status='transferred' rows. Powers the CSV export on the Payouts
   // page — drivers need every row that actually paid out for tax /
   // self-assessment, not just the most recent 200 like the UI list.
-  listTransferredPayoutsForDriverForExport(driverId: string): Promise<Array<{ id: number; rideId: number; amountPence: number; stripeTransferId: string | null; pickupLocation: string | null; dropoffLocation: string | null; rideCompletedAt: Date | null; paidAt: Date | null }>>;
+  listTransferredPayoutsForDriverForExport(driverId: string, range?: { from?: Date; to?: Date }): Promise<Array<{ id: number; rideId: number; amountPence: number; stripeTransferId: string | null; pickupLocation: string | null; dropoffLocation: string | null; rideCompletedAt: Date | null; paidAt: Date | null }>>;
   // Aggregate totals (in pence) for a single driver's payouts. Used to
   // power the summary header on the Payouts page so drivers can see
   // "paid this week / this month / lifetime / pending / failed-and-stuck"
@@ -1166,13 +1166,21 @@ export class DatabaseStorage implements IStorage {
     return res.rows as any;
   }
 
-  async listTransferredPayoutsForDriverForExport(driverId: string) {
+  async listTransferredPayoutsForDriverForExport(driverId: string, range?: { from?: Date; to?: Date }) {
     // No LIMIT — drivers exporting for tax need every transferred row.
     // Restricted to status='transferred' so the CSV only contains
     // money that actually paid out (pending/failed/reversed rows
     // would just confuse a self-assessment spreadsheet). Ordered
     // chronologically (oldest first) since that's the natural
     // direction for an accounting ledger.
+    //
+    // Optional `from`/`to` bound the rows by paid_at
+    // (COALESCE(updated_at, created_at)) — that's the same time
+    // basis the rest of the payouts UI uses for "paid this week" etc,
+    // so a driver picking "this tax year" gets a CSV consistent with
+    // what they see on screen. Bounds are inclusive on both ends.
+    const from = range?.from ?? null;
+    const to = range?.to ?? null;
     const res = await db.execute(sql`
       SELECT p.id,
              p.ride_id            AS "rideId",
@@ -1186,6 +1194,8 @@ export class DatabaseStorage implements IStorage {
       LEFT JOIN rides r ON r.id = p.ride_id
       WHERE p.driver_id = ${driverId}
         AND p.status = 'transferred'
+        AND (${from}::timestamptz IS NULL OR COALESCE(p.updated_at, p.created_at) >= ${from}::timestamptz)
+        AND (${to}::timestamptz   IS NULL OR COALESCE(p.updated_at, p.created_at) <= ${to}::timestamptz)
       ORDER BY COALESCE(p.updated_at, p.created_at) ASC, p.id ASC
     `);
     return res.rows as any;

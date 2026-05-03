@@ -5392,7 +5392,35 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const user = await storage.getUser(userId);
       if (!user?.isDriver) return res.status(403).json({ message: 'Driver account required' });
 
-      const rows = await storage.listTransferredPayoutsForDriverForExport(userId);
+      // Optional date-range filter. Drivers picking a tax year / month
+      // pass `from` and/or `to` as YYYY-MM-DD (or any ISO timestamp).
+      // We treat bare dates as UTC day boundaries — `from` snaps to
+      // 00:00:00Z of that day and `to` snaps to 23:59:59.999Z so the
+      // end day is inclusive (otherwise "to=2026-04-05" would miss
+      // anything paid that afternoon). Invalid input → 400 rather
+      // than silently exporting everything.
+      const parseBound = (raw: unknown, end: boolean): Date | undefined => {
+        if (raw === undefined || raw === null || raw === '') return undefined;
+        if (typeof raw !== 'string') throw new Error('invalid date');
+        const ymd = /^\d{4}-\d{2}-\d{2}$/.test(raw);
+        const iso = ymd ? (end ? `${raw}T23:59:59.999Z` : `${raw}T00:00:00.000Z`) : raw;
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) throw new Error('invalid date');
+        return d;
+      };
+      let from: Date | undefined;
+      let to: Date | undefined;
+      try {
+        from = parseBound(req.query.from, false);
+        to = parseBound(req.query.to, true);
+      } catch {
+        return res.status(400).json({ message: 'Invalid from/to date' });
+      }
+      if (from && to && from.getTime() > to.getTime()) {
+        return res.status(400).json({ message: '`from` must be on or before `to`' });
+      }
+
+      const rows = await storage.listTransferredPayoutsForDriverForExport(userId, { from, to });
 
       // Minimal CSV writer: quote every field, double internal quotes,
       // CRLF line endings (RFC 4180). Keeps Excel happy without
@@ -5436,10 +5464,21 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       const csv = lines.join('\r\n') + '\r\n';
 
-      // YYYY-MM-DD in UTC — stable across timezones, matches the
-      // filename pattern in the task spec.
-      const today = new Date().toISOString().slice(0, 10);
-      const filename = `saviaj-payouts-${today}.csv`;
+      // Filename reflects the chosen range so a driver who downloads
+      // multiple slices doesn't end up with three identically-named
+      // files. YYYY-MM-DD in UTC — stable across timezones.
+      const ymd = (d: Date) => d.toISOString().slice(0, 10);
+      const today = ymd(new Date());
+      let filename: string;
+      if (from && to) {
+        filename = `saviaj-payouts-${ymd(from)}_${ymd(to)}.csv`;
+      } else if (from) {
+        filename = `saviaj-payouts-from-${ymd(from)}.csv`;
+      } else if (to) {
+        filename = `saviaj-payouts-to-${ymd(to)}.csv`;
+      } else {
+        filename = `saviaj-payouts-${today}.csv`;
+      }
       res.setHeader('Content-Type', 'text/csv; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       // Don't let browsers/proxies cache a financial export.
