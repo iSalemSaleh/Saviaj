@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck } from "lucide-react";
+import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck, RefreshCw, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -1174,7 +1174,153 @@ function PayoutsSection() {
           </>
         )}
       </CardContent>
+      <PayoutHistory />
     </Card>
+  );
+}
+
+// ============================================================
+// Per-ride payout history. Lists every Stripe Transfer we tried
+// to send for this driver, newest first. Failed rows surface the
+// Stripe error and a Retry button that re-runs the transfer.
+// ============================================================
+type PayoutRow = {
+  id: number;
+  rideId: number;
+  status: 'pending' | 'transferred' | 'failed' | 'reversed' | 'reversed_with_debt' | string;
+  stripeTransferId: string | null;
+  amountPence: number;
+  failureReason: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  pickupLocation: string | null;
+  dropoffLocation: string | null;
+  rideCompletedAt: string | null;
+};
+
+function PayoutHistory() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data, isLoading, error } = useQuery<PayoutRow[]>({
+    queryKey: ["/api/driver/payouts"],
+    refetchInterval: 30_000,
+  });
+
+  const retryMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/driver/payouts/${id}/retry`, {});
+      return res.json();
+    },
+    onSuccess: (resp: any) => {
+      if (resp?.status === 'transferred') {
+        toast({ title: "Payout sent", description: "The transfer went through." });
+      } else {
+        toast({ title: "Retry submitted" });
+      }
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/payouts"] });
+    },
+    onError: (err: any) => {
+      toast({ title: "Retry failed", description: err?.message || "Try again later", variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["/api/driver/payouts"] });
+    },
+  });
+
+  const formatAmount = (pence: number) => `£${(pence / 100).toFixed(2)}`;
+  const formatDate = (iso: string | null) => {
+    if (!iso) return "";
+    try { return new Date(iso).toLocaleString(); } catch { return ""; }
+  };
+
+  const statusBadge = (status: string) => {
+    if (status === 'transferred') {
+      return <Badge className="bg-green-600 hover:bg-green-700" data-testid={`badge-payout-status-transferred`}><CheckCircle2 className="h-3 w-3 mr-1" />Paid</Badge>;
+    }
+    if (status === 'failed') {
+      return <Badge variant="destructive" data-testid={`badge-payout-status-failed`}><XCircle className="h-3 w-3 mr-1" />Failed</Badge>;
+    }
+    if (status === 'pending') {
+      return <Badge variant="secondary" data-testid={`badge-payout-status-pending`}><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+    }
+    if (status === 'reversed') {
+      return <Badge variant="outline" data-testid={`badge-payout-status-reversed`}>Reversed</Badge>;
+    }
+    if (status === 'reversed_with_debt') {
+      return <Badge variant="destructive" data-testid={`badge-payout-status-reversed-debt`}>Reversed (debt)</Badge>;
+    }
+    return <Badge variant="outline">{status}</Badge>;
+  };
+
+  return (
+    <CardContent className="border-t pt-6 space-y-3">
+      <div>
+        <h3 className="font-semibold text-sm" data-testid="heading-payout-history">Payout history</h3>
+        <p className="text-xs text-muted-foreground">
+          One row per ride. Failed transfers can be retried once your Stripe account is active.
+        </p>
+      </div>
+      {isLoading ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : error ? (
+        <p className="text-sm text-destructive" data-testid="text-payouts-error">Couldn't load payout history.</p>
+      ) : !data || data.length === 0 ? (
+        <p className="text-sm text-muted-foreground" data-testid="text-payouts-empty">
+          No payouts yet. Completed rides will show up here.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {data.map((p) => (
+            <div
+              key={p.id}
+              className="border rounded-md p-3 space-y-2"
+              data-testid={`row-payout-${p.id}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium" data-testid={`text-payout-amount-${p.id}`}>
+                      {formatAmount(p.amountPence)}
+                    </span>
+                    {statusBadge(p.status)}
+                  </div>
+                  {(p.pickupLocation || p.dropoffLocation) && (
+                    <p className="text-xs text-muted-foreground truncate" data-testid={`text-payout-route-${p.id}`}>
+                      {p.pickupLocation || "?"} → {p.dropoffLocation || "?"}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground" data-testid={`text-payout-date-${p.id}`}>
+                    Ride #{p.rideId} · {formatDate(p.rideCompletedAt || p.createdAt)}
+                  </p>
+                </div>
+                {p.status === 'failed' && (
+                  <Button
+                    size="sm"
+                    onClick={() => retryMutation.mutate(p.id)}
+                    disabled={retryMutation.isPending}
+                    data-testid={`button-retry-payout-${p.id}`}
+                  >
+                    {retryMutation.isPending && retryMutation.variables === p.id ? (
+                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-1" />
+                    )}
+                    Retry payout
+                  </Button>
+                )}
+              </div>
+              {p.status === 'failed' && p.failureReason && (
+                <div
+                  className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-900"
+                  data-testid={`text-payout-failure-${p.id}`}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-red-600" />
+                  <span>{p.failureReason}</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </CardContent>
   );
 }
 

@@ -437,7 +437,9 @@ export interface IStorage {
     failureReason?: string;
   }): Promise<{ id: number }>;
   getDriverPayoutsForRide(rideId: number): Promise<Array<{ id: number; status: string; stripeTransferId: string | null; amountPence: number }>>;
-  updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string }): Promise<void>;
+  getDriverPayoutById(id: number): Promise<{ id: number; rideId: number; driverId: string; status: string; stripeTransferId: string | null; amountPence: number; failureReason: string | null; createdAt: Date | null; updatedAt: Date | null } | null>;
+  listDriverPayoutsForDriver(driverId: string): Promise<Array<{ id: number; rideId: number; status: string; stripeTransferId: string | null; amountPence: number; failureReason: string | null; createdAt: Date | null; updatedAt: Date | null; pickupLocation: string | null; dropoffLocation: string | null; rideCompletedAt: Date | null }>>;
+  updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string | null }): Promise<void>;
   completeUserProfile(id: string, data: {
     firstName: string;
     lastName: string;
@@ -1001,15 +1003,61 @@ export class DatabaseStorage implements IStorage {
     return res.rows as any;
   }
 
-  async updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string }): Promise<void> {
+  async updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string | null }): Promise<void> {
+    // Note: failure_reason uses COALESCE with NULL-as-keep semantics ONLY
+    // when the caller passes undefined. An explicit `null` is a request
+    // to clear the reason (used on a successful retry); we encode that
+    // with a sentinel-string check via `clear_failure_reason`.
+    const clearReason = fields.failureReason === null;
     await db.execute(sql`
       UPDATE driver_payouts
       SET status = ${fields.status},
           stripe_transfer_id = COALESCE(${fields.stripeTransferId ?? null}, stripe_transfer_id),
-          failure_reason = COALESCE(${fields.failureReason ?? null}, failure_reason),
+          failure_reason = CASE
+            WHEN ${clearReason} THEN NULL
+            ELSE COALESCE(${fields.failureReason ?? null}, failure_reason)
+          END,
           updated_at = NOW()
       WHERE id = ${id}
     `);
+  }
+
+  async getDriverPayoutById(id: number) {
+    const res = await db.execute(sql`
+      SELECT id,
+             ride_id            AS "rideId",
+             driver_id          AS "driverId",
+             status,
+             stripe_transfer_id AS "stripeTransferId",
+             amount_pence       AS "amountPence",
+             failure_reason     AS "failureReason",
+             created_at         AS "createdAt",
+             updated_at         AS "updatedAt"
+      FROM driver_payouts WHERE id = ${id}
+    `);
+    return (res.rows[0] as any) ?? null;
+  }
+
+  async listDriverPayoutsForDriver(driverId: string) {
+    const res = await db.execute(sql`
+      SELECT p.id,
+             p.ride_id            AS "rideId",
+             p.status,
+             p.stripe_transfer_id AS "stripeTransferId",
+             p.amount_pence       AS "amountPence",
+             p.failure_reason     AS "failureReason",
+             p.created_at         AS "createdAt",
+             p.updated_at         AS "updatedAt",
+             r.pickup_location    AS "pickupLocation",
+             r.dropoff_location   AS "dropoffLocation",
+             r.completed_at       AS "rideCompletedAt"
+      FROM driver_payouts p
+      LEFT JOIN rides r ON r.id = p.ride_id
+      WHERE p.driver_id = ${driverId}
+      ORDER BY p.created_at DESC
+      LIMIT 200
+    `);
+    return res.rows as any;
   }
 
   async completeUserProfile(id: string, data: {

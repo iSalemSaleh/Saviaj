@@ -343,6 +343,44 @@ const profileImageUpload = multer({
   },
 });
 
+// Notify a driver that a payout failed so the money doesn't sit
+// invisible. We persist a notification row (badge + list pickup) and
+// fire a websocket nudge so any open client refreshes the payouts
+// query without waiting for the 15s poll. Best-effort: errors here
+// must not break the surrounding payout pipeline, so callers should
+// already be inside a try/catch — we additionally swallow internally.
+async function notifyDriverPayoutFailed(args: {
+  driverId: string;
+  rideId: number;
+  amountPence: number;
+  reason: string;
+}): Promise<void> {
+  try {
+    const pounds = (args.amountPence / 100).toFixed(2);
+    await storage.createNotification({
+      userId: args.driverId,
+      type: 'payout_failed',
+      title: 'Payout failed',
+      message: `Your £${pounds} payout for ride #${args.rideId} couldn't be sent: ${args.reason}. Open Settings → Payouts to retry.`,
+      relatedRideId: args.rideId,
+      read: false,
+    });
+    try {
+      const { broadcast } = await import('./websocket');
+      broadcast({
+        type: 'PAYOUT_FAILED',
+        rideId: args.rideId,
+        amountPence: args.amountPence,
+        reason: args.reason,
+      }, args.driverId);
+    } catch (wsErr) {
+      console.warn('[payout] websocket broadcast failed', wsErr);
+    }
+  } catch (notifErr) {
+    console.error('[payout] failed to notify driver of payout failure', notifErr);
+  }
+}
+
 export async function registerRoutes(app: Express, httpServer: Server): Promise<void> {
   // Auth middleware
   await setupAuth(app);
@@ -4720,13 +4758,20 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         try {
           const driver = await storage.getUser(ride.driverId);
           if (!driver?.stripeConnectAccountId || !driver?.stripeConnectPayoutsEnabled) {
+            const reason = 'No active Stripe Connect account at completion time';
             try {
               await storage.createDriverPayout({
                 rideId: id,
                 driverId: ride.driverId,
                 amountPence: (ride as any).driverPayoutPence,
                 status: 'failed',
-                failureReason: 'No active Stripe Connect account at completion time',
+                failureReason: reason,
+              });
+              await notifyDriverPayoutFailed({
+                driverId: ride.driverId,
+                rideId: id,
+                amountPence: (ride as any).driverPayoutPence,
+                reason,
               });
             } catch (e: any) {
               if (e?.code !== '23505') throw e;
@@ -4764,9 +4809,16 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
                 });
                 console.log(`[payout] ride ${id}: transferred ${(ride as any).driverPayoutPence}p to ${driver.stripeConnectAccountId} (transfer ${transfer.id})`);
               } catch (transferErr: any) {
+                const reason = transferErr?.message?.slice(0, 290) || 'Stripe transfer failed';
                 await storage.updateDriverPayoutStatus(payoutRow.id, {
                   status: 'failed',
-                  failureReason: transferErr?.message?.slice(0, 290) || 'Stripe transfer failed',
+                  failureReason: reason,
+                });
+                await notifyDriverPayoutFailed({
+                  driverId: ride.driverId,
+                  rideId: id,
+                  amountPence: (ride as any).driverPayoutPence,
+                  reason,
                 });
                 console.error(`[payout] ride ${id}: transfer failed`, transferErr);
               }
@@ -5318,6 +5370,89 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     } catch (err: any) {
       console.error('[kyc/stripe-identity/start] error', err);
       res.status(500).json({ message: err?.message || 'Failed to start identity verification' });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Driver-facing payout history + retry. The retry endpoint re-runs
+  // the same Stripe Transfer that failed in /complete, gated on the
+  // driver currently having an active Connect account so we don't
+  // immediately fail again. We do NOT create a new payout row — we
+  // reuse the existing one because the unique partial index on
+  // (ride_id) where status IN ('pending','transferred') would still
+  // block a parallel insert if status were flipped first; instead
+  // we transition failed -> pending -> transferred|failed in place.
+  // ─────────────────────────────────────────────────────────────────────
+  app.get('/api/driver/payouts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const user = await storage.getUser(userId);
+      if (!user?.isDriver) return res.status(403).json({ message: 'Driver account required' });
+      const payouts = await storage.listDriverPayoutsForDriver(userId);
+      res.json(payouts);
+    } catch (err: any) {
+      console.error('[payouts/list] error', err);
+      res.status(500).json({ message: 'Failed to load payouts' });
+    }
+  });
+
+  app.post('/api/driver/payouts/:id/retry', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const payoutId = parseInt(req.params.id);
+      if (!Number.isFinite(payoutId)) return res.status(400).json({ message: 'Invalid payout id' });
+
+      const payout = await storage.getDriverPayoutById(payoutId);
+      if (!payout) return res.status(404).json({ message: 'Payout not found' });
+      if (payout.driverId !== userId) return res.status(403).json({ message: 'Not your payout' });
+      if (payout.status !== 'failed') {
+        return res.status(409).json({ message: `Cannot retry a payout in status '${payout.status}'` });
+      }
+
+      const driver = await storage.getUser(userId);
+      if (!driver?.stripeConnectAccountId || !driver?.stripeConnectPayoutsEnabled) {
+        return res.status(400).json({
+          message: 'Your Stripe payout account is not active yet. Finish onboarding first.',
+          code: 'connect_not_ready',
+        });
+      }
+
+      // Flip to pending so a concurrent /complete (very unlikely on a
+      // failed row, but possible after admin intervention) collides on
+      // the unique index instead of double-transferring.
+      await storage.updateDriverPayoutStatus(payoutId, { status: 'pending', failureReason: null });
+
+      try {
+        const { transferToDriver } = await import('./stripeConnect');
+        const transfer = await transferToDriver({
+          destinationAccountId: driver.stripeConnectAccountId,
+          amountPence: payout.amountPence,
+          rideId: payout.rideId,
+          driverId: userId,
+        });
+        await storage.updateDriverPayoutStatus(payoutId, {
+          status: 'transferred',
+          stripeTransferId: transfer.id,
+        });
+        console.log(`[payout] retry ride ${payout.rideId}: transferred ${payout.amountPence}p (transfer ${transfer.id})`);
+        return res.json({ status: 'transferred', stripeTransferId: transfer.id });
+      } catch (transferErr: any) {
+        const reason = transferErr?.message?.slice(0, 290) || 'Stripe transfer failed';
+        await storage.updateDriverPayoutStatus(payoutId, { status: 'failed', failureReason: reason });
+        await notifyDriverPayoutFailed({
+          driverId: userId,
+          rideId: payout.rideId,
+          amountPence: payout.amountPence,
+          reason,
+        });
+        console.error(`[payout] retry ride ${payout.rideId}: transfer failed`, transferErr);
+        return res.status(502).json({ status: 'failed', message: reason });
+      }
+    } catch (err: any) {
+      console.error('[payouts/retry] error', err);
+      res.status(500).json({ message: err?.message || 'Failed to retry payout' });
     }
   });
 
