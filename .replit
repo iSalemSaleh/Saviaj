@@ -51,3 +51,7 @@ integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.
 [userenv.shared]
 ENTRA_CLIENT_ID = "232d29d0-8723-40a5-98b5-f14e5203d136"
 ENTRA_TENANT_ID = "f11c4c99-1374-4bae-9bfb-9e109a48494b"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 180000
