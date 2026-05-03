@@ -1,0 +1,201 @@
+Connected!
+2026-05-03T18:55:30.731541Z [Payment Cleanup] Error in cleanup job: error: column "platform_fee_pence" does not exist
+2026-05-03T18:55:30.7315803Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T18:55:30.7315842Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T18:55:30.7315871Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T18:55:30.7315899Z     at async s1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:155:3072)
+2026-05-03T18:55:30.7315928Z     at async Ede (/home/site/wwwroot/dist/index.cjs:179:48508)
+2026-05-03T18:55:30.7315957Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:185:96382) {
+2026-05-03T18:55:30.7315983Z   length: 119,
+2026-05-03T18:55:30.7316009Z   severity: 'ERROR',
+2026-05-03T18:55:30.7316034Z   code: '42703',
+2026-05-03T18:55:30.7316061Z   detail: undefined,
+2026-05-03T18:55:30.731611Z   hint: undefined,
+2026-05-03T18:55:30.7316144Z   position: '504',
+2026-05-03T18:55:30.7316174Z   internalPosition: undefined,
+2026-05-03T18:55:30.7316203Z   internalQuery: undefined,
+2026-05-03T18:55:30.731623Z   where: undefined,
+2026-05-03T18:55:30.7316254Z   schema: undefined,
+2026-05-03T18:55:30.7316278Z   table: undefined,
+2026-05-03T18:55:30.7316304Z   column: undefined,
+2026-05-03T18:55:30.7316329Z   dataType: undefined,
+2026-05-03T18:55:30.7316355Z   constraint: undefined,
+2026-05-03T18:55:30.7316385Z   file: 'parse_relation.c',
+2026-05-03T18:55:30.7316413Z   line: '3647',
+2026-05-03T18:55:30.7316456Z   routine: 'errorMissingColumn'
+2026-05-03T18:55:30.7316529Z }
+2026-05-03T18:55:30.7803544Z [Expired Rides] Error in expired rides job: error: column "platform_fee_pence" does not exist
+2026-05-03T18:55:30.780418Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T18:55:30.7804226Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T18:55:30.7804262Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T18:55:30.7804292Z     at async s1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:155:3263)
+2026-05-03T18:55:30.7804323Z     at async Sde (/home/site/wwwroot/dist/index.cjs:179:47421)
+2026-05-03T18:55:30.7804351Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:185:96392) {
+2026-05-03T18:55:30.7804377Z   length: 119,
+2026-05-03T18:55:30.780447Z   severity: 'ERROR',
+2026-05-03T18:55:30.78045Z   code: '42703',
+2026-05-03T18:55:30.7804534Z   detail: undefined,
+2026-05-03T18:55:30.7804564Z   hint: undefined,
+2026-05-03T18:55:30.7804592Z   position: '504',
+2026-05-03T18:55:30.7804618Z   internalPosition: undefined,
+2026-05-03T18:55:30.7804638Z   internalQuery: undefined,
+2026-05-03T18:55:30.7804656Z   where: undefined,
+2026-05-03T18:55:30.7804674Z   schema: undefined,
+2026-05-03T18:55:30.7804692Z   table: undefined,
+2026-05-03T18:55:30.780471Z   column: undefined,
+2026-05-03T18:55:30.7804728Z   dataType: undefined,
+2026-05-03T18:55:30.7804755Z   constraint: undefined,
+2026-05-03T18:55:30.7804774Z   file: 'parse_relation.c',
+2026-05-03T18:55:30.7804791Z   line: '3647',
+2026-05-03T18:55:30.780481Z   routine: 'errorMissingColumn'
+2026-05-03T18:55:30.7804828Z }
+2026-05-03T19:00:30.7843495Z [Payment Cleanup] Error in cleanup job: error: column "platform_fee_pence" does not exist
+2026-05-03T19:00:30.7844047Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T19:00:30.7844086Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T19:00:30.7844114Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T19:00:30.7844149Z     at async s1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:155:3072)
+2026-05-03T19:00:30.7844179Z     at async Ede (/home/site/wwwroot/dist/index.cjs:179:48508)
+2026-05-03T19:00:30.784424Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:185:96382) {
+2026-05-03T19:00:30.7844268Z   length: 119,
+2026-05-03T19:00:30.7844297Z   severity: 'ERROR',
+2026-05-03T19:00:30.7844325Z   code: '42703',
+2026-05-03T19:00:30.7844353Z   detail: undefined,
+2026-05-03T19:00:30.7844401Z   hint: undefined,
+2026-05-03T19:00:30.784443Z   position: '504',
+2026-05-03T19:00:30.7844458Z   internalPosition: undefined,
+2026-05-03T19:00:30.7844487Z   internalQuery: undefined,
+2026-05-03T19:00:30.7844516Z   where: undefined,
+2026-05-03T19:00:30.7844544Z   schema: undefined,
+2026-05-03T19:00:30.7844572Z   table: undefined,
+2026-05-03T19:00:30.7844598Z   column: undefined,
+2026-05-03T19:00:30.7844625Z   dataType: undefined,
+2026-05-03T19:00:30.7844653Z   constraint: undefined,
+2026-05-03T19:00:30.784468Z   file: 'parse_relation.c',
+2026-05-03T19:00:30.7844706Z   line: '3647',
+2026-05-03T19:00:30.7844744Z   routine: 'errorMissingColumn'
+2026-05-03T19:00:30.7844771Z }
+2026-05-03T19:00:30.8510174Z [Expired Rides] Error in expired rides job: error: column "platform_fee_pence" does not exist
+2026-05-03T19:00:30.8510917Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T19:00:30.8510961Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T19:00:30.851099Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T19:00:30.851102Z     at async s1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:155:3263)
+2026-05-03T19:00:30.8511046Z     at async Sde (/home/site/wwwroot/dist/index.cjs:179:47421)
+2026-05-03T19:00:30.8511072Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:185:96392) {
+2026-05-03T19:00:30.8511097Z   length: 119,
+2026-05-03T19:00:30.8511184Z   severity: 'ERROR',
+2026-05-03T19:00:30.851121Z   code: '42703',
+2026-05-03T19:00:30.8511233Z   detail: undefined,
+2026-05-03T19:00:30.8511255Z   hint: undefined,
+2026-05-03T19:00:30.8511278Z   position: '504',
+2026-05-03T19:00:30.8511301Z   internalPosition: undefined,
+2026-05-03T19:00:30.8511324Z   internalQuery: undefined,
+2026-05-03T19:00:30.8511348Z   where: undefined,
+2026-05-03T19:00:30.8511371Z   schema: undefined,
+2026-05-03T19:00:30.8511393Z   table: undefined,
+2026-05-03T19:00:30.8511416Z   column: undefined,
+2026-05-03T19:00:30.8511439Z   dataType: undefined,
+2026-05-03T19:00:30.8511477Z   constraint: undefined,
+2026-05-03T19:00:30.8511501Z   file: 'parse_relation.c',
+2026-05-03T19:00:30.8511525Z   line: '3647',
+2026-05-03T19:00:30.8511549Z   routine: 'errorMissingColumn'
+2026-05-03T19:00:30.8511572Z }
+2026-05-03T19:05:30.8823568Z [Payment Cleanup] Error in cleanup job: error: column "platform_fee_pence" does not exist
+2026-05-03T19:05:30.8824033Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T19:05:30.8824072Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T19:05:30.8824101Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T19:05:30.882413Z     at async s1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:155:3072)
+2026-05-03T19:05:30.8824159Z     at async Ede (/home/site/wwwroot/dist/index.cjs:179:48508)
+2026-05-03T19:05:30.8824188Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:185:96382) {
+2026-05-03T19:05:30.8824211Z   length: 119,
+2026-05-03T19:05:30.8824236Z   severity: 'ERROR',
+2026-05-03T19:05:30.8824259Z   code: '42703',
+2026-05-03T19:05:30.8824282Z   detail: undefined,
+2026-05-03T19:05:30.8824326Z   hint: undefined,
+2026-05-03T19:05:30.882435Z   position: '504',
+2026-05-03T19:05:30.8824375Z   internalPosition: undefined,
+2026-05-03T19:05:30.8824401Z   internalQuery: undefined,
+2026-05-03T19:05:30.8824424Z   where: undefined,
+2026-05-03T19:05:30.8824447Z   schema: undefined,
+2026-05-03T19:05:30.8824469Z   table: undefined,
+2026-05-03T19:05:30.8824491Z   column: undefined,
+2026-05-03T19:05:30.8824515Z   dataType: undefined,
+2026-05-03T19:05:30.8824539Z   constraint: undefined,
+2026-05-03T19:05:30.8824563Z   file: 'parse_relation.c',
+2026-05-03T19:05:30.8824586Z   line: '3647',
+2026-05-03T19:05:30.8824619Z   routine: 'errorMissingColumn'
+2026-05-03T19:05:30.8824644Z }
+2026-05-03T19:05:30.9194291Z [Expired Rides] Error in expired rides job: error: column "platform_fee_pence" does not exist
+2026-05-03T19:05:30.9195119Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T19:05:30.9195164Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T19:05:30.9195192Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T19:05:30.9195222Z     at async s1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:155:3263)
+2026-05-03T19:05:30.9195251Z     at async Sde (/home/site/wwwroot/dist/index.cjs:179:47421)
+2026-05-03T19:05:30.919528Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:185:96392) {
+2026-05-03T19:05:30.9195306Z   length: 119,
+2026-05-03T19:05:30.9195403Z   severity: 'ERROR',
+2026-05-03T19:05:30.919543Z   code: '42703',
+2026-05-03T19:05:30.9195454Z   detail: undefined,
+2026-05-03T19:05:30.9195477Z   hint: undefined,
+2026-05-03T19:05:30.91955Z   position: '504',
+2026-05-03T19:05:30.9195523Z   internalPosition: undefined,
+2026-05-03T19:05:30.9195545Z   internalQuery: undefined,
+2026-05-03T19:05:30.9195568Z   where: undefined,
+2026-05-03T19:05:30.9195592Z   schema: undefined,
+2026-05-03T19:05:30.9195614Z   table: undefined,
+2026-05-03T19:05:30.9195638Z   column: undefined,
+2026-05-03T19:05:30.9195662Z   dataType: undefined,
+2026-05-03T19:05:30.9195699Z   constraint: undefined,
+2026-05-03T19:05:30.9195724Z   file: 'parse_relation.c',
+2026-05-03T19:05:30.9195747Z   line: '3647',
+2026-05-03T19:05:30.919577Z   routine: 'errorMissingColumn'
+2026-05-03T19:05:30.9195792Z }
+2026-05-03T19:10:30.9982384Z [Payment Cleanup] Error in cleanup job: error: column "platform_fee_pence" does not exist
+2026-05-03T19:10:30.9982783Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T19:10:30.9982821Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T19:10:30.998285Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T19:10:30.9982885Z     at async s1.getStalePendingPaymentRides (/home/site/wwwroot/dist/index.cjs:155:3072)
+2026-05-03T19:10:30.9982913Z     at async Ede (/home/site/wwwroot/dist/index.cjs:179:48508)
+2026-05-03T19:10:30.9982943Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:185:96382) {
+2026-05-03T19:10:30.9982971Z   length: 119,
+2026-05-03T19:10:30.9982998Z   severity: 'ERROR',
+2026-05-03T19:10:30.9983025Z   code: '42703',
+2026-05-03T19:10:30.9983052Z   detail: undefined,
+2026-05-03T19:10:30.99831Z   hint: undefined,
+2026-05-03T19:10:30.9983129Z   position: '504',
+2026-05-03T19:10:30.9983156Z   internalPosition: undefined,
+2026-05-03T19:10:30.9983185Z   internalQuery: undefined,
+2026-05-03T19:10:30.9983213Z   where: undefined,
+2026-05-03T19:10:30.998324Z   schema: undefined,
+2026-05-03T19:10:30.9983266Z   table: undefined,
+2026-05-03T19:10:30.9983291Z   column: undefined,
+2026-05-03T19:10:30.9983316Z   dataType: undefined,
+2026-05-03T19:10:30.9983341Z   constraint: undefined,
+2026-05-03T19:10:30.9983365Z   file: 'parse_relation.c',
+2026-05-03T19:10:30.9983391Z   line: '3647',
+2026-05-03T19:10:30.9983427Z   routine: 'errorMissingColumn'
+2026-05-03T19:10:30.9983452Z }
+2026-05-03T19:10:31.0343084Z [Expired Rides] Error in expired rides job: error: column "platform_fee_pence" does not exist
+2026-05-03T19:10:31.0343513Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T19:10:31.0343558Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T19:10:31.0343591Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T19:10:31.0343626Z     at async s1.getExpiredScheduledRides (/home/site/wwwroot/dist/index.cjs:155:3263)
+2026-05-03T19:10:31.0343656Z     at async Sde (/home/site/wwwroot/dist/index.cjs:179:47421)
+2026-05-03T19:10:31.0343687Z     at async Timeout._onTimeout (/home/site/wwwroot/dist/index.cjs:185:96392) {
+2026-05-03T19:10:31.0343713Z   length: 119,
+2026-05-03T19:10:31.0343812Z   severity: 'ERROR',
+2026-05-03T19:10:31.0343841Z   code: '42703',
+2026-05-03T19:10:31.0343871Z   detail: undefined,
+2026-05-03T19:10:31.0343898Z   hint: undefined,
+2026-05-03T19:10:31.0343924Z   position: '504',
+2026-05-03T19:10:31.0343952Z   internalPosition: undefined,
+2026-05-03T19:10:31.034398Z   internalQuery: undefined,
+2026-05-03T19:10:31.0344006Z   where: undefined,
+2026-05-03T19:10:31.0344035Z   schema: undefined,
+2026-05-03T19:10:31.0344064Z   table: undefined,
+2026-05-03T19:10:31.0344092Z   column: undefined,
+2026-05-03T19:10:31.0344121Z   dataType: undefined,
+2026-05-03T19:10:31.0344161Z   constraint: undefined,
+2026-05-03T19:10:31.0344189Z   file: 'parse_relation.c',
+2026-05-03T19:10:31.0344218Z   line: '3647',
+2026-05-03T19:10:31.0344246Z   routine: 'errorMissingColumn'
+2026-05-03T19:10:31.0344271Z }
