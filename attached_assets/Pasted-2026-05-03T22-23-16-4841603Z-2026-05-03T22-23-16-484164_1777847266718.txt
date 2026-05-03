@@ -1,0 +1,254 @@
+2026-05-03T22:23:16.4841603Z
+2026-05-03T22:23:16.4841642Z Documentation    : http://aka.ms/webapp-linux
+2026-05-03T22:23:16.4841682Z NodeJS quickstart: https://aka.ms/node-qs
+2026-05-03T22:23:16.4841717Z NodeJS Version   : v24.13.0
+2026-05-03T22:23:16.4841752Z Instance Name    : pl0sdlwk001DFA
+2026-05-03T22:23:16.4841791Z Instance Id      : 180768af8d5f37afa6ee9320e07f55ffb654f2d3d303b4e4753535d3ea6b11df
+2026-05-03T22:23:16.484184Z
+2026-05-03T22:23:16.4841871Z Note: Any data outside '/home' is not persisted
+2026-05-03T22:23:18.4324306Z  * Starting OpenBSD Secure Shell server sshd
+2026-05-03T22:23:18.4804669Z    ...done.
+2026-05-03T22:23:18.4944321Z WEBSITES_INCLUDE_CLOUD_CERTS is not set to true.
+2026-05-03T22:23:18.5396521Z Updating certificates in /etc/ssl/certs...
+2026-05-03T22:23:24.6538995Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-ECC.pem
+2026-05-03T22:23:24.6554459Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-RSA.pem
+2026-05-03T22:23:24.7250667Z rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
+2026-05-03T22:23:24.8699233Z 4 added, 0 removed; done.
+2026-05-03T22:23:24.8699949Z Running hooks in /etc/ca-certificates/update.d...
+2026-05-03T22:23:24.8700021Z done.
+2026-05-03T22:23:24.8700061Z CA certificates copied and updated successfully.
+2026-05-03T22:23:24.8700101Z  * Starting periodic command scheduler cron
+2026-05-03T22:23:24.8700135Z    ...done.
+2026-05-03T22:23:24.9076654Z Found build manifest file at '/home/site/wwwroot/oryx-manifest.toml'. Deserializing it...
+2026-05-03T22:23:24.9174304Z Could not find operation ID in manifest. Generating an operation id...
+2026-05-03T22:23:24.9174686Z Build Operation ID: d8431ecb-7fc2-4aac-bb70-c2bd58b5caf2
+2026-05-03T22:23:25.1752468Z Environment Variables for Application Insight's IPA Codeless Configuration exists..
+2026-05-03T22:23:25.2120738Z Writing output script to '/opt/startup/startup.sh'
+2026-05-03T22:23:25.2541874Z Running #!/bin/sh
+2026-05-03T22:23:25.2543004Z
+2026-05-03T22:23:25.2543069Z # Enter the source directory to make sure the script runs where the user expects
+2026-05-03T22:23:25.2543116Z cd "/home/site/wwwroot"
+2026-05-03T22:23:25.2543148Z
+2026-05-03T22:23:25.2543181Z export NODE_PATH=/usr/local/lib/node_modules:$NODE_PATH
+2026-05-03T22:23:25.2543215Z if [ -z "$PORT" ]; then
+2026-05-03T22:23:25.2543305Z 		export PORT=8080
+2026-05-03T22:23:25.2543336Z fi
+2026-05-03T22:23:25.2543367Z
+2026-05-03T22:23:25.25434Z echo Found tar.gz based node_modules.
+2026-05-03T22:23:25.2543435Z extractionCommand="tar -xzf node_modules.tar.gz -C /node_modules"
+2026-05-03T22:23:25.2543469Z echo "Removing existing modules directory from root..."
+2026-05-03T22:23:25.2543502Z rm -fr /node_modules
+2026-05-03T22:23:25.2543544Z mkdir -p /node_modules
+2026-05-03T22:23:25.2543577Z echo Extracting modules...
+2026-05-03T22:23:25.2543609Z $extractionCommand
+2026-05-03T22:23:25.2543662Z export NODE_PATH="/node_modules":$NODE_PATH
+2026-05-03T22:23:25.2543694Z export PATH=/node_modules/.bin:$PATH
+2026-05-03T22:23:25.2543726Z if [ -d node_modules ]; then
+2026-05-03T22:23:25.254376Z     mv -f node_modules _del_node_modules || true
+2026-05-03T22:23:25.2543799Z fi
+2026-05-03T22:23:25.2543829Z
+2026-05-03T22:23:25.2543859Z if [ -d /node_modules ]; then
+2026-05-03T22:23:25.2543891Z     ln -sfn /node_modules ./node_modules
+2026-05-03T22:23:25.2543921Z fi
+2026-05-03T22:23:25.2543951Z
+2026-05-03T22:23:25.2543982Z echo "Done."
+2026-05-03T22:23:25.2544022Z npm start
+2026-05-03T22:23:25.2561524Z Found tar.gz based node_modules.
+2026-05-03T22:23:25.2561698Z Removing existing modules directory from root...
+2026-05-03T22:23:25.309956Z Extracting modules...
+2026-05-03T22:23:33.970026Z Done.
+2026-05-03T22:23:34.5218178Z npm info using npm@10.9.2
+2026-05-03T22:23:34.5229841Z npm info using node@v24.13.0
+2026-05-03T22:23:34.9527969Z
+2026-05-03T22:23:34.9528514Z > rest-express@1.0.0 start
+2026-05-03T22:23:34.9528637Z > NODE_ENV=production node dist/index.cjs
+2026-05-03T22:23:34.9528686Z
+2026-05-03T22:23:35.4587771Z Initializing Stripe schema...
+2026-05-03T22:23:35.6109876Z 10:23:35 PM [express] GET /api/auth/google/status 200 in 10ms
+2026-05-03T22:23:35.628729Z Stripe schema ready
+2026-05-03T22:23:35.9337029Z { autoExpandLists: undefined, stripeApiVersion: undefined } StripeSync initialized
+2026-05-03T22:23:35.9364843Z Setting up managed webhook...
+2026-05-03T22:23:36.2583552Z Webhook configured: https://saviaj-eag6c8epg9hzaze6.canadacentral-01.azurewebsites.net/api/stripe/webhook/a0d06d7d-3714-49e7-9d30-d756a3123967 (UUID: a0d06d7d-3714-49e7-9d30-d756a3123967)
+2026-05-03T22:23:36.2590931Z Syncing Stripe data...
+2026-05-03T22:23:36.2689074Z [auth] REPL_ID not set — skipping Replit OIDC setup (Azure/external host mode)
+2026-05-03T22:23:36.2708314Z [auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set — Google sign-in disabled
+2026-05-03T22:23:36.273139Z [WebSocket] Server initialized
+2026-05-03T22:23:36.3202868Z 10:23:36 PM [express] Payment timeout and expired rides cleanup job scheduled (every 5 minutes)
+2026-05-03T22:23:36.3205769Z 10:23:36 PM [express] Recurring schedule generation job scheduled (every 6 hours)
+2026-05-03T22:23:36.3223137Z 10:23:36 PM [express] serving on port 8080
+2026-05-03T22:23:36.3232277Z Syncing products
+2026-05-03T22:23:36.3286098Z Fetching items to sync from Stripe
+2026-05-03T22:23:36.4356567Z Sync complete: 0 items synced
+2026-05-03T22:23:36.4356724Z Syncing prices
+2026-05-03T22:23:36.4429557Z Fetching items to sync from Stripe
+2026-05-03T22:23:36.5481201Z Sync complete: 0 items synced
+2026-05-03T22:23:36.5486218Z Syncing plans
+2026-05-03T22:23:36.5540752Z Fetching items to sync from Stripe
+2026-05-03T22:23:36.6541155Z Sync complete: 0 items synced
+2026-05-03T22:23:36.6545928Z Syncing customers
+2026-05-03T22:23:36.6564208Z Incremental sync from cursor: 1767014803
+2026-05-03T22:23:36.6585936Z Fetching items to sync from Stripe
+2026-05-03T22:23:36.7634638Z Upserting final batch of 1 items
+2026-05-03T22:23:36.7691342Z Sync complete: 1 items synced
+2026-05-03T22:23:36.7699256Z Syncing subscriptions
+2026-05-03T22:23:36.7743205Z Fetching items to sync from Stripe
+2026-05-03T22:23:36.919889Z Sync complete: 0 items synced
+2026-05-03T22:23:36.9205803Z Syncing subscription schedules
+2026-05-03T22:23:36.9252529Z Fetching items to sync from Stripe
+2026-05-03T22:23:37.0559311Z Sync complete: 0 items synced
+2026-05-03T22:23:37.0571867Z Syncing invoices
+2026-05-03T22:23:37.0608646Z Fetching items to sync from Stripe
+2026-05-03T22:23:37.160528Z Sync complete: 0 items synced
+2026-05-03T22:23:37.1608796Z Syncing charges
+2026-05-03T22:23:37.1625624Z Incremental sync from cursor: 1767309687
+2026-05-03T22:23:37.1650823Z Fetching items to sync from Stripe
+2026-05-03T22:23:37.4470291Z Upserting final batch of 1 items
+2026-05-03T22:23:37.4616331Z Sync complete: 1 items synced
+2026-05-03T22:23:37.4616946Z Syncing setup_intents
+2026-05-03T22:23:37.4851848Z Fetching items to sync from Stripe
+2026-05-03T22:23:37.6196681Z Sync complete: 0 items synced
+2026-05-03T22:23:37.6205788Z Syncing payment method
+2026-05-03T22:23:37.6261717Z Getting payment methods for 1 customers
+2026-05-03T22:23:37.6270044Z Fetching items to sync from Stripe
+2026-05-03T22:23:37.7650669Z Sync complete: 0 items synced
+2026-05-03T22:23:37.7667885Z Syncing payment_intents
+2026-05-03T22:23:37.7688397Z Incremental sync from cursor: 1767309686
+2026-05-03T22:23:37.771913Z Fetching items to sync from Stripe
+2026-05-03T22:23:37.9702324Z Upserting final batch of 1 items
+2026-05-03T22:23:37.9796504Z Sync complete: 1 items synced
+2026-05-03T22:23:37.979916Z Syncing tax_ids
+2026-05-03T22:23:37.9806614Z Fetching items to sync from Stripe
+2026-05-03T22:23:38.1050083Z Sync complete: 0 items synced
+2026-05-03T22:23:38.1050314Z Syncing credit notes
+2026-05-03T22:23:38.1126764Z Fetching items to sync from Stripe
+2026-05-03T22:23:38.2456391Z Sync complete: 0 items synced
+2026-05-03T22:23:38.2459814Z Syncing disputes
+2026-05-03T22:23:38.2508355Z Fetching items to sync from Stripe
+2026-05-03T22:23:38.3908002Z Sync complete: 0 items synced
+2026-05-03T22:23:38.3910603Z Syncing early fraud warnings
+2026-05-03T22:23:38.3960488Z Fetching items to sync from Stripe
+2026-05-03T22:23:38.5260003Z Sync complete: 0 items synced
+2026-05-03T22:23:38.5260376Z Syncing refunds
+2026-05-03T22:23:38.5277256Z Incremental sync from cursor: 1767293574
+2026-05-03T22:23:38.5300875Z Fetching items to sync from Stripe
+2026-05-03T22:23:38.7583255Z Upserting final batch of 1 items
+2026-05-03T22:23:38.7687299Z Sync complete: 1 items synced
+2026-05-03T22:23:38.7689994Z Syncing checkout sessions
+2026-05-03T22:23:38.7708039Z Incremental sync from cursor: 1767309610
+2026-05-03T22:23:38.7737575Z Fetching items to sync from Stripe
+2026-05-03T22:23:38.9173331Z Upserting final batch of 1 items
+2026-05-03T22:23:39.0744076Z Sync complete: 1 items synced
+2026-05-03T22:23:39.0745032Z Stripe data synced
+2026-05-03T22:23:59.2016974Z Email OTP request error: error: column "flow_type" does not exist
+2026-05-03T22:23:59.2017367Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T22:23:59.2017414Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T22:23:59.2017449Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T22:23:59.2017476Z     at async /home/site/wwwroot/dist/index.cjs:183:6989 {
+2026-05-03T22:23:59.2017503Z   length: 109,
+2026-05-03T22:23:59.2017533Z   severity: 'ERROR',
+2026-05-03T22:23:59.2017563Z   code: '42703',
+2026-05-03T22:23:59.2017591Z   detail: undefined,
+2026-05-03T22:23:59.2017623Z   hint: undefined,
+2026-05-03T22:23:59.2017649Z   position: '67',
+2026-05-03T22:23:59.2017679Z   internalPosition: undefined,
+2026-05-03T22:23:59.2017828Z   internalQuery: undefined,
+2026-05-03T22:23:59.2017859Z   where: undefined,
+2026-05-03T22:23:59.2017888Z   schema: undefined,
+2026-05-03T22:23:59.2017915Z   table: undefined,
+2026-05-03T22:23:59.2017943Z   column: undefined,
+2026-05-03T22:23:59.2017969Z   dataType: undefined,
+2026-05-03T22:23:59.2017995Z   constraint: undefined,
+2026-05-03T22:23:59.2018021Z   file: 'parse_relation.c',
+2026-05-03T22:23:59.2018049Z   line: '3647',
+2026-05-03T22:23:59.2018079Z   routine: 'errorMissingColumn'
+2026-05-03T22:23:59.2018108Z }
+2026-05-03T22:23:59.2036029Z 10:23:59 PM [express] POST /api/auth/email-otp/request 500 in 57ms :: {"message":"Failed to send verification code"}
+2026-05-03T22:24:09.2353047Z 10:24:09 PM [express] GET /api/auth/google/status 200 in 10ms
+2026-05-03T22:24:12.0410203Z 10:24:12 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-03T22:24:14.4699432Z 10:24:14 PM [express] GET /api/auth/google/status 200 in 10ms
+2026-05-03T22:24:18.3453774Z 10:24:18 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-03T22:24:20.8647321Z 10:24:20 PM [express] GET /api/auth/google/status 200 in 11ms
+2026-05-03T22:24:24.2867738Z 10:24:24 PM [express] GET /api/auth/google/status 200 in 2ms
+2026-05-03T22:24:32.8287901Z 10:24:32 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-03T22:24:32.9708291Z 10:24:32 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-03T22:24:35.4891899Z 10:24:35 PM [express] GET /api/auth/google/status 200 in 9ms
+2026-05-03T22:24:48.1199696Z Email OTP request error: error: column "flow_type" does not exist
+2026-05-03T22:24:48.1200569Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T22:24:48.1200614Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T22:24:48.1200644Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T22:24:48.1200676Z     at async /home/site/wwwroot/dist/index.cjs:183:6989 {
+2026-05-03T22:24:48.1200708Z   length: 109,
+2026-05-03T22:24:48.1200736Z   severity: 'ERROR',
+2026-05-03T22:24:48.1200762Z   code: '42703',
+2026-05-03T22:24:48.1200789Z   detail: undefined,
+2026-05-03T22:24:48.1200815Z   hint: undefined,
+2026-05-03T22:24:48.120084Z   position: '67',
+2026-05-03T22:24:48.1200866Z   internalPosition: undefined,
+2026-05-03T22:24:48.1200919Z   internalQuery: undefined,
+2026-05-03T22:24:48.1200948Z   where: undefined,
+2026-05-03T22:24:48.1200976Z   schema: undefined,
+2026-05-03T22:24:48.1201001Z   table: undefined,
+2026-05-03T22:24:48.1201029Z   column: undefined,
+2026-05-03T22:24:48.1201058Z   dataType: undefined,
+2026-05-03T22:24:48.1201084Z   constraint: undefined,
+2026-05-03T22:24:48.1201111Z   file: 'parse_relation.c',
+2026-05-03T22:24:48.120114Z   line: '3647',
+2026-05-03T22:24:48.1201167Z   routine: 'errorMissingColumn'
+2026-05-03T22:24:48.1201194Z }
+2026-05-03T22:24:48.1212605Z 10:24:48 PM [express] POST /api/auth/email-otp/request 500 in 46ms :: {"message":"Failed to send verification code"}
+2026-05-03T22:26:35.3884798Z Email OTP request error: error: column "flow_type" does not exist
+2026-05-03T22:26:35.3885199Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T22:26:35.3885244Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T22:26:35.3885274Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T22:26:35.3885306Z     at async /home/site/wwwroot/dist/index.cjs:183:6989 {
+2026-05-03T22:26:35.3885331Z   length: 109,
+2026-05-03T22:26:35.3885357Z   severity: 'ERROR',
+2026-05-03T22:26:35.3885385Z   code: '42703',
+2026-05-03T22:26:35.3885415Z   detail: undefined,
+2026-05-03T22:26:35.3885441Z   hint: undefined,
+2026-05-03T22:26:35.3885467Z   position: '67',
+2026-05-03T22:26:35.3885546Z   internalPosition: undefined,
+2026-05-03T22:26:35.3885578Z   internalQuery: undefined,
+2026-05-03T22:26:35.3885608Z   where: undefined,
+2026-05-03T22:26:35.3885638Z   schema: undefined,
+2026-05-03T22:26:35.3885665Z   table: undefined,
+2026-05-03T22:26:35.3885691Z   column: undefined,
+2026-05-03T22:26:35.388572Z   dataType: undefined,
+2026-05-03T22:26:35.3885747Z   constraint: undefined,
+2026-05-03T22:26:35.3885776Z   file: 'parse_relation.c',
+2026-05-03T22:26:35.3885804Z   line: '3647',
+2026-05-03T22:26:35.3885832Z   routine: 'errorMissingColumn'
+2026-05-03T22:26:35.388586Z }
+2026-05-03T22:26:35.3892103Z 10:26:35 PM [express] POST /api/auth/email-otp/request 500 in 50ms :: {"message":"Failed to send verification code"}
+2026-05-03T22:26:42.3509381Z 10:26:42 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-03T22:26:44.949309Z 10:26:44 PM [express] GET /api/auth/google/status 200 in 9ms
+2026-05-03T22:26:46.1342176Z 10:26:46 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-03T22:26:46.2851741Z 10:26:46 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-03T22:26:48.8011981Z 10:26:48 PM [express] GET /api/auth/google/status 200 in 11ms
+2026-05-03T22:26:56.8140027Z 10:26:56 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-03T22:26:56.9448655Z 10:26:56 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-03T22:26:59.499931Z 10:26:59 PM [express] GET /api/auth/google/status 200 in 9ms
+2026-05-03T22:27:17.3494964Z 10:27:17 PM [express] POST /api/auth/email-otp/request 500 in 49ms :: {"message":"Failed to send verification code"}
+2026-05-03T22:27:17.3498838Z Email OTP request error: error: column "flow_type" does not exist
+2026-05-03T22:27:17.3498941Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-03T22:27:17.3498975Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-03T22:27:17.3499Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-03T22:27:17.3499025Z     at async /home/site/wwwroot/dist/index.cjs:183:6989 {
+2026-05-03T22:27:17.3499049Z   length: 109,
+2026-05-03T22:27:17.3499074Z   severity: 'ERROR',
+2026-05-03T22:27:17.3499097Z   code: '42703',
+2026-05-03T22:27:17.3499119Z   detail: undefined,
+2026-05-03T22:27:17.3499141Z   hint: undefined,
+2026-05-03T22:27:17.3499163Z   position: '67',
+2026-05-03T22:27:17.3499185Z   internalPosition: undefined,
+2026-05-03T22:27:17.3499221Z   internalQuery: undefined,
+2026-05-03T22:27:17.3499244Z   where: undefined,
+2026-05-03T22:27:17.3499265Z   schema: undefined,
+2026-05-03T22:27:17.3499287Z   table: undefined,
+2026-05-03T22:27:17.3499308Z   column: undefined,
+2026-05-03T22:27:17.349933Z   dataType: undefined,
+2026-05-03T22:27:17.3499353Z   constraint: undefined,
+2026-05-03T22:27:17.3499375Z   file: 'parse_relation.c',
+2026-05-03T22:27:17.3499399Z   line: '3647',
+2026-05-03T22:27:17.3499423Z   routine: 'errorMissingColumn'
+2026-05-03T22:27:17.3499445Z }
