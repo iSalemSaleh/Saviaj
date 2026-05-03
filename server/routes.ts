@@ -2981,7 +2981,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // subsequent rides on the same route pay £0. Commercial drivers
       // pay the percentage commission on every ride.
       const ridePricePence = Math.round(agreedPrice * 100);
-      const { computeRideFeeForDriver, claimRouteFlatFeeIfApplicable } = await import('./feeAllocation');
+      const { computeRideFeeForDriver } = await import('./feeAllocation');
       const feeCalc = await computeRideFeeForDriver({
         driverId: negotiation.driverId,
         ridePricePence,
@@ -3032,7 +3032,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // canonical claim now happens at payment-confirmed time via
       // `finalizeFeeOnPaymentConfirmed`. The fee fields persisted on
       // the ride above are tentative and may be rebalanced then.
-      void claimRouteFlatFeeIfApplicable;
       
       // Update negotiation
       await storage.updateRouteNegotiation(negotiationId, {
