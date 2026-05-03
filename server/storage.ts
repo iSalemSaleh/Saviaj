@@ -439,6 +439,22 @@ export interface IStorage {
   getDriverPayoutsForRide(rideId: number): Promise<Array<{ id: number; status: string; stripeTransferId: string | null; amountPence: number }>>;
   getDriverPayoutById(id: number): Promise<{ id: number; rideId: number; driverId: string; status: string; stripeTransferId: string | null; amountPence: number; failureReason: string | null; retryCount: number; lastAttemptAt: Date | null; createdAt: Date | null; updatedAt: Date | null } | null>;
   listDriverPayoutsForDriver(driverId: string): Promise<Array<{ id: number; rideId: number; status: string; stripeTransferId: string | null; amountPence: number; failureReason: string | null; retryCount: number; lastAttemptAt: Date | null; createdAt: Date | null; updatedAt: Date | null; pickupLocation: string | null; dropoffLocation: string | null; rideCompletedAt: Date | null }>>;
+  // Aggregate totals (in pence) for a single driver's payouts. Used to
+  // power the summary header on the Payouts page so drivers can see
+  // "paid this week / this month / lifetime / pending / failed-and-stuck"
+  // without scrolling through the per-ride list. `failedStuckPence` only
+  // counts rows that have exhausted auto-retry (retry_count >= maxRetries),
+  // so transient failures still being retried don't alarm the driver.
+  // Time windows are calendar-based in the server's local TZ via
+  // date_trunc — close enough for a UI summary; exact UTC week/month
+  // boundaries aren't worth the extra complexity here.
+  getDriverPayoutTotals(driverId: string, opts: { maxRetries: number }): Promise<{
+    paidThisWeekPence: number;
+    paidThisMonthPence: number;
+    paidLifetimePence: number;
+    pendingPence: number;
+    failedStuckPence: number;
+  }>;
   updateDriverPayoutStatus(id: number, fields: { status: string; stripeTransferId?: string; failureReason?: string | null; bumpRetryCount?: boolean; setLastAttemptAt?: boolean }): Promise<void>;
   // Atomic "claim this failed row for a retry attempt": flips status
   // failed -> pending in a single UPDATE guarded by status='failed'.
@@ -1133,6 +1149,55 @@ export class DatabaseStorage implements IStorage {
       LIMIT 200
     `);
     return res.rows as any;
+  }
+
+  async getDriverPayoutTotals(driverId: string, opts: { maxRetries: number }) {
+    // Single round-trip aggregate. We bucket by status + time window
+    // using FILTER clauses so postgres scans the driver's payout rows
+    // exactly once.
+    //
+    // Time basis for "paid this week/month": COALESCE(updated_at,
+    // created_at). updated_at is when the row last transitioned, so for
+    // status='transferred' rows it's the moment the Stripe Transfer
+    // succeeded — i.e. when the money actually became "paid". That's
+    // closer to what drivers mean by "paid this week" than the ride
+    // completion time would be (e.g. a Sunday-night ride that only
+    // transferred on Monday should count toward the new week).
+    //
+    // Boundaries use date_trunc in the database server's timezone. For
+    // a UI summary that's good enough; we don't yet store per-driver TZ.
+    const res = await db.execute(sql`
+      SELECT
+        COALESCE(SUM(amount_pence) FILTER (
+          WHERE status = 'transferred'
+            AND COALESCE(updated_at, created_at) >= date_trunc('week', NOW())
+        ), 0)::bigint AS "paidThisWeekPence",
+        COALESCE(SUM(amount_pence) FILTER (
+          WHERE status = 'transferred'
+            AND COALESCE(updated_at, created_at) >= date_trunc('month', NOW())
+        ), 0)::bigint AS "paidThisMonthPence",
+        COALESCE(SUM(amount_pence) FILTER (
+          WHERE status = 'transferred'
+        ), 0)::bigint AS "paidLifetimePence",
+        COALESCE(SUM(amount_pence) FILTER (
+          WHERE status = 'pending'
+        ), 0)::bigint AS "pendingPence",
+        COALESCE(SUM(amount_pence) FILTER (
+          WHERE status = 'failed' AND retry_count >= ${opts.maxRetries}
+        ), 0)::bigint AS "failedStuckPence"
+      FROM driver_payouts
+      WHERE driver_id = ${driverId}
+    `);
+    const row = (res.rows[0] as any) ?? {};
+    // pg returns bigint as string — coerce to number. These totals are
+    // bounded by realistic payout volumes, well within Number.MAX_SAFE_INTEGER.
+    return {
+      paidThisWeekPence: Number(row.paidThisWeekPence ?? 0),
+      paidThisMonthPence: Number(row.paidThisMonthPence ?? 0),
+      paidLifetimePence: Number(row.paidLifetimePence ?? 0),
+      pendingPence: Number(row.pendingPence ?? 0),
+      failedStuckPence: Number(row.failedStuckPence ?? 0),
+    };
   }
 
   async completeUserProfile(id: string, data: {

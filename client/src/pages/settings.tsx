@@ -1198,13 +1198,60 @@ type PayoutRow = {
   rideCompletedAt: string | null;
 };
 
+type PayoutSummary = {
+  paidThisWeekPence: number;
+  paidThisMonthPence: number;
+  paidLifetimePence: number;
+  pendingPence: number;
+  failedStuckPence: number;
+};
+
+type PayoutsResponse = {
+  payouts: PayoutRow[];
+  summary: PayoutSummary;
+};
+
+function SummaryCard({
+  label,
+  valuePence,
+  testId,
+  highlight,
+  tone,
+}: {
+  label: string;
+  valuePence: number;
+  testId: string;
+  highlight?: boolean;
+  tone?: 'danger';
+}) {
+  const formatted = `£${(valuePence / 100).toFixed(2)}`;
+  const valueClass =
+    tone === 'danger'
+      ? 'text-red-600'
+      : highlight
+        ? 'text-accent'
+        : 'text-foreground';
+  return (
+    <div className="border rounded-md p-2.5" data-testid={testId}>
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className={`text-base font-semibold tabular-nums ${valueClass}`} data-testid={`${testId}-value`}>
+        {formatted}
+      </p>
+    </div>
+  );
+}
+
 function PayoutHistory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data, isLoading, error } = useQuery<PayoutRow[]>({
+  const { data, isLoading, error } = useQuery<PayoutsResponse>({
     queryKey: ["/api/driver/payouts"],
     refetchInterval: 30_000,
   });
+  const payouts = data?.payouts;
+  const summary = data?.summary;
 
   const retryMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -1251,7 +1298,38 @@ function PayoutHistory() {
   };
 
   return (
-    <CardContent className="border-t pt-6 space-y-3">
+    <CardContent className="border-t pt-6 space-y-4">
+      {summary && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" data-testid="summary-payout-totals">
+          <SummaryCard
+            label="Paid this week"
+            valuePence={summary.paidThisWeekPence}
+            testId="summary-paid-week"
+          />
+          <SummaryCard
+            label="Paid this month"
+            valuePence={summary.paidThisMonthPence}
+            testId="summary-paid-month"
+          />
+          <SummaryCard
+            label="Lifetime earnings"
+            valuePence={summary.paidLifetimePence}
+            testId="summary-paid-lifetime"
+            highlight
+          />
+          <SummaryCard
+            label="Pending"
+            valuePence={summary.pendingPence}
+            testId="summary-pending"
+          />
+          <SummaryCard
+            label="Failed (stuck)"
+            valuePence={summary.failedStuckPence}
+            testId="summary-failed-stuck"
+            tone={summary.failedStuckPence > 0 ? 'danger' : undefined}
+          />
+        </div>
+      )}
       <div>
         <h3 className="font-semibold text-sm" data-testid="heading-payout-history">Payout history</h3>
         <p className="text-xs text-muted-foreground">
@@ -1262,13 +1340,13 @@ function PayoutHistory() {
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : error ? (
         <p className="text-sm text-destructive" data-testid="text-payouts-error">Couldn't load payout history.</p>
-      ) : !data || data.length === 0 ? (
+      ) : !payouts || payouts.length === 0 ? (
         <p className="text-sm text-muted-foreground" data-testid="text-payouts-empty">
           No payouts yet. Completed rides will show up here.
         </p>
       ) : (
         <div className="space-y-2">
-          {data.map((p) => (
+          {payouts.map((p) => (
             <div
               key={p.id}
               className="border rounded-md p-3 space-y-2"

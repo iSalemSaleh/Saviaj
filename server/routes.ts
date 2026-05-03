@@ -346,7 +346,7 @@ const profileImageUpload = multer({
 // notifyDriverPayoutFailed lives in ./payoutNotify so server/payoutRetry.ts
 // can import it without pulling in the entire route surface.
 import { notifyDriverPayoutFailed } from './payoutNotify';
-import { attemptPayoutRetry } from './payoutRetry';
+import { attemptPayoutRetry, PAYOUT_RETRY_MAX_ATTEMPTS } from './payoutRetry';
 
 export async function registerRoutes(app: Express, httpServer: Server): Promise<void> {
   // Auth middleware
@@ -5356,8 +5356,14 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (!userId) return res.status(401).json({ message: 'Unauthorized' });
       const user = await storage.getUser(userId);
       if (!user?.isDriver) return res.status(403).json({ message: 'Driver account required' });
-      const payouts = await storage.listDriverPayoutsForDriver(userId);
-      res.json(payouts);
+      const [payouts, summary] = await Promise.all([
+        storage.listDriverPayoutsForDriver(userId),
+        storage.getDriverPayoutTotals(userId, { maxRetries: PAYOUT_RETRY_MAX_ATTEMPTS }),
+      ]);
+      // Response shape changed from a bare array to { payouts, summary }
+      // to add the lifetime-earnings summary header. Only consumer is
+      // the driver Payouts page (PayoutHistory in client/src/pages/settings.tsx).
+      res.json({ payouts, summary });
     } catch (err: any) {
       console.error('[payouts/list] error', err);
       res.status(500).json({ message: 'Failed to load payouts' });
