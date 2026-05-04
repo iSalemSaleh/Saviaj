@@ -1,0 +1,15 @@
+2026-05-04T13:57:06.9216916Z [Entra] Sign-up start error: user_already_exists
+2026-05-04T13:57:06.9278482Z [Auth] Orphan account detected for ssi***. Entra user exists, no local record. Auto-verified.
+2026-05-04T13:57:06.93109Z 1:57:06 PM [express] POST /api/auth/email-otp/request 200 in 567ms :: {"success":true,"verifiedAlready":true,"verificationToken":"677a498f7b13e0b9a4eea6b8aadfb04f35c3cdcf98c34ed3028cd30eb1bffa24","email":"ssibrahim247@gmail.com","message":"Your email was previously verified. You can proceed to create your account."}
+2026-05-04T13:58:19.509Z No new trace in the past 1 min(s).
+2026-05-04T13:59:00.2422555Z 1:59:00 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-04T13:59:00.5324234Z 1:59:00 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-04T13:59:02.961664Z 1:59:02 PM [express] GET /api/auth/google/status 200 in 11ms
+2026-05-04T13:59:17.0400597Z [Entra] Sign-up start error: user_already_exists
+2026-05-04T13:59:17.0469494Z [Auth] Orphan account detected for ssi***. Entra user exists, no local record. Auto-verified.
+2026-05-04T13:59:17.0481207Z 1:59:17 PM [express] POST /api/auth/email-otp/request 200 in 234ms :: {"success":true,"verifiedAlready":true,"verificationToken":"6e2df5d2bb11358763cb75aae412e41fa34f36feb397bf8725f6a59dccb09479","email":"ssibrahim247@gmail.com","message":"Your email was previously verified. You can proceed to create your account."}
+2026-05-04T14:00:34.434Z No new trace in the past 1 min(s).
+2026-05-04T14:01:19.2770742Z [Entra] Sign-up start error: user_already_exists
+2026-05-04T14:01:19.2858558Z [Auth] Orphan account detected for ssi***. Entra user exists, no local record. Auto-verified.
+2026-05-04T14:01:19.286644Z 2:01:19 PM [express] POST /api/auth/email-otp/request 200 in 596ms :: {"success":true,"verifiedAlready":true,"verificationToken":"d37cef40479fb219216038e47557e62f4712ad8c96883a1cfd104c32ebb348c1","email":"ssibrahim247@gmail.com","message":"Your email was previously verified. You can proceed to create your account."}
+2026-05-04T14:02:38.004Z No new trace in the past 1 min(s).

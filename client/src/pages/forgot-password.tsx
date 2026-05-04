@@ -28,6 +28,7 @@ export default function ForgotPassword() {
   const [oauthOnly, setOauthOnly] = useState<{ provider: string } | null>(null);
   const [incompleteAccount, setIncompleteAccount] = useState<{ supportEmail: string } | null>(null);
   const [codeLength, setCodeLength] = useState(8);
+  const [sentVia, setSentVia] = useState<"email" | "sms">("email");
 
   const requestOtpMutation = useMutation({
     mutationFn: async (data: { email: string }) => {
@@ -74,8 +75,13 @@ export default function ForgotPassword() {
       if (body.continuationToken) {
         setContinuationToken(body.continuationToken);
         setCodeLength(body.codeLength || 8);
+        setSentVia(body.sentVia === "sms" ? "sms" : "email");
         setStep("verify");
-        setSuccessMessage(`A verification code has been sent to ${email}. Please check your inbox.`);
+        setSuccessMessage(
+          body.sentVia === "sms"
+            ? `A verification code has been sent to your phone. Please check your messages.`
+            : `A verification code has been sent to ${email}. Please check your inbox.`
+        );
       } else {
         setError("Unexpected response from server. Please try again.");
       }
@@ -287,7 +293,9 @@ export default function ForgotPassword() {
                 </div>
                 <CardTitle className="text-2xl">Enter Verification Code</CardTitle>
                 <CardDescription>
-                  We sent a {codeLength}-digit code to {email}. Enter it below to continue.
+                  {sentVia === "sms"
+                    ? `We sent a ${codeLength}-digit code to your phone. Enter it below to continue.`
+                    : `We sent a ${codeLength}-digit code to ${email}. Enter it below to continue.`}
                 </CardDescription>
               </CardHeader>
               <CardContent>

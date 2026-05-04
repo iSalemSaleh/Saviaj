@@ -1107,16 +1107,57 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           throw new Error(result.error || "Failed to send verification code");
         }
       } catch (entraError: any) {
-        console.error("Password reset OTP error:", entraError.message);
+        console.log("[Auth] Entra OTP unavailable for password reset, falling back to SMS:", entraError.message);
 
-        // Orphan-account case: BOTH Entra flows ran and BOTH returned a
-        // business-level failure for a local user with no password. This
-        // means the row exists in our DB and Entra but the signup was
-        // never completed. Direct the user to support / re-signup.
-        // Note: thrown infra/network exceptions are caught inside the inner
-        // try blocks above and converted to non-success results, so
-        // bothFlowsFailedCleanly is only true for genuine business failures.
-        if (bothFlowsFailedCleanly && !existingUser.passwordHash && provider === "local") {
+        // Entra sign-in with email OTP is not supported in CIAM Native Auth.
+        // Fall back to SMS OTP via Twilio using the user's phone number.
+        if (existingUser.phoneNumber) {
+          try {
+            const crypto = await import("crypto");
+            const bcryptMod = await import("bcrypt");
+            const otpCode = crypto.randomInt(100000, 999999).toString();
+            const hashedOtp = await bcryptMod.default.hash(otpCode, 10);
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+            await db.update(passwordResetTokens)
+              .set({ status: "expired" })
+              .where(eq(passwordResetTokens.email, normalizedEmail));
+
+            await db.insert(passwordResetTokens).values({
+              email: normalizedEmail,
+              continuationToken: hashedOtp,
+              flowType: "sms",
+              status: "pending",
+              attempts: 0,
+              expiresAt,
+            });
+
+            const { sendVerificationSMS, getTwilioClient } = await import("./twilio");
+            await getTwilioClient();
+            const smsSent = await sendVerificationSMS(existingUser.phoneNumber, otpCode);
+
+            if (smsSent) {
+              const maskedPhone = existingUser.phoneNumber.replace(/.(?=.{4})/g, '*');
+              return res.json({
+                success: true,
+                sentVia: "sms",
+                message: `Verification code sent to ${maskedPhone}`,
+                codeLength: 6,
+                continuationToken: "sms-verification",
+              });
+            } else {
+              throw new Error("SMS delivery failed");
+            }
+          } catch (smsError: any) {
+            console.error("[Auth] SMS fallback for password reset failed:", smsError.message);
+            return res.status(503).json({
+              message: "Unable to send verification code. Please try again later or contact support.",
+            });
+          }
+        }
+
+        // No phone number on file and Entra can't send OTP
+        if (!existingUser.passwordHash && provider === "local") {
           return res.status(409).json({
             success: false,
             incompleteAccount: true,
@@ -1125,11 +1166,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           });
         }
 
-        // Anything else (DB write failure, dynamic import failure, etc.)
-        // is a transient/infra error — return 5xx so the user retries
-        // rather than being told their account is broken.
         return res.status(503).json({
-          message: "Failed to send verification code. Please try again."
+          message: "Unable to send verification code. Please ensure you have a phone number on your account, or contact support.",
         });
       }
     } catch (error) {
@@ -1150,18 +1188,36 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const normalizedEmail = email.toLowerCase().trim();
       const { passwordResetTokens } = await import("@shared/schema");
       
-      // Find the pending reset that matches BOTH email AND continuation token
-      const [resetRequest] = await db
-        .select()
-        .from(passwordResetTokens)
-        .where(
-          and(
-            eq(passwordResetTokens.email, normalizedEmail),
-            eq(passwordResetTokens.continuationToken, continuationToken),
-            eq(passwordResetTokens.status, "pending")
+      // For SMS-based resets the client sends a placeholder continuationToken
+      // ("sms-verification") while the DB stores the bcrypt hash. Look up by
+      // email + flowType instead. For Entra resets, match on the real token.
+      let resetRequest;
+      if (continuationToken === "sms-verification") {
+        [resetRequest] = await db
+          .select()
+          .from(passwordResetTokens)
+          .where(
+            and(
+              eq(passwordResetTokens.email, normalizedEmail),
+              eq(passwordResetTokens.flowType, "sms"),
+              eq(passwordResetTokens.status, "pending")
+            )
           )
-        )
-        .limit(1);
+          .orderBy(sql`${passwordResetTokens.createdAt} DESC`)
+          .limit(1);
+      } else {
+        [resetRequest] = await db
+          .select()
+          .from(passwordResetTokens)
+          .where(
+            and(
+              eq(passwordResetTokens.email, normalizedEmail),
+              eq(passwordResetTokens.continuationToken, continuationToken),
+              eq(passwordResetTokens.status, "pending")
+            )
+          )
+          .limit(1);
+      }
       
       if (!resetRequest) {
         return res.status(400).json({ message: "Invalid or expired reset request. Please request a new code." });
@@ -1181,9 +1237,37 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Code has expired. Please request a new code." });
       }
       
-      // Verify with Entra using the SAME flow that produced this token.
-      // The request endpoint records 'signin' or 'signup' in flowType so we
-      // hit the matching /{flow}/v1.0/continue endpoint here.
+      // SMS flow: verify locally via bcrypt compare
+      if (resetRequest.flowType === 'sms') {
+        const bcryptMod = await import("bcrypt");
+        const isValid = await bcryptMod.default.compare(code, resetRequest.continuationToken);
+
+        if (isValid) {
+          const crypto = await import("crypto");
+          const verifiedToken = crypto.randomBytes(32).toString("hex");
+
+          await db.update(passwordResetTokens)
+            .set({
+              status: "verified",
+              resetToken: verifiedToken,
+              verifiedAt: new Date(),
+            })
+            .where(eq(passwordResetTokens.id, resetRequest.id));
+
+          return res.json({
+            success: true,
+            resetToken: verifiedToken,
+            email: normalizedEmail,
+          });
+        } else {
+          await db.update(passwordResetTokens)
+            .set({ attempts: resetRequest.attempts + 1 })
+            .where(eq(passwordResetTokens.id, resetRequest.id));
+          return res.status(400).json({ message: "Invalid code. Please try again." });
+        }
+      }
+
+      // Entra flow: verify with Entra using the SAME flow that produced this token.
       try {
         const { verifyEmailOtp } = await import("./entraEmailOtp");
         const isSignUp = resetRequest.flowType === 'signup';
@@ -1207,11 +1291,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
             email: normalizedEmail
           });
         } else {
-          // Only count an attempt against the user when Entra explicitly
-          // rejected the code (verifyEmailOtp returns success:true,verified:false
-          // with the error string set by the invalid_oob_value branch). For
-          // other failures (e.g., Microsoft outage) we surface the message
-          // without burning one of the 5 allowed attempts.
           if (result.success === true) {
             await db.update(passwordResetTokens)
               .set({ attempts: resetRequest.attempts + 1 })
@@ -1220,7 +1299,6 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           return res.status(400).json({ message: result.error || "Invalid code. Please try again." });
         }
       } catch (entraError: any) {
-        // Network / unexpected error — do NOT increment attempts; let the user retry.
         console.error("Password reset verification error:", entraError);
         return res.status(503).json({ message: "Verification service is temporarily unavailable. Please try again." });
       }

@@ -66,6 +66,9 @@ Preferred communication style: Simple, everyday language.
 - **Stripe Connect Express**: Separate charges and transfers model for driver payouts, with onboarding, status synchronization, and payout triggers.
 - **Stripe Identity**: Hosted document and selfie verification for KYC, integrating with existing `kyc_status` fields.
 - **Auth Lifecycle Rules**: Strict rules for active user lookups, account deletion, re-signup after deletion, OTP flow tracking, and password reset hardening.
+- **Entra CIAM Limitation**: Native Auth sign-in with email OTP is NOT supported by Microsoft CIAM (returns 404). Only sign-up OTP works. Workarounds:
+  - *Orphan accounts* (Entra has user, local DB doesn't): auto-verify and skip OTP since email was previously verified.
+  - *Password reset*: falls back to Twilio SMS OTP when Entra can't send email OTP to existing users.
 
 ## Production Schema Sync (Azure)
 - Prod DB (`saviaj-server.postgres.database.azure.com`) sits behind a private endpoint and is only reachable from the App Service. `npm run db:push` is **not** executed automatically during deploy.
