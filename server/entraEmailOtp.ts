@@ -141,10 +141,20 @@ export async function initiateEmailOtpSignIn(email: string): Promise<{
       }).toString(),
     });
 
-    const startData: SignUpStartResponse = await startResponse.json();
-    // Log only non-sensitive status (tokens stripped for security)
+    const startText = await startResponse.text();
+    if (!startText) {
+      console.error('[Entra] Sign-in start returned empty body, status:', startResponse.status);
+      return { success: false, error: `Entra sign-in returned empty response (HTTP ${startResponse.status})` };
+    }
+    let startData: SignUpStartResponse;
+    try {
+      startData = JSON.parse(startText);
+    } catch {
+      console.error('[Entra] Sign-in start non-JSON response, status:', startResponse.status, 'body:', startText.slice(0, 500));
+      return { success: false, error: `Entra sign-in returned non-JSON (HTTP ${startResponse.status})` };
+    }
     if (startData.error) {
-      console.log('[Entra] Sign-in start error:', startData.error);
+      console.log('[Entra] Sign-in start error:', startData.error, startData.error_description?.slice(0, 200));
     }
 
     if (startData.error) {
@@ -168,10 +178,20 @@ export async function initiateEmailOtpSignIn(email: string): Promise<{
       }).toString(),
     });
 
-    const challengeData: ChallengeResponse = await challengeResponse.json();
-    // Log only non-sensitive status (tokens stripped for security)
+    const challengeText = await challengeResponse.text();
+    if (!challengeText) {
+      console.error('[Entra] Sign-in challenge returned empty body, status:', challengeResponse.status);
+      return { success: false, error: `Entra sign-in challenge returned empty response (HTTP ${challengeResponse.status})` };
+    }
+    let challengeData: ChallengeResponse;
+    try {
+      challengeData = JSON.parse(challengeText);
+    } catch {
+      console.error('[Entra] Sign-in challenge non-JSON, status:', challengeResponse.status, 'body:', challengeText.slice(0, 500));
+      return { success: false, error: `Entra sign-in challenge returned non-JSON (HTTP ${challengeResponse.status})` };
+    }
     if (challengeData.error) {
-      console.log('[Entra] Sign-in challenge error:', challengeData.error);
+      console.log('[Entra] Sign-in challenge error:', challengeData.error, challengeData.error_description?.slice(0, 200));
     }
 
     if (challengeData.error) {
