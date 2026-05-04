@@ -517,7 +517,7 @@ CREATE INDEX IF NOT EXISTS idx_recentry_schedule ON public.recurring_schedule_en
 CREATE INDEX IF NOT EXISTS idx_recsched_status ON public.recurring_schedules USING btree (status);
 CREATE INDEX IF NOT EXISTS idx_recsched_type ON public.recurring_schedules USING btree (type);
 CREATE INDEX IF NOT EXISTS idx_recsched_user ON public.recurring_schedules USING btree (user_id);
-CREATE INDEX IF NOT EXISTS ""IDX_session_expire"" ON public.sessions USING btree (expire)";
+CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON public.sessions USING btree (expire);
 CREATE UNIQUE INDEX IF NOT EXISTS user_bank_accounts_user_id_unique ON public.user_bank_accounts USING btree (user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS user_profiles_user_id_unique ON public.user_profiles USING btree (user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS user_stats_user_id_unique ON public.user_stats USING btree (user_id);
