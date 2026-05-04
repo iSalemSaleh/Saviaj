@@ -81,6 +81,15 @@ export function EmailVerificationModal({ open, onClose, onVerified, initialEmail
         throw new Error(data.message || "Failed to send code");
       }
 
+      if (data.verifiedAlready && data.verificationToken) {
+        toast({
+          title: "Email recognised",
+          description: "Your email was previously verified. Proceeding to registration.",
+        });
+        onVerified(data.email || email, data.verificationToken);
+        return;
+      }
+
       if (data.demoMode && data.demoCode) {
         setDemoCode(data.demoCode);
       }

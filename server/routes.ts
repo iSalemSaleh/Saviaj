@@ -692,15 +692,41 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
 
         if (!result.success && result.error === 'user_already_exists') {
           if (isResignup || !anyUserWithEmail) {
-            // Either a soft-deleted account being re-created, or an orphan
-            // Entra account with no local DB record at all (e.g. DB was
-            // wiped but Entra still remembers the email). In both cases
-            // Entra signup is impossible — switch to SIGN-IN OTP and
-            // remember the flow so verify hits /signin/v1.0/continue.
-            // The verify + register endpoints will create a fresh local
-            // account.
-            flowType = 'signin';
-            result = await initiateEmailOtpSignIn(normalizedEmail);
+            // Orphan account: Entra has this email but our local DB doesn't
+            // (e.g. DB was wiped). Native Auth sign-in with email OTP is NOT
+            // supported by CIAM (returns 404), so we can't send an OTP via
+            // Entra. Instead, since Entra already confirmed this email was
+            // previously verified during the original signup, we generate a
+            // verification token directly and let the user skip OTP — going
+            // straight to the registration form.
+            const crypto = await import("crypto");
+            const verificationToken = crypto.randomBytes(32).toString("hex");
+            const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+            await db.update(emailVerifications)
+              .set({ status: "expired" })
+              .where(eq(emailVerifications.email, normalizedEmail));
+
+            await db.insert(emailVerifications).values({
+              email: normalizedEmail,
+              otpCode: "orphan-bypass",
+              verificationToken,
+              flowType: 'signup',
+              status: "verified",
+              attempts: 0,
+              verifiedAt: new Date(),
+              expiresAt,
+            });
+
+            console.log(`[Auth] Orphan account detected for ${normalizedEmail.slice(0, 3)}***. Entra user exists, no local record. Auto-verified.`);
+
+            return res.json({
+              success: true,
+              verifiedAlready: true,
+              verificationToken,
+              email: normalizedEmail,
+              message: "Your email was previously verified. You can proceed to create your account.",
+            });
           } else {
             // Active local account exists — genuine duplicate signup attempt.
             return res.status(409).json({
