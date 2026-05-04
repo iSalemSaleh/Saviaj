@@ -67,6 +67,15 @@ Preferred communication style: Simple, everyday language.
 - **Stripe Identity**: Hosted document and selfie verification for KYC, integrating with existing `kyc_status` fields.
 - **Auth Lifecycle Rules**: Strict rules for active user lookups, account deletion, re-signup after deletion, OTP flow tracking, and password reset hardening.
 
+## Production Schema Sync (Azure)
+- Prod DB (`saviaj-server.postgres.database.azure.com`) sits behind a private endpoint and is only reachable from the App Service. `npm run db:push` is **not** executed automatically during deploy.
+- After any merge that touches `shared/schema.ts`, regenerate `scripts/prod-full-schema-sync.sql` from dev (introspection-based, idempotent), commit, deploy, then SSH into App Service and run:
+  ```
+  cd /home/site/wwwroot && node scripts/run-prod-schema-sync.cjs
+  ```
+  The runner executes the full file in one transaction; every statement is `CREATE/ADD ... IF NOT EXISTS` so re-runs are safe.
+- Restart the App Service after the sync so cached query plans refresh.
+
 ## External Dependencies
 - **Stripe**: Payment processing.
 - **Azure Maps**: Geocoding and routing.
