@@ -452,7 +452,7 @@ export function setupLocalAuth(app: Express) {
         req.session.save((err) => (err ? reject(err) : resolve()));
       });
 
-      console.log(`[auth] Login session saved — sid: ${req.sessionID}, userId: ${user.id}, secure: ${req.secure}, proto: ${req.protocol}, x-fwd-proto: ${req.headers['x-forwarded-proto']}`);
+      console.log(`[auth] Login session saved — sid: ${req.sessionID}, userId: ${user.id}, secure: ${req.secure}, proto: ${req.protocol}, x-fwd-proto: ${req.headers['x-forwarded-proto']}, NODE_ENV: ${process.env.NODE_ENV}`);
 
       const maskedUser = {
         ...user,
@@ -461,6 +461,12 @@ export function setupLocalAuth(app: Express) {
         bankSortCode: user.bankSortCode ? '**-**-' + user.bankSortCode.slice(-2) : null,
       };
 
+      res.on('finish', () => {
+        const setCookie = res.getHeader('set-cookie');
+        console.log(`[auth] Login response Set-Cookie present: ${!!setCookie}, value: ${setCookie ? String(setCookie).substring(0, 200) + '...' : 'NONE'}`);
+      });
+
+      res.cookie('auth_test', user.id, { httpOnly: true, maxAge: 60000, sameSite: 'lax' });
       res.json({ message: "Login successful", user: maskedUser });
     } catch (error: any) {
       console.error("Login error:", error);

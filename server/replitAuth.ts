@@ -161,9 +161,9 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return next();
   }
 
-  // Debug: log why auth failed for local sessions
   const hasCookie = !!req.headers.cookie?.includes('connect.sid');
-  console.log(`[auth] 401 check — hasCookie: ${hasCookie}, sessionID: ${req.sessionID || 'none'}, hasUserId: ${!!session?.userId}, cookie: ${req.headers.cookie ? req.headers.cookie.substring(0, 80) + '...' : 'none'}`);
+  const hasTestCookie = !!req.headers.cookie?.includes('auth_test');
+  console.log(`[auth] 401 check — hasSid: ${hasCookie}, hasTest: ${hasTestCookie}, sessionID: ${req.sessionID || 'none'}, hasUserId: ${!!session?.userId}, cookie: ${req.headers.cookie ? req.headers.cookie.substring(0, 100) + '...' : 'none'}`);
 
   // Check for Replit OIDC auth
   if (!req.isAuthenticated() || !user?.expires_at) {
