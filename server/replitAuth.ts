@@ -33,6 +33,7 @@ export function getSession() {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       httpOnly: true,
       secure: isProduction,
@@ -159,6 +160,10 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     }
     return next();
   }
+
+  // Debug: log why auth failed for local sessions
+  const hasCookie = !!req.headers.cookie?.includes('connect.sid');
+  console.log(`[auth] 401 check — hasCookie: ${hasCookie}, sessionID: ${req.sessionID || 'none'}, hasUserId: ${!!session?.userId}, cookie: ${req.headers.cookie ? req.headers.cookie.substring(0, 80) + '...' : 'none'}`);
 
   // Check for Replit OIDC auth
   if (!req.isAuthenticated() || !user?.expires_at) {

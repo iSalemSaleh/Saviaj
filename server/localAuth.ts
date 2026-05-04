@@ -452,6 +452,8 @@ export function setupLocalAuth(app: Express) {
         req.session.save((err) => (err ? reject(err) : resolve()));
       });
 
+      console.log(`[auth] Login session saved — sid: ${req.sessionID}, userId: ${user.id}, secure: ${req.secure}, proto: ${req.protocol}, x-fwd-proto: ${req.headers['x-forwarded-proto']}`);
+
       const maskedUser = {
         ...user,
         passwordHash: undefined,
