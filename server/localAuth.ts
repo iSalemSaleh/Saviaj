@@ -382,6 +382,10 @@ export function setupLocalAuth(app: Express) {
         claims: { sub: user.id },
       };
 
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => (err ? reject(err) : resolve()));
+      });
+
       const maskedUser = {
         ...user,
         passwordHash: undefined,
@@ -443,6 +447,10 @@ export function setupLocalAuth(app: Express) {
       (req.session as any).user = {
         claims: { sub: user.id },
       };
+
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((err) => (err ? reject(err) : resolve()));
+      });
 
       const maskedUser = {
         ...user,
