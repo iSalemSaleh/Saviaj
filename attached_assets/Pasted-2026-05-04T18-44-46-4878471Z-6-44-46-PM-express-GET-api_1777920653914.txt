@@ -1,0 +1,999 @@
+2026-05-04T18:44:46.4878471Z 6:44:46 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:44:46.7775772Z 6:44:46 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:44:46.8421072Z 6:44:46 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:44:47.5278736Z 6:44:47 PM [express] GET /api/rider-offers 304 in 11ms :: []
+2026-05-04T18:44:47.5303841Z 6:44:47 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:44:48.1279022Z 6:44:48 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:44:48.1311578Z 6:44:48 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:44:48.5189698Z 6:44:48 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:44:48.5224774Z 6:44:48 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:44:48.878851Z 6:44:48 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:44:48.8855262Z 6:44:48 PM [express] GET /api/rides 304 in 10ms :: []
+2026-05-04T18:44:49.3126652Z 6:44:49 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:44:49.3171478Z 6:44:49 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:44:49.6588242Z 6:44:49 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:44:49.662355Z 6:44:49 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:44:49.7701416Z 6:44:49 PM [express] GET /api/pro-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:44:49.7716899Z 6:44:49 PM [express] GET /api/route-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:44:49.9835977Z 6:44:49 PM [express] GET /api/driver-routes/mine 304 in 7ms :: []
+2026-05-04T18:44:49.9876338Z 6:44:49 PM [express] GET /api/bids/mine 304 in 6ms :: []
+2026-05-04T18:44:49.9996632Z 6:44:49 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:44:50.0009383Z 6:44:50 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:44:50.4015674Z 6:44:50 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:44:50.4025888Z 6:44:50 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:44:51.0811302Z 6:44:51 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:44:51.083698Z 6:44:51 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:44:51.4406241Z 6:44:51 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:44:51.4507822Z 6:44:51 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:44:51.7909636Z 6:44:51 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:44:51.7925612Z 6:44:51 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:44:52.1310144Z 6:44:52 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:44:52.1323313Z 6:44:52 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:44:52.7405371Z 6:44:52 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:44:52.7423748Z 6:44:52 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:44:52.7472037Z 6:44:52 PM [express] GET /api/messages/unread-count 304 in 5ms :: {"count":0}
+2026-05-04T18:44:53.1114854Z 6:44:53 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:44:53.1180142Z 6:44:53 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:44:54.0111693Z 6:44:54 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:44:54.0199285Z 6:44:54 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:44:54.3783602Z 6:44:54 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:44:54.3909373Z 6:44:54 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:45:06.3619997Z 6:45:06 PM [express] GET /api/driver/compliance 200 in 88ms :: {"isDriver":true,"isCommercialDriver":true,"taxSelfEmploymentAcknowledged":true,"taxAcknowledgedAt":"2026-05-04T16:18:35.463Z","dbs":{"status":"pending","certificateNumber":null,"expiry":null,"daysUntilExpiry":null,"updateServiceSubscribed":false},"dvla":{"status":"pending","lastCheckedAt":null,"checkCode":"****c"},"hireRewardInsurance":{"verified":false,"expiry":null,"daysUntilExpiry":null,"uploaded":false},"kyc":{"status":"pending","provider":null,"verifiedAt":null},"sanctions":{"status":"pending","screenedAt":null},"commercial":{"licensingCouncil":"Bristol City Council","phvLicenseExpiry":"2026-05-07","commercialInsuranceExpiry":"2026-05-19","vehicleInspectionExpiry":"2026-05-26"}}
+2026-05-04T18:45:10.2601275Z 6:45:10 PM [express] GET /api/messages/unread-count 304 in 7ms :: {"count":0}
+2026-05-04T18:45:14.0071604Z 6:45:14 PM [express] GET /api/driver/kyc/status 200 in 39ms :: {"kycStatus":"pending","kycProvider":null,"kycVerifiedAt":null,"sessionId":null,"lastAttemptAt":null,"failureReason":null}
+2026-05-04T18:45:14.1454457Z 6:45:14 PM [express] GET /api/driver/payouts 200 in 198ms :: {"payouts":[],"summary":{"paidThisWeekPence":0,"paidThisMonthPence":0,"paidLifetimePence":0,"pendingPence":0,"failedStuckPence":0},"trend":{"period":"week","points":[{"periodStart":"2026-02-16 00:00:00+00","paidPence":0},{"periodStart":"2026-02-23 00:00:00+00","paidPence":0},{"periodStart":"2026-03-02 00:00:00+00","paidPence":0},{"periodStart":"2026-03-09 00:00:00+00","paidPence":0},{"periodStart":"2026-03-16 00:00:00+00","paidPence":0},{"periodStart":"2026-03-23 00:00:00+00","paidPence":0},{"periodStart":"2026-03-30 00:00:00+00","paidPence":0},{"periodStart":"2026-04-06 00:00:00+00","paidPence":0},{"periodStart":"2026-04-13 00:00:00+00","paidPence":0},{"periodStart":"2026-04-20 00:00:00+00","paidPence":0},{"periodStart":"2026-04-27 00:00:00+00","paidPence":0},{"periodStart":"2026-05-04 00:00:00+00","paidPence":0}]}}
+2026-05-04T18:45:14.1510282Z 6:45:14 PM [express] GET /api/driver/connect/status 200 in 203ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:45:25.2182419Z 6:45:25 PM [express] GET /api/notifications/unread-count 304 in 86ms :: {"count":0}
+2026-05-04T18:45:25.5607002Z 6:45:25 PM [express] GET /api/messages/unread-count 304 in 7ms :: {"count":0}
+2026-05-04T18:45:40.8003217Z 6:45:40 PM [express] GET /api/messages/unread-count 304 in 85ms :: {"count":0}
+2026-05-04T18:45:49.5983577Z [connect/onboard] error Ol [Error]: You can only create new accounts if you've signed up for Connect, which you can do at https://dashboard.stripe.com/connect.
+2026-05-04T18:45:49.5984198Z     at jl (/home/site/wwwroot/dist/index.cjs:298:14306)
+2026-05-04T18:45:49.598424Z     at s.toJSON.then.$o.message (/home/site/wwwroot/dist/index.cjs:298:19069)
+2026-05-04T18:45:49.5984269Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+2026-05-04T18:45:49.5984295Z   type: 'StripeInvalidRequestError',
+2026-05-04T18:45:49.598432Z   raw: {
+2026-05-04T18:45:49.5984352Z     message: "You can only create new accounts if you've signed up for Connect, which you can do at https://dashboard.stripe.com/connect.",
+2026-05-04T18:45:49.5984383Z     request_log_url: 'https://dashboard.stripe.com/acct_1ScZauIgPhcCzbKU/workbench/logs?object=req_93K5CY89iguonG',
+2026-05-04T18:45:49.598441Z     type: 'invalid_request_error',
+2026-05-04T18:45:49.5984435Z     headers: {
+2026-05-04T18:45:49.5984484Z       server: 'nginx',
+2026-05-04T18:45:49.5984513Z       date: 'Mon, 04 May 2026 18:45:49 GMT',
+2026-05-04T18:45:49.598454Z       'content-type': 'application/json',
+2026-05-04T18:45:49.5984567Z       'content-length': '317',
+2026-05-04T18:45:49.5984594Z       connection: 'keep-alive',
+2026-05-04T18:45:49.598462Z       'access-control-allow-credentials': 'true',
+2026-05-04T18:45:49.5984649Z       'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+2026-05-04T18:45:49.5984675Z       'access-control-allow-origin': '*',
+2026-05-04T18:45:49.5984708Z       'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+2026-05-04T18:45:49.5984734Z       'access-control-max-age': '300',
+2026-05-04T18:45:49.598476Z       'cache-control': 'no-cache, no-store',
+2026-05-04T18:45:49.5984819Z       'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz",
+2026-05-04T18:45:49.5984848Z       'idempotency-key': 'stripe-node-retry-3ffc3cf1-515e-4d81-92b5-c69dc18599df',
+2026-05-04T18:45:49.5984875Z       'original-request': 'req_93K5CY89iguonG',
+2026-05-04T18:45:49.598491Z       'report-to': '{"group":"csp","max_age":8640,"endpoints":[{"url":"https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"}],"include_subdomains":true}',
+2026-05-04T18:45:49.5984942Z       'reporting-endpoints': 'csp="https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"',
+2026-05-04T18:45:49.5984968Z       'request-id': 'req_93K5CY89iguonG',
+2026-05-04T18:45:49.5984995Z       'stripe-should-retry': 'false',
+2026-05-04T18:45:49.5985022Z       'stripe-version': '2025-11-17.clover',
+2026-05-04T18:45:49.5985047Z       vary: 'Origin',
+2026-05-04T18:45:49.5985084Z       'x-stripe-priority-routing-enabled': 'true',
+2026-05-04T18:45:49.598511Z       'x-stripe-routing-context-priority-tier': 'livemode',
+2026-05-04T18:45:49.5985136Z       'x-wc': '3c3',
+2026-05-04T18:45:49.5985184Z       'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+2026-05-04T18:45:49.5985213Z     },
+2026-05-04T18:45:49.5985242Z     statusCode: 400,
+2026-05-04T18:45:49.5985268Z     requestId: 'req_93K5CY89iguonG'
+2026-05-04T18:45:49.5985294Z   },
+2026-05-04T18:45:49.598532Z   rawType: 'invalid_request_error',
+2026-05-04T18:45:49.5985346Z   code: undefined,
+2026-05-04T18:45:49.5985381Z   doc_url: undefined,
+2026-05-04T18:45:49.5985407Z   param: undefined,
+2026-05-04T18:45:49.5985432Z   detail: undefined,
+2026-05-04T18:45:49.5985457Z   headers: {
+2026-05-04T18:45:49.5985483Z     server: 'nginx',
+2026-05-04T18:45:49.598551Z     date: 'Mon, 04 May 2026 18:45:49 GMT',
+2026-05-04T18:45:49.5985536Z     'content-type': 'application/json',
+2026-05-04T18:45:49.5985562Z     'content-length': '317',
+2026-05-04T18:45:49.5985588Z     connection: 'keep-alive',
+2026-05-04T18:45:49.5985615Z     'access-control-allow-credentials': 'true',
+2026-05-04T18:45:49.5985644Z     'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+2026-05-04T18:45:49.5985681Z     'access-control-allow-origin': '*',
+2026-05-04T18:45:49.5985713Z     'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+2026-05-04T18:45:49.5985737Z     'access-control-max-age': '300',
+2026-05-04T18:45:49.5985763Z     'cache-control': 'no-cache, no-store',
+2026-05-04T18:45:49.5985802Z     'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz",
+2026-05-04T18:45:49.5985831Z     'idempotency-key': 'stripe-node-retry-3ffc3cf1-515e-4d81-92b5-c69dc18599df',
+2026-05-04T18:45:49.5985859Z     'original-request': 'req_93K5CY89iguonG',
+2026-05-04T18:45:49.5985899Z     'report-to': '{"group":"csp","max_age":8640,"endpoints":[{"url":"https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"}],"include_subdomains":true}',
+2026-05-04T18:45:49.598616Z     'reporting-endpoints': 'csp="https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"',
+2026-05-04T18:45:49.5986197Z     'request-id': 'req_93K5CY89iguonG',
+2026-05-04T18:45:49.5986217Z     'stripe-should-retry': 'false',
+2026-05-04T18:45:49.5986236Z     'stripe-version': '2025-11-17.clover',
+2026-05-04T18:45:49.5986254Z     vary: 'Origin',
+2026-05-04T18:45:49.5986273Z     'x-stripe-priority-routing-enabled': 'true',
+2026-05-04T18:45:49.5986296Z     'x-stripe-routing-context-priority-tier': 'livemode',
+2026-05-04T18:45:49.5986314Z     'x-wc': '3c3',
+2026-05-04T18:45:49.5986334Z     'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+2026-05-04T18:45:49.5986363Z   },
+2026-05-04T18:45:49.5986382Z   requestId: 'req_93K5CY89iguonG',
+2026-05-04T18:45:49.59864Z   statusCode: 400,
+2026-05-04T18:45:49.5986418Z   userMessage: undefined,
+2026-05-04T18:45:49.5986435Z   charge: undefined,
+2026-05-04T18:45:49.5986453Z   decline_code: undefined,
+2026-05-04T18:45:49.5986472Z   payment_intent: undefined,
+2026-05-04T18:45:49.598649Z   payment_method: undefined,
+2026-05-04T18:45:49.5986508Z   payment_method_type: undefined,
+2026-05-04T18:45:49.5986526Z   setup_intent: undefined,
+2026-05-04T18:45:49.5986543Z   source: undefined
+2026-05-04T18:45:49.598656Z }
+2026-05-04T18:45:49.6016045Z 6:45:49 PM [express] POST /api/driver/connect/onboard 500 in 272ms :: {"message":"You can only create new accounts if you've signed up for Connect, which you can do at https://dashboard.stripe.com/connect."}
+2026-05-04T18:45:55.5227Z 6:45:55 PM [express] GET /api/notifications/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:45:56.1917311Z 6:45:56 PM [express] GET /api/messages/unread-count 304 in 5ms :: {"count":0}
+2026-05-04T18:45:57.5237043Z 6:45:57 PM [express] GET /api/driver/connect/status 304 in 8ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:46:02.4071263Z 6:46:02 PM [express] GET /api/driver/kyc/status 304 in 17ms :: {"kycStatus":"pending","kycProvider":null,"kycVerifiedAt":null,"sessionId":null,"lastAttemptAt":null,"failureReason":null}
+2026-05-04T18:46:04.4318121Z 6:46:04 PM [express] GET /api/driver/payouts 200 in 76ms :: {"payouts":[],"summary":{"paidThisWeekPence":0,"paidThisMonthPence":0,"paidLifetimePence":0,"pendingPence":0,"failedStuckPence":0},"trend":{"period":"month","points":[{"periodStart":"2025-12-01 00:00:00+00","paidPence":0},{"periodStart":"2026-01-01 00:00:00+00","paidPence":0},{"periodStart":"2026-02-01 00:00:00+00","paidPence":0},{"periodStart":"2026-03-01 00:00:00+00","paidPence":0},{"periodStart":"2026-04-01 00:00:00+00","paidPence":0},{"periodStart":"2026-05-01 00:00:00+00","paidPence":0}]}}
+2026-05-04T18:46:11.5542541Z 6:46:11 PM [express] GET /api/messages/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:46:12.7071901Z 6:46:12 PM [express] GET /api/driver/connect/status 304 in 10ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:46:22.6360492Z 6:46:22 PM [express] GET /api/driver/kyc/status 304 in 8ms :: {"kycStatus":"pending","kycProvider":null,"kycVerifiedAt":null,"sessionId":null,"lastAttemptAt":null,"failureReason":null}
+2026-05-04T18:46:26.2130271Z 6:46:26 PM [express] GET /api/notifications/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:46:26.8149741Z 6:46:26 PM [express] GET /api/messages/unread-count 304 in 7ms :: {"count":0}
+2026-05-04T18:46:27.9342241Z 6:46:27 PM [express] GET /api/driver/connect/status 304 in 6ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:46:38.0489113Z 6:46:38 PM [express] GET /api/driver/payouts 304 in 169ms :: {"payouts":[],"summary":{"paidThisWeekPence":0,"paidThisMonthPence":0,"paidLifetimePence":0,"pendingPence":0,"failedStuckPence":0},"trend":{"period":"week","points":[{"periodStart":"2026-02-16 00:00:00+00","paidPence":0},{"periodStart":"2026-02-23 00:00:00+00","paidPence":0},{"periodStart":"2026-03-02 00:00:00+00","paidPence":0},{"periodStart":"2026-03-09 00:00:00+00","paidPence":0},{"periodStart":"2026-03-16 00:00:00+00","paidPence":0},{"periodStart":"2026-03-23 00:00:00+00","paidPence":0},{"periodStart":"2026-03-30 00:00:00+00","paidPence":0},{"periodStart":"2026-04-06 00:00:00+00","paidPence":0},{"periodStart":"2026-04-13 00:00:00+00","paidPence":0},{"periodStart":"2026-04-20 00:00:00+00","paidPence":0},{"periodStart":"2026-04-27 00:00:00+00","paidPence":0},{"periodStart":"2026-05-04 00:00:00+00","paidPence":0}]}}
+2026-05-04T18:46:41.9796479Z 6:46:41 PM [express] GET /api/messages/unread-count 304 in 7ms :: {"count":0}
+2026-05-04T18:46:42.8383451Z 6:46:42 PM [express] GET /api/driver/kyc/status 304 in 10ms :: {"kycStatus":"pending","kycProvider":null,"kycVerifiedAt":null,"sessionId":null,"lastAttemptAt":null,"failureReason":null}
+2026-05-04T18:46:43.180324Z 6:46:43 PM [express] GET /api/driver/connect/status 304 in 10ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:46:45.5459184Z [kyc/stripe-identity/start] error Dl [Error]: Your account is not set up to use Identity. Please have an account admin visit https://dashboard.stripe.com/identity/application to get started.
+2026-05-04T18:46:45.5459611Z     at s.toJSON.then.$o.message (/home/site/wwwroot/dist/index.cjs:298:19002)
+2026-05-04T18:46:45.5459655Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+2026-05-04T18:46:45.5459685Z   type: 'StripePermissionError',
+2026-05-04T18:46:45.5459719Z   raw: {
+2026-05-04T18:46:45.5459749Z     code: 'identity_api_invalid_application',
+2026-05-04T18:46:45.5459782Z     message: 'Your account is not set up to use Identity. Please have an account admin visit https://dashboard.stripe.com/identity/application to get started.',
+2026-05-04T18:46:45.5459814Z     request_log_url: 'https://dashboard.stripe.com/acct_1ScZauIgPhcCzbKU/workbench/logs?object=req_DXFM2zG06ycgRb',
+2026-05-04T18:46:45.5459842Z     type: 'invalid_request_error',
+2026-05-04T18:46:45.5459872Z     headers: {
+2026-05-04T18:46:45.5459899Z       server: 'nginx',
+2026-05-04T18:46:45.5459961Z       date: 'Mon, 04 May 2026 18:46:45 GMT',
+2026-05-04T18:46:45.5459991Z       'content-type': 'application/json',
+2026-05-04T18:46:45.5460018Z       'content-length': '386',
+2026-05-04T18:46:45.5460045Z       connection: 'keep-alive',
+2026-05-04T18:46:45.5460073Z       'access-control-allow-credentials': 'true',
+2026-05-04T18:46:45.5460099Z       'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+2026-05-04T18:46:45.5460126Z       'access-control-allow-origin': '*',
+2026-05-04T18:46:45.5460159Z       'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+2026-05-04T18:46:45.5460189Z       'access-control-max-age': '300',
+2026-05-04T18:46:45.5460217Z       'cache-control': 'no-cache, no-store',
+2026-05-04T18:46:45.5460269Z       'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz",
+2026-05-04T18:46:45.5460299Z       'idempotency-key': 'stripe-node-retry-6ca0992e-aff1-4c67-90a3-f80076ebe4f1',
+2026-05-04T18:46:45.5460327Z       'original-request': 'req_DXFM2zG06ycgRb',
+2026-05-04T18:46:45.546036Z       'report-to': '{"group":"csp","max_age":8640,"endpoints":[{"url":"https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"}],"include_subdomains":true}',
+2026-05-04T18:46:45.5460394Z       'reporting-endpoints': 'csp="https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"',
+2026-05-04T18:46:45.5460423Z       'request-id': 'req_DXFM2zG06ycgRb',
+2026-05-04T18:46:45.5460449Z       'stripe-should-retry': 'false',
+2026-05-04T18:46:45.5460477Z       'stripe-version': '2025-11-17.clover',
+2026-05-04T18:46:45.5460503Z       vary: 'Origin',
+2026-05-04T18:46:45.5460531Z       'x-stripe-priority-routing-enabled': 'true',
+2026-05-04T18:46:45.546057Z       'x-stripe-routing-context-priority-tier': 'livemode',
+2026-05-04T18:46:45.5460594Z       'x-wc': '3c3',
+2026-05-04T18:46:45.5460622Z       'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+2026-05-04T18:46:45.5460646Z     },
+2026-05-04T18:46:45.5460672Z     statusCode: 403,
+2026-05-04T18:46:45.5460699Z     requestId: 'req_DXFM2zG06ycgRb'
+2026-05-04T18:46:45.5460723Z   },
+2026-05-04T18:46:45.5460748Z   rawType: 'invalid_request_error',
+2026-05-04T18:46:45.5460773Z   code: 'identity_api_invalid_application',
+2026-05-04T18:46:45.5460799Z   doc_url: undefined,
+2026-05-04T18:46:45.5460823Z   param: undefined,
+2026-05-04T18:46:45.5460856Z   detail: undefined,
+2026-05-04T18:46:45.5460883Z   headers: {
+2026-05-04T18:46:45.546091Z     server: 'nginx',
+2026-05-04T18:46:45.5460937Z     date: 'Mon, 04 May 2026 18:46:45 GMT',
+2026-05-04T18:46:45.5460964Z     'content-type': 'application/json',
+2026-05-04T18:46:45.546099Z     'content-length': '386',
+2026-05-04T18:46:45.5461017Z     connection: 'keep-alive',
+2026-05-04T18:46:45.5461047Z     'access-control-allow-credentials': 'true',
+2026-05-04T18:46:45.5461074Z     'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+2026-05-04T18:46:45.5461101Z     'access-control-allow-origin': '*',
+2026-05-04T18:46:45.5461132Z     'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+2026-05-04T18:46:45.5461169Z     'access-control-max-age': '300',
+2026-05-04T18:46:45.5461196Z     'cache-control': 'no-cache, no-store',
+2026-05-04T18:46:45.5461238Z     'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz",
+2026-05-04T18:46:45.5461268Z     'idempotency-key': 'stripe-node-retry-6ca0992e-aff1-4c67-90a3-f80076ebe4f1',
+2026-05-04T18:46:45.5461294Z     'original-request': 'req_DXFM2zG06ycgRb',
+2026-05-04T18:46:45.5461637Z     'report-to': '{"group":"csp","max_age":8640,"endpoints":[{"url":"https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"}],"include_subdomains":true}',
+2026-05-04T18:46:45.5461678Z     'reporting-endpoints': 'csp="https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"',
+2026-05-04T18:46:45.5461704Z     'request-id': 'req_DXFM2zG06ycgRb',
+2026-05-04T18:46:45.5461729Z     'stripe-should-retry': 'false',
+2026-05-04T18:46:45.5461763Z     'stripe-version': '2025-11-17.clover',
+2026-05-04T18:46:45.5461788Z     vary: 'Origin',
+2026-05-04T18:46:45.5461813Z     'x-stripe-priority-routing-enabled': 'true',
+2026-05-04T18:46:45.5461841Z     'x-stripe-routing-context-priority-tier': 'livemode',
+2026-05-04T18:46:45.5461866Z     'x-wc': '3c3',
+2026-05-04T18:46:45.5461892Z     'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+2026-05-04T18:46:45.5461914Z   },
+2026-05-04T18:46:45.5461937Z   requestId: 'req_DXFM2zG06ycgRb',
+2026-05-04T18:46:45.5461959Z   statusCode: 403,
+2026-05-04T18:46:45.5461982Z   userMessage: undefined,
+2026-05-04T18:46:45.5462005Z   charge: undefined,
+2026-05-04T18:46:45.5462027Z   decline_code: undefined,
+2026-05-04T18:46:45.546206Z   payment_intent: undefined,
+2026-05-04T18:46:45.5462084Z   payment_method: undefined,
+2026-05-04T18:46:45.5462107Z   payment_method_type: undefined,
+2026-05-04T18:46:45.5462129Z   setup_intent: undefined,
+2026-05-04T18:46:45.5462152Z   source: undefined
+2026-05-04T18:46:45.5462175Z }
+2026-05-04T18:46:45.5554714Z 6:46:45 PM [express] POST /api/driver/kyc/stripe-identity/start 500 in 184ms :: {"message":"Your account is not set up to use Identity. Please have an account admin visit https://dashboard.stripe.com/identity/application to get started."}
+2026-05-04T18:46:56.6081698Z 6:46:56 PM [express] GET /api/notifications/unread-count 304 in 209ms :: {"count":0}
+2026-05-04T18:46:58.1759686Z 6:46:58 PM [express] GET /api/messages/unread-count 304 in 7ms :: {"count":0}
+2026-05-04T18:46:58.407427Z 6:46:58 PM [express] GET /api/driver/connect/status 304 in 8ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:47:01.2708373Z [connect/onboard] error Ol [Error]: You can only create new accounts if you've signed up for Connect, which you can do at https://dashboard.stripe.com/connect.
+2026-05-04T18:47:01.2708742Z     at jl (/home/site/wwwroot/dist/index.cjs:298:14306)
+2026-05-04T18:47:01.2708787Z     at s.toJSON.then.$o.message (/home/site/wwwroot/dist/index.cjs:298:19069)
+2026-05-04T18:47:01.2708821Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5) {
+2026-05-04T18:47:01.2708913Z   type: 'StripeInvalidRequestError',
+2026-05-04T18:47:01.2708948Z   raw: {
+2026-05-04T18:47:01.2708982Z     message: "You can only create new accounts if you've signed up for Connect, which you can do at https://dashboard.stripe.com/connect.",
+2026-05-04T18:47:01.2709011Z     request_log_url: 'https://dashboard.stripe.com/acct_1ScZauIgPhcCzbKU/workbench/logs?object=req_uwZyXA3XKpxpL4',
+2026-05-04T18:47:01.2709039Z     type: 'invalid_request_error',
+2026-05-04T18:47:01.2709065Z     headers: {
+2026-05-04T18:47:01.2709092Z       server: 'nginx',
+2026-05-04T18:47:01.2709117Z       date: 'Mon, 04 May 2026 18:47:01 GMT',
+2026-05-04T18:47:01.270914Z       'content-type': 'application/json',
+2026-05-04T18:47:01.2709165Z       'content-length': '317',
+2026-05-04T18:47:01.2709191Z       connection: 'keep-alive',
+2026-05-04T18:47:01.2709227Z       'access-control-allow-credentials': 'true',
+2026-05-04T18:47:01.2709257Z       'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+2026-05-04T18:47:01.2709284Z       'access-control-allow-origin': '*',
+2026-05-04T18:47:01.2709315Z       'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+2026-05-04T18:47:01.2709342Z       'access-control-max-age': '300',
+2026-05-04T18:47:01.2709369Z       'cache-control': 'no-cache, no-store',
+2026-05-04T18:47:01.270941Z       'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz",
+2026-05-04T18:47:01.2709439Z       'idempotency-key': 'stripe-node-retry-5b075edd-b567-410a-a68c-e196486e01d6',
+2026-05-04T18:47:01.2709466Z       'original-request': 'req_uwZyXA3XKpxpL4',
+2026-05-04T18:47:01.2709501Z       'report-to': '{"group":"csp","max_age":8640,"endpoints":[{"url":"https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"}],"include_subdomains":true}',
+2026-05-04T18:47:01.2709546Z       'reporting-endpoints': 'csp="https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"',
+2026-05-04T18:47:01.2709573Z       'request-id': 'req_uwZyXA3XKpxpL4',
+2026-05-04T18:47:01.27096Z       'stripe-should-retry': 'false',
+2026-05-04T18:47:01.2709628Z       'stripe-version': '2025-11-17.clover',
+2026-05-04T18:47:01.2709654Z       vary: 'Origin',
+2026-05-04T18:47:01.2709681Z       'x-stripe-priority-routing-enabled': 'true',
+2026-05-04T18:47:01.270971Z       'x-stripe-routing-context-priority-tier': 'livemode',
+2026-05-04T18:47:01.2709739Z       'x-wc': '3c3',
+2026-05-04T18:47:01.2709766Z       'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+2026-05-04T18:47:01.2709791Z     },
+2026-05-04T18:47:01.2709817Z     statusCode: 400,
+2026-05-04T18:47:01.2709852Z     requestId: 'req_uwZyXA3XKpxpL4'
+2026-05-04T18:47:01.2709879Z   },
+2026-05-04T18:47:01.2709908Z   rawType: 'invalid_request_error',
+2026-05-04T18:47:01.2709933Z   code: undefined,
+2026-05-04T18:47:01.2709961Z   doc_url: undefined,
+2026-05-04T18:47:01.2709988Z   param: undefined,
+2026-05-04T18:47:01.2710015Z   detail: undefined,
+2026-05-04T18:47:01.2710042Z   headers: {
+2026-05-04T18:47:01.2710069Z     server: 'nginx',
+2026-05-04T18:47:01.2710096Z     date: 'Mon, 04 May 2026 18:47:01 GMT',
+2026-05-04T18:47:01.2710122Z     'content-type': 'application/json',
+2026-05-04T18:47:01.2710158Z     'content-length': '317',
+2026-05-04T18:47:01.2710186Z     connection: 'keep-alive',
+2026-05-04T18:47:01.2710213Z     'access-control-allow-credentials': 'true',
+2026-05-04T18:47:01.2710241Z     'access-control-allow-methods': 'GET, HEAD, PUT, PATCH, POST, DELETE',
+2026-05-04T18:47:01.2710267Z     'access-control-allow-origin': '*',
+2026-05-04T18:47:01.2710297Z     'access-control-expose-headers': 'Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required',
+2026-05-04T18:47:01.2710322Z     'access-control-max-age': '300',
+2026-05-04T18:47:01.2710347Z     'cache-control': 'no-cache, no-store',
+2026-05-04T18:47:01.2710385Z     'content-security-policy': "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz",
+2026-05-04T18:47:01.2710415Z     'idempotency-key': 'stripe-node-retry-5b075edd-b567-410a-a68c-e196486e01d6',
+2026-05-04T18:47:01.2710455Z     'original-request': 'req_uwZyXA3XKpxpL4',
+2026-05-04T18:47:01.2710489Z     'report-to': '{"group":"csp","max_age":8640,"endpoints":[{"url":"https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"}],"include_subdomains":true}',
+2026-05-04T18:47:01.2710741Z     'reporting-endpoints': 'csp="https://q.stripe.com/csp-report-v2?q=DcCgGF_ioIBMJh68vm5ZqYCIa1yt2XlD9-kjW1FKBmX-Ru8ETSy0gYHV5Hks4zBJu2RStgm9ZheKWEMz&t=1"',
+2026-05-04T18:47:01.2710779Z     'request-id': 'req_uwZyXA3XKpxpL4',
+2026-05-04T18:47:01.2710806Z     'stripe-should-retry': 'false',
+2026-05-04T18:47:01.2710831Z     'stripe-version': '2025-11-17.clover',
+2026-05-04T18:47:01.2710857Z     vary: 'Origin',
+2026-05-04T18:47:01.2710885Z     'x-stripe-priority-routing-enabled': 'true',
+2026-05-04T18:47:01.2710912Z     'x-stripe-routing-context-priority-tier': 'livemode',
+2026-05-04T18:47:01.2710937Z     'x-wc': '3c3',
+2026-05-04T18:47:01.2710976Z     'strict-transport-security': 'max-age=63072000; includeSubDomains; preload'
+2026-05-04T18:47:01.2711003Z   },
+2026-05-04T18:47:01.2711033Z   requestId: 'req_uwZyXA3XKpxpL4',
+2026-05-04T18:47:01.2711059Z   statusCode: 400,
+2026-05-04T18:47:01.2711085Z   userMessage: undefined,
+2026-05-04T18:47:01.2711112Z   charge: undefined,
+2026-05-04T18:47:01.2711138Z   decline_code: undefined,
+2026-05-04T18:47:01.2711167Z   payment_intent: undefined,
+2026-05-04T18:47:01.2711192Z   payment_method: undefined,
+2026-05-04T18:47:01.2711218Z   payment_method_type: undefined,
+2026-05-04T18:47:01.2711244Z   setup_intent: undefined,
+2026-05-04T18:47:01.2711274Z   source: undefined
+2026-05-04T18:47:01.2711308Z }
+2026-05-04T18:47:01.274654Z 6:47:01 PM [express] POST /api/driver/connect/onboard 500 in 181ms :: {"message":"You can only create new accounts if you've signed up for Connect, which you can do at https://dashboard.stripe.com/connect."}
+2026-05-04T18:47:03.0348394Z 6:47:03 PM [express] GET /api/driver/kyc/status 304 in 14ms :: {"kycStatus":"pending","kycProvider":null,"kycVerifiedAt":null,"sessionId":null,"lastAttemptAt":null,"failureReason":null}
+2026-05-04T18:47:08.4863885Z 6:47:08 PM [express] GET /api/driver/payouts 304 in 61ms :: {"payouts":[],"summary":{"paidThisWeekPence":0,"paidThisMonthPence":0,"paidLifetimePence":0,"pendingPence":0,"failedStuckPence":0},"trend":{"period":"week","points":[{"periodStart":"2026-02-16 00:00:00+00","paidPence":0},{"periodStart":"2026-02-23 00:00:00+00","paidPence":0},{"periodStart":"2026-03-02 00:00:00+00","paidPence":0},{"periodStart":"2026-03-09 00:00:00+00","paidPence":0},{"periodStart":"2026-03-16 00:00:00+00","paidPence":0},{"periodStart":"2026-03-23 00:00:00+00","paidPence":0},{"periodStart":"2026-03-30 00:00:00+00","paidPence":0},{"periodStart":"2026-04-06 00:00:00+00","paidPence":0},{"periodStart":"2026-04-13 00:00:00+00","paidPence":0},{"periodStart":"2026-04-20 00:00:00+00","paidPence":0},{"periodStart":"2026-04-27 00:00:00+00","paidPence":0},{"periodStart":"2026-05-04 00:00:00+00","paidPence":0}]}}
+2026-05-04T18:47:13.370186Z 6:47:13 PM [express] GET /api/messages/unread-count 304 in 7ms :: {"count":0}
+2026-05-04T18:47:13.5595276Z 6:47:13 PM [express] GET /api/driver/connect/status 304 in 8ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:47:23.3274243Z 6:47:23 PM [express] GET /api/driver/kyc/status 304 in 6ms :: {"kycStatus":"pending","kycProvider":null,"kycVerifiedAt":null,"sessionId":null,"lastAttemptAt":null,"failureReason":null}
+2026-05-04T18:47:26.848001Z 6:47:26 PM [express] GET /api/notifications/unread-count 304 in 7ms :: {"count":0}
+2026-05-04T18:47:28.5270223Z 6:47:28 PM [express] GET /api/messages/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:47:28.9175971Z 6:47:28 PM [express] GET /api/driver/connect/status 304 in 6ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:47:38.9439929Z 6:47:38 PM [express] GET /api/driver/payouts 304 in 62ms :: {"payouts":[],"summary":{"paidThisWeekPence":0,"paidThisMonthPence":0,"paidLifetimePence":0,"pendingPence":0,"failedStuckPence":0},"trend":{"period":"week","points":[{"periodStart":"2026-02-16 00:00:00+00","paidPence":0},{"periodStart":"2026-02-23 00:00:00+00","paidPence":0},{"periodStart":"2026-03-02 00:00:00+00","paidPence":0},{"periodStart":"2026-03-09 00:00:00+00","paidPence":0},{"periodStart":"2026-03-16 00:00:00+00","paidPence":0},{"periodStart":"2026-03-23 00:00:00+00","paidPence":0},{"periodStart":"2026-03-30 00:00:00+00","paidPence":0},{"periodStart":"2026-04-06 00:00:00+00","paidPence":0},{"periodStart":"2026-04-13 00:00:00+00","paidPence":0},{"periodStart":"2026-04-20 00:00:00+00","paidPence":0},{"periodStart":"2026-04-27 00:00:00+00","paidPence":0},{"periodStart":"2026-05-04 00:00:00+00","paidPence":0}]}}
+2026-05-04T18:47:39.244201Z [auth] 401 check — hasSid: false, hasTest: false, sessionID: OF4ms1Ji6fJZqEeq_lsPz4-ToM8yR1TK, hasUserId: false, cookie: __stripe_mid=ffcda013-d9e8-4760-8cc2-7e0ba5f0ed68c05234...
+2026-05-04T18:47:39.2453393Z 6:47:39 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-04T18:47:39.4479803Z [auth] 401 check — hasSid: false, hasTest: false, sessionID: jdZ9pyZcx5IobXKgc1xxsL6NnAdDYXVB, hasUserId: false, cookie: __stripe_mid=ffcda013-d9e8-4760-8cc2-7e0ba5f0ed68c05234...
+2026-05-04T18:47:39.4485463Z 6:47:39 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-04T18:47:42.133501Z 6:47:42 PM [express] GET /api/auth/google/status 200 in 5ms
+2026-05-04T18:47:43.4813527Z 6:47:43 PM [express] GET /api/driver/kyc/status 304 in 9ms :: {"kycStatus":"pending","kycProvider":null,"kycVerifiedAt":null,"sessionId":null,"lastAttemptAt":null,"failureReason":null}
+2026-05-04T18:47:43.6913794Z 6:47:43 PM [express] GET /api/messages/unread-count 304 in 5ms :: {"count":0}
+2026-05-04T18:47:44.1586694Z 6:47:44 PM [express] GET /api/driver/connect/status 304 in 7ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:47:49.9453763Z 6:47:49 PM [express] GET /api/auth/google/status 304 in 2ms
+2026-05-04T18:47:53.1014511Z [auth] Login session saved — sid: xNyMat_rUJe8hEn-8ZcRfxOUOdwSgQ15, userId: b3241b71-6db1-4032-b172-f01eeb58c9e0, secure: true, proto: https, x-fwd-proto: https, NODE_ENV: production
+2026-05-04T18:47:53.1020046Z 6:47:53 PM [express] POST /api/auth/login 200 in 247ms :: {"message":"Login successful","user":{"id":"b3241b71-6db1-4032-b172-f01eeb58c9e0","email":"ssibrahim247@gmail.com","username":"isalemsaleh","passId":"SVNWP2605040001","emailVerified":true,"authProvider":"local","termsAcceptedAt":"2026-05-04T16:18:35.463Z","privacyAcceptedAt":"2026-05-04T16:18:35.463Z","firstName":"Salem","lastName":"Ibrahim","profileImageUrl":"/uploads/profiles/profile-1777911186409-250519124.jpg","dateOfBirth":"1989-08-23","phoneNumber":"+447311972206","homeAddress":"125 Bassaleg Road","city":"Newport","postcode":"NP20 3NA","isDriver":true,"driverLicenseUrl":"/uploads/licenses/license-1777911259382-833062544.jpg","driverVerified":false,"driverLicenseNumber":"h","driverLicenseExpiry":"2026-10-04","backgroundCheckConsent":true,"backgroundCheckStatus":"pending","licensingCouncil":"Bristol City Council","vehicleMake":"j","vehicleModel":"j","vehicleYear":"k","vehicleColor":"k","vehicleRegistration":"k","vehicleInsuranceExpiry":"2028-11-17","bankAccountName":"Salem Saleh Ibrahim","bankSortCode":"**-**-09","bankAccountNumber":"****9828","isCommercialDriver":true,"privateHireLicenseUrl":"/uploads/licenses/license-1777911435891-432944177.pdf","privateHireLicenseNumber":"c","dvlaCheckCode":"c","commercialInsuranceUrl":"/uploads/licenses/license-1777911447143-486091826.pdf","commercialInsuranceExpiry":"2026-05-19","vehicleInspectionUrl":"/uploads/licenses/license-1777911464607-807211621.pdf","vehicleInspectionExpiry":"2026-05-26","phvLicenseUrl":"/uploads/licenses/license-1777911477157-890788000.pdf","phvLicenseNumber":"c","phvLicenseExpiry":"2026-05-07","commercialStatusVerified":false,"dbsCertificateNumber":null,"dbsCertificateIssueDate":null,"dbsCertificateExpiry":null,"dbsCertificateUrl":null,"dbsUpdateServiceSubscribed":false,"dvlaCheckStatus":"pending","dvlaLastCheckedAt":null,"hireRewardInsuranceUrl":null,"hireRewardInsuranceExpiry":null,"hireRewardInsuranceVerified":false,"kycStatus":"pending","kycVerifiedAt":null,"kycProvider":null,"sanctionsScreeningStatus":"pending","sanctionsScreenedAt":null,"taxSelfEmploymentAcknowledged":true,"taxAcknowledgedAt":"2026-05-04T16:18:35.463Z","ratePerMile":null,"tier1MaxMiles":null,"tier1RatePerMile":null,"tier2MaxMiles":null,"tier2RatePerMile":null,"tier3RatePerMile":null,"baseMinimumFare":null,"driverTagline":null,"serviceCategories":null,"activeMode":null,"isAvailable":false,"isOnlineForHire":false,"currentLat":null,"currentLng":null,"lastLocationUpdate":null,"rating":null,"riderRating":null,"driverRating":null,"totalRides":0,"totalRidesAsDriver":0,"totalRatingsAsRider":0,"totalRatingsAsDriver":0,"stripeCustomerId":null,"stripeConnectAccountId":null,"stripeConnectOnboarded":false,"stripeConnectChargesEnabled":false,"stripeConnectPayoutsEnabled":false,"stripeConnectRequirementsDue":null,"stripeConnectUpdatedAt":null,"stripeIdentitySessionId":null,"stripeIdentityLastAttemptAt":null,"stripeIdentityFailureReason":null,"timezone":null,"createdAt":"2026-05-04T16:18:35.465Z","updatedAt":"2026-05-04T16:18:35.465Z","isAdmin":false,"deletedAt":null,"deletedReason":null,"deletedBy":null}}
+2026-05-04T18:47:53.1020178Z [auth] Login response Set-Cookie present: true, value: auth_test=b3241b71-6db1-4032-b172-f01eeb58c9e0; Max-Age=60; Path=/; Expires=Mon, 04 May 2026 18:48:53 GMT; HttpOnly; SameSite=Lax,connect.sid=s%3AxNyMat_rUJe8hEn-8ZcRfxOUOdwSgQ15.D2FpsxV7Q9wvGibM8o5gh...
+2026-05-04T18:47:54.9648979Z 6:47:54 PM [express] GET /api/auth/user 200 in 8ms :: {"id":"b3241b71-6db1-4032-b172-f01eeb58c9e0","email":"ssibrahim247@gmail.com","username":"isalemsaleh","passId":"SVNWP2605040001","emailVerified":true,"authProvider":"local","termsAcceptedAt":"2026-05-04T16:18:35.463Z","privacyAcceptedAt":"2026-05-04T16:18:35.463Z","firstName":"Salem","lastName":"Ibrahim","profileImageUrl":"/uploads/profiles/profile-1777911186409-250519124.jpg","dateOfBirth":"1989-08-23","phoneNumber":"+447311972206","homeAddress":"125 Bassaleg Road","city":"Newport","postcode":"NP20 3NA","isDriver":true,"driverLicenseUrl":"/uploads/licenses/license-1777911259382-833062544.jpg","driverVerified":false,"driverLicenseNumber":"h","driverLicenseExpiry":"2026-10-04","backgroundCheckConsent":true,"backgroundCheckStatus":"pending","licensingCouncil":"Bristol City Council","vehicleMake":"j","vehicleModel":"j","vehicleYear":"k","vehicleColor":"k","vehicleRegistration":"k","vehicleInsuranceExpiry":"2028-11-17","bankAccountName":"Salem Saleh Ibrahim","bankSortCode":"**-**-09","bankAccountNumber":"****9828","isCommercialDriver":true,"privateHireLicenseUrl":"/uploads/licenses/license-1777911435891-432944177.pdf","privateHireLicenseNumber":"c","dvlaCheckCode":"c","commercialInsuranceUrl":"/uploads/licenses/license-1777911447143-486091826.pdf","commercialInsuranceExpiry":"2026-05-19","vehicleInspectionUrl":"/uploads/licenses/license-1777911464607-807211621.pdf","vehicleInspectionExpiry":"2026-05-26","phvLicenseUrl":"/uploads/licenses/license-1777911477157-890788000.pdf","phvLicenseNumber":"c","phvLicenseExpiry":"2026-05-07","commercialStatusVerified":false,"dbsCertificateNumber":null,"dbsCertificateIssueDate":null,"dbsCertificateExpiry":null,"dbsCertificateUrl":null,"dbsUpdateServiceSubscribed":false,"dvlaCheckStatus":"pending","dvlaLastCheckedAt":null,"hireRewardInsuranceUrl":null,"hireRewardInsuranceExpiry":null,"hireRewardInsuranceVerified":false,"kycStatus":"pending","kycVerifiedAt":null,"kycProvider":null,"sanctionsScreeningStatus":"pending","sanctionsScreenedAt":null,"taxSelfEmploymentAcknowledged":true,"taxAcknowledgedAt":"2026-05-04T16:18:35.463Z","ratePerMile":null,"tier1MaxMiles":null,"tier1RatePerMile":null,"tier2MaxMiles":null,"tier2RatePerMile":null,"tier3RatePerMile":null,"baseMinimumFare":null,"driverTagline":null,"serviceCategories":null,"activeMode":null,"isAvailable":false,"isOnlineForHire":false,"currentLat":null,"currentLng":null,"lastLocationUpdate":null,"rating":null,"riderRating":null,"driverRating":null,"totalRides":0,"totalRidesAsDriver":0,"totalRatingsAsRider":0,"totalRatingsAsDriver":0,"stripeCustomerId":null,"stripeConnectAccountId":null,"stripeConnectOnboarded":false,"stripeConnectChargesEnabled":false,"stripeConnectPayoutsEnabled":false,"stripeConnectRequirementsDue":null,"stripeConnectUpdatedAt":null,"stripeIdentitySessionId":null,"stripeIdentityLastAttemptAt":null,"stripeIdentityFailureReason":null,"timezone":null,"createdAt":"2026-05-04T16:18:35.465Z","updatedAt":"2026-05-04T16:18:35.465Z","isAdmin":false,"deletedAt":null,"deletedReason":null,"deletedBy":null}
+2026-05-04T18:47:55.8766999Z 6:47:55 PM [express] GET /api/notifications 200 in 9ms :: []
+2026-05-04T18:47:55.878376Z 6:47:55 PM [express] GET /api/notifications/unread-count 200 in 6ms :: {"count":0}
+2026-05-04T18:47:56.0042971Z 6:47:56 PM [express] GET /api/messages/unread-count 200 in 6ms :: {"count":0}
+2026-05-04T18:47:57.0183091Z 6:47:57 PM [express] GET /api/notifications/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:47:57.0994219Z [auth] 401 check — hasSid: false, hasTest: false, sessionID: sFWgUNUVkdl1EOKv3cDu5t0JsNwghJiZ, hasUserId: false, cookie: none
+2026-05-04T18:47:57.0994604Z 6:47:57 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-04T18:47:57.1367734Z [auth] 401 check — hasSid: false, hasTest: false, sessionID: 1RtdClBx-Orx6GBpY0hG72eAsLZC4LPZ, hasUserId: false, cookie: none
+2026-05-04T18:47:57.1376956Z 6:47:57 PM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-04T18:47:57.4357152Z 6:47:57 PM [express] GET /api/auth/google/status 200 in 7ms
+2026-05-04T18:47:58.8397724Z 6:47:58 PM [express] GET /api/messages/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:47:59.3725223Z 6:47:59 PM [express] GET /api/driver/connect/status 304 in 9ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:48:00.982814Z 6:48:00 PM [express] GET /api/recurring-schedules 200 in 14ms :: []
+2026-05-04T18:48:00.9828515Z 6:48:00 PM [express] GET /api/route-negotiations/mine 200 in 8ms :: []
+2026-05-04T18:48:00.9949032Z 6:48:00 PM [express] GET /api/pro-negotiations/mine 200 in 7ms :: []
+2026-05-04T18:48:01.0218549Z 6:48:01 PM [express] GET /api/rider-offers 200 in 50ms :: []
+2026-05-04T18:48:01.0408665Z 6:48:01 PM [express] GET /api/rides 200 in 65ms :: []
+2026-05-04T18:48:01.2119522Z 6:48:01 PM [express] GET /api/bids/mine 200 in 11ms :: []
+2026-05-04T18:48:01.2141563Z 6:48:01 PM [express] GET /api/driver-routes/mine 200 in 12ms :: []
+2026-05-04T18:48:01.4434641Z 6:48:01 PM [express] GET /api/rides 304 in 14ms :: []
+2026-05-04T18:48:01.4469858Z 6:48:01 PM [express] GET /api/rider-offers 304 in 12ms :: []
+2026-05-04T18:48:01.8465725Z 6:48:01 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:02.8346947Z 6:48:02 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:02.8374516Z 6:48:02 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:03.175005Z 6:48:03 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:03.1788521Z 6:48:03 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:03.7923355Z 6:48:03 PM [express] GET /api/driver/kyc/status 304 in 9ms :: {"kycStatus":"pending","kycProvider":null,"kycVerifiedAt":null,"sessionId":null,"lastAttemptAt":null,"failureReason":null}
+2026-05-04T18:48:03.8270398Z 6:48:03 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:03.8284988Z 6:48:03 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:04.2641386Z 6:48:04 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:04.266757Z 6:48:04 PM [express] GET /api/rider-offers 304 in 10ms :: []
+2026-05-04T18:48:04.6823679Z 6:48:04 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:04.6835381Z 6:48:04 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:05.32129Z 6:48:05 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:05.3227176Z 6:48:05 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:48:05.7167816Z 6:48:05 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:05.7180545Z 6:48:05 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:48:06.0798547Z 6:48:06 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:06.0814947Z 6:48:06 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:06.2268895Z 6:48:06 PM [express] GET /api/route-negotiations/mine 304 in 14ms :: []
+2026-05-04T18:48:06.2355876Z 6:48:06 PM [express] GET /api/pro-negotiations/mine 304 in 8ms :: []
+2026-05-04T18:48:06.33617Z 6:48:06 PM [express] GET /api/bids/mine 304 in 7ms :: []
+2026-05-04T18:48:06.3582877Z 6:48:06 PM [express] GET /api/driver-routes/mine 304 in 6ms :: []
+2026-05-04T18:48:06.429024Z 6:48:06 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:06.4306967Z 6:48:06 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:06.7797173Z 6:48:06 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:06.782737Z 6:48:06 PM [express] GET /api/rider-offers 304 in 10ms :: []
+2026-05-04T18:48:07.655412Z 6:48:07 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:07.6572956Z 6:48:07 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:07.7287332Z 6:48:07 PM [express] GET /api/azure-maps/reverse-geocode 200 in 239ms :: {"address":"125 Bassaleg Road, Newport, NP20 3NA"}
+2026-05-04T18:48:07.9928753Z 6:48:07 PM [express] GET /api/rides 304 in 10ms :: []
+2026-05-04T18:48:07.9956121Z 6:48:07 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:08.325454Z 6:48:08 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:08.3268543Z 6:48:08 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:08.9005456Z 6:48:08 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:08.9043931Z 6:48:08 PM [express] GET /api/rides 304 in 10ms :: []
+2026-05-04T18:48:09.370332Z 6:48:09 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:09.3797198Z 6:48:09 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:09.4246647Z 6:48:09 PM [express] GET /api/driver/payouts 304 in 61ms :: {"payouts":[],"summary":{"paidThisWeekPence":0,"paidThisMonthPence":0,"paidLifetimePence":0,"pendingPence":0,"failedStuckPence":0},"trend":{"period":"week","points":[{"periodStart":"2026-02-16 00:00:00+00","paidPence":0},{"periodStart":"2026-02-23 00:00:00+00","paidPence":0},{"periodStart":"2026-03-02 00:00:00+00","paidPence":0},{"periodStart":"2026-03-09 00:00:00+00","paidPence":0},{"periodStart":"2026-03-16 00:00:00+00","paidPence":0},{"periodStart":"2026-03-23 00:00:00+00","paidPence":0},{"periodStart":"2026-03-30 00:00:00+00","paidPence":0},{"periodStart":"2026-04-06 00:00:00+00","paidPence":0},{"periodStart":"2026-04-13 00:00:00+00","paidPence":0},{"periodStart":"2026-04-20 00:00:00+00","paidPence":0},{"periodStart":"2026-04-27 00:00:00+00","paidPence":0},{"periodStart":"2026-05-04 00:00:00+00","paidPence":0}]}}
+2026-05-04T18:48:09.7037925Z 6:48:09 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:09.7139251Z 6:48:09 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:10.0386344Z 6:48:10 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:10.0470925Z 6:48:10 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:10.3637016Z 6:48:10 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:10.3748645Z 6:48:10 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:10.7166324Z 6:48:10 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:10.7166853Z 6:48:10 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:11.0647275Z 6:48:11 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:11.0659801Z 6:48:11 PM [express] GET /api/rider-offers 304 in 16ms :: []
+2026-05-04T18:48:11.7565706Z 6:48:11 PM [express] GET /api/route-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:48:11.7587208Z 6:48:11 PM [express] GET /api/pro-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:48:11.7649135Z 6:48:11 PM [express] GET /api/bids/mine 304 in 7ms :: []
+2026-05-04T18:48:11.7670816Z 6:48:11 PM [express] GET /api/driver-routes/mine 304 in 7ms :: []
+2026-05-04T18:48:12.0240736Z 6:48:12 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:12.02532Z 6:48:12 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:12.4361402Z 6:48:12 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:12.4450243Z 6:48:12 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:13.0881189Z 6:48:13 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:13.0911946Z 6:48:13 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:13.5327869Z 6:48:13 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:13.5347309Z 6:48:13 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:13.9048198Z 6:48:13 PM [express] GET /api/rider-offers 304 in 10ms :: []
+2026-05-04T18:48:13.9070047Z 6:48:13 PM [express] GET /api/rides 304 in 11ms :: []
+2026-05-04T18:48:13.9892769Z 6:48:13 PM [express] GET /api/messages/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:48:14.2349369Z 6:48:14 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:14.2381039Z 6:48:14 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:14.5638646Z 6:48:14 PM [express] GET /api/driver/connect/status 304 in 8ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:48:14.5700105Z 6:48:14 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:14.5732292Z 6:48:14 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:15.0669021Z 6:48:15 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:15.0688975Z 6:48:15 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:48:15.4260566Z 6:48:15 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:15.4274999Z 6:48:15 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:15.7623675Z 6:48:15 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:15.765203Z 6:48:15 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:15.9843303Z 6:48:15 PM [express] GET /api/messages/unread-count 304 in 8ms :: {"count":0}
+2026-05-04T18:48:16.1305073Z 6:48:16 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:16.1346487Z 6:48:16 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:16.487927Z 6:48:16 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:16.4891474Z 6:48:16 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:16.8351892Z 6:48:16 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:16.8368586Z 6:48:16 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:16.8895665Z 6:48:16 PM [express] GET /api/pro-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:48:16.8909206Z 6:48:16 PM [express] GET /api/route-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:48:16.8986216Z 6:48:16 PM [express] GET /api/bids/mine 304 in 6ms :: []
+2026-05-04T18:48:16.9000272Z 6:48:16 PM [express] GET /api/driver-routes/mine 304 in 5ms :: []
+2026-05-04T18:48:17.1721807Z 6:48:17 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:17.1730495Z 6:48:17 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:17.5150332Z 6:48:17 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:17.5253388Z 6:48:17 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:17.938561Z 6:48:17 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:17.9400265Z 6:48:17 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:18.4853156Z 6:48:18 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:18.4939919Z 6:48:18 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:19.8976171Z 6:48:19 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:19.960804Z 6:48:19 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:20.7623294Z 6:48:20 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:20.7639904Z 6:48:20 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:21.1415969Z 6:48:21 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:21.1487707Z 6:48:21 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:21.6419441Z 6:48:21 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:21.6439841Z 6:48:21 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:22.1448653Z 6:48:22 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:22.148913Z 6:48:22 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:22.1637262Z 6:48:22 PM [express] GET /api/pro-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:48:22.1673747Z 6:48:22 PM [express] GET /api/route-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:48:22.2067231Z 6:48:22 PM [express] GET /api/bids/mine 304 in 8ms :: []
+2026-05-04T18:48:22.2080302Z 6:48:22 PM [express] GET /api/driver-routes/mine 304 in 8ms :: []
+2026-05-04T18:48:22.4806363Z 6:48:22 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:22.4848086Z 6:48:22 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:23.2863389Z 6:48:23 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:23.2882499Z 6:48:23 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:23.639702Z 6:48:23 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:23.6449918Z 6:48:23 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:24.005538Z 6:48:24 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:24.0116215Z 6:48:24 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:24.0241912Z 6:48:24 PM [express] GET /api/driver/kyc/status 304 in 7ms :: {"kycStatus":"pending","kycProvider":null,"kycVerifiedAt":null,"sessionId":null,"lastAttemptAt":null,"failureReason":null}
+2026-05-04T18:48:24.4509357Z 6:48:24 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:24.451018Z 6:48:24 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:24.8646059Z 6:48:24 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:24.8663515Z 6:48:24 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:25.3796057Z 6:48:25 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:25.381055Z 6:48:25 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:25.7230344Z 6:48:25 PM [express] GET /api/rider-offers 304 in 10ms :: []
+2026-05-04T18:48:25.7248905Z 6:48:25 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:26.1766567Z 6:48:26 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:26.402136Z 6:48:26 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:26.7259431Z 6:48:26 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:26.7933388Z 6:48:26 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:27.0604904Z 6:48:27 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:27.1252182Z 6:48:27 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:27.2718444Z 6:48:27 PM [express] GET /api/notifications/unread-count 304 in 7ms :: {"count":0}
+2026-05-04T18:48:27.4418874Z 6:48:27 PM [express] GET /api/bids/mine 304 in 8ms :: []
+2026-05-04T18:48:27.4441776Z 6:48:27 PM [express] GET /api/pro-negotiations/mine 304 in 10ms :: []
+2026-05-04T18:48:27.4899711Z 6:48:27 PM [express] GET /api/rider-offers 304 in 12ms :: []
+2026-05-04T18:48:27.4942153Z 6:48:27 PM [express] GET /api/driver-routes/mine 304 in 59ms :: []
+2026-05-04T18:48:27.5111065Z 6:48:27 PM [express] GET /api/route-negotiations/mine 304 in 74ms :: []
+2026-05-04T18:48:27.5139836Z 6:48:27 PM [express] GET /api/rides 304 in 73ms :: []
+2026-05-04T18:48:28.0865418Z 6:48:28 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:28.0883989Z 6:48:28 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:28.4250021Z 6:48:28 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:28.4264091Z 6:48:28 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:28.7805391Z 6:48:28 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:28.7829805Z 6:48:28 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:29.419549Z 6:48:29 PM [express] GET /api/messages/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:48:29.4210523Z 6:48:29 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:29.4551057Z 6:48:29 PM [express] GET /api/rides 304 in 41ms :: []
+2026-05-04T18:48:30.0924208Z 6:48:30 PM [express] GET /api/driver/connect/status 304 in 7ms :: {"hasAccount":false,"onboarded":false,"chargesEnabled":false,"payoutsEnabled":false,"requirementsDue":[],"updatedAt":null}
+2026-05-04T18:48:30.3491877Z 6:48:30 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:30.355878Z 6:48:30 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:30.7237008Z 6:48:30 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:48:30.725034Z 6:48:30 PM [express] GET /api/rides 304 in 10ms :: []
+2026-05-04T18:48:30.9951113Z 6:48:30 PM [express] GET /api/notifications/unread-count 304 in 10ms :: {"count":0}
+2026-05-04T18:48:31.1515461Z 6:48:31 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:31.1538171Z 6:48:31 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:48:31.1556587Z 6:48:31 PM [express] GET /api/messages/unread-count 304 in 10ms :: {"count":0}
+2026-05-04T18:48:31.4841976Z 6:48:31 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:31.4888054Z 6:48:31 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:31.8688208Z 6:48:31 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:31.8695366Z 6:48:31 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:32.2248542Z 6:48:32 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:32.2266173Z 6:48:32 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:48:32.5639173Z 6:48:32 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:32.5651196Z 6:48:32 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:32.5902572Z 6:48:32 PM [express] GET /api/pro-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:48:32.5915923Z 6:48:32 PM [express] GET /api/bids/mine 304 in 8ms :: []
+2026-05-04T18:48:32.8902301Z 6:48:32 PM [express] GET /api/route-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:48:32.8918869Z 6:48:32 PM [express] GET /api/driver-routes/mine 304 in 8ms :: []
+2026-05-04T18:48:32.8998521Z 6:48:32 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:32.9065378Z 6:48:32 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:33.3492394Z 6:48:33 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:33.3503931Z 6:48:33 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:33.8589422Z 6:48:33 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:33.860237Z 6:48:33 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:34.2397406Z 6:48:34 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:34.2416997Z 6:48:34 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:34.6008556Z 6:48:34 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:34.602757Z 6:48:34 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:34.9449781Z 6:48:34 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:34.9485342Z 6:48:34 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:35.297925Z 6:48:35 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:35.2990067Z 6:48:35 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:36.0420452Z 6:48:36 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:36.0433Z 6:48:36 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:36.4688412Z 6:48:36 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:36.4708321Z 6:48:36 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:37.1588035Z 6:48:37 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:37.1600046Z 6:48:37 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:37.5015005Z 6:48:37 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:37.5075799Z 6:48:37 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:37.7256087Z 6:48:37 PM [express] GET /api/bids/mine 304 in 6ms :: []
+2026-05-04T18:48:37.7262049Z 6:48:37 PM [express] GET /api/pro-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:48:37.8620057Z 6:48:37 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:48:37.8633148Z 6:48:37 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:48:38.3843667Z 6:48:38 PM [express] GET /api/driver-routes/mine 304 in 6ms :: []
+2026-05-04T18:48:38.3879027Z 6:48:38 PM [express] GET /api/route-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:48:38.6246764Z 6:48:38 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:38.6326847Z 6:48:38 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:40.6243753Z 6:48:40 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:40.6261596Z 6:48:40 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:41.0281899Z 6:48:41 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:48:41.0301274Z 6:48:41 PM [express] GET /api/rides 304 in 11ms :: []
+2026-05-04T18:48:41.5636495Z 6:48:41 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:41.565645Z 6:48:41 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:42.086268Z 6:48:42 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:42.0908744Z 6:48:42 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:42.9046693Z 6:48:42 PM [express] GET /api/pro-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:48:42.9062621Z 6:48:42 PM [express] GET /api/bids/mine 304 in 9ms :: []
+2026-05-04T18:48:43.095574Z 6:48:43 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:43.0987929Z 6:48:43 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:43.5209024Z 6:48:43 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:43.5218681Z 6:48:43 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:43.5285247Z 6:48:43 PM [express] GET /api/driver-routes/mine 304 in 5ms :: []
+2026-05-04T18:48:43.5303868Z 6:48:43 PM [express] GET /api/route-negotiations/mine 304 in 5ms :: []
+2026-05-04T18:48:44.6496273Z 6:48:44 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:44.6557593Z 6:48:44 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:45.1657509Z 6:48:45 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:45.168201Z 6:48:45 PM [express] GET /api/rider-offers 304 in 4ms :: []
+2026-05-04T18:48:45.8007541Z 6:48:45 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:45.8049074Z 6:48:45 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:46.134595Z 6:48:46 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:46.1383757Z 6:48:46 PM [express] GET /api/rides 304 in 10ms :: []
+2026-05-04T18:48:46.3254727Z 6:48:46 PM [express] GET /api/messages/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:48:46.484952Z 6:48:46 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:46.4882836Z 6:48:46 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:46.8256358Z 6:48:46 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:46.8296583Z 6:48:46 PM [express] GET /api/rider-offers 304 in 10ms :: []
+2026-05-04T18:48:47.3444309Z 6:48:47 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:47.3458137Z 6:48:47 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:47.6844729Z 6:48:47 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:47.6961764Z 6:48:47 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:48.0650392Z 6:48:48 PM [express] GET /api/pro-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:48:48.0666596Z 6:48:48 PM [express] GET /api/bids/mine 304 in 6ms :: []
+2026-05-04T18:48:48.3697617Z 6:48:48 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:48.3789833Z 6:48:48 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:49.4640611Z 6:48:49 PM [express] GET /api/driver-routes/mine 304 in 6ms :: []
+2026-05-04T18:48:49.4655568Z 6:48:49 PM [express] GET /api/route-negotiations/mine 304 in 9ms :: []
+2026-05-04T18:48:49.5389295Z 6:48:49 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:49.5407269Z 6:48:49 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:48:49.8753835Z 6:48:49 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:49.876983Z 6:48:49 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:50.6301695Z 6:48:50 PM [express] GET /api/rider-offers 304 in 14ms :: []
+2026-05-04T18:48:50.6314895Z 6:48:50 PM [express] GET /api/rides 304 in 15ms :: []
+2026-05-04T18:48:51.1569545Z 6:48:51 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:51.1687212Z 6:48:51 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:51.5054Z 6:48:51 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:51.5099042Z 6:48:51 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:51.8443111Z 6:48:51 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:51.8477908Z 6:48:51 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:52.2043646Z 6:48:52 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:52.2239235Z 6:48:52 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:52.8649069Z 6:48:52 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:52.8665722Z 6:48:52 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:53.2192331Z 6:48:53 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:53.223606Z 6:48:53 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:53.5576983Z 6:48:53 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:48:53.5587176Z 6:48:53 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:54.0997074Z 6:48:54 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:54.1009494Z 6:48:54 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:54.299823Z 6:48:54 PM [express] GET /api/pro-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:48:54.3013497Z 6:48:54 PM [express] GET /api/bids/mine 304 in 8ms :: []
+2026-05-04T18:48:54.44379Z 6:48:54 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:54.4455115Z 6:48:54 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:48:54.6040482Z 6:48:54 PM [express] GET /api/driver-routes/mine 304 in 6ms :: []
+2026-05-04T18:48:54.6057748Z 6:48:54 PM [express] GET /api/route-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:48:54.8094963Z 6:48:54 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:54.8158735Z 6:48:54 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:55.3301204Z 6:48:55 PM [express] GET /api/rider-offers 304 in 10ms :: []
+2026-05-04T18:48:55.3312832Z 6:48:55 PM [express] GET /api/rides 304 in 12ms :: []
+2026-05-04T18:48:56.826105Z 6:48:56 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:56.8261729Z 6:48:56 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:48:57.3531994Z 6:48:57 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:57.3542485Z 6:48:57 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:57.6938413Z 6:48:57 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:57.6958465Z 6:48:57 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:48:58.0411538Z 6:48:58 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:58.2151045Z 6:48:58 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:58.5199707Z 6:48:58 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:58.5401622Z 6:48:58 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:58.9632162Z 6:48:58 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:58.9697166Z 6:48:58 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:59.3047166Z 6:48:59 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:48:59.3085125Z 6:48:59 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:48:59.4388532Z 6:48:59 PM [express] GET /api/pro-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:48:59.4485133Z 6:48:59 PM [express] GET /api/bids/mine 304 in 6ms :: []
+2026-05-04T18:48:59.6393083Z 6:48:59 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:59.6437887Z 6:48:59 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:48:59.7495096Z 6:48:59 PM [express] GET /api/driver-routes/mine 304 in 7ms :: []
+2026-05-04T18:48:59.7516782Z 6:48:59 PM [express] GET /api/route-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:48:59.9742832Z 6:48:59 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:48:59.9755654Z 6:48:59 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:00.3087183Z 6:49:00 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:00.3282225Z 6:49:00 PM [express] GET /api/rides 304 in 15ms :: []
+2026-05-04T18:49:00.6737805Z 6:49:00 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:00.6760998Z 6:49:00 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:01.2944916Z 6:49:01 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:01.2966699Z 6:49:01 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:01.3391807Z 6:49:01 PM [express] GET /api/notifications/unread-count 304 in 46ms :: {"count":0}
+2026-05-04T18:49:01.465573Z 6:49:01 PM [express] GET /api/messages/unread-count 304 in 8ms :: {"count":0}
+2026-05-04T18:49:01.8057453Z 6:49:01 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:01.8074977Z 6:49:01 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:49:02.1324068Z 6:49:02 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:02.1335552Z 6:49:02 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:02.4640836Z 6:49:02 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:02.465944Z 6:49:02 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:02.8025721Z 6:49:02 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:49:02.8041317Z 6:49:02 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:49:03.4384199Z 6:49:03 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:03.4399963Z 6:49:03 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:03.7792634Z 6:49:03 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:03.7846264Z 6:49:03 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:04.1199854Z 6:49:04 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:04.1215115Z 6:49:04 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:04.468506Z 6:49:04 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:04.4695336Z 6:49:04 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:04.5787866Z 6:49:04 PM [express] GET /api/pro-negotiations/mine 304 in 5ms :: []
+2026-05-04T18:49:04.5878243Z 6:49:04 PM [express] GET /api/bids/mine 304 in 7ms :: []
+2026-05-04T18:49:04.7990791Z 6:49:04 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:04.809004Z 6:49:04 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:04.8792809Z 6:49:04 PM [express] GET /api/driver-routes/mine 304 in 6ms :: []
+2026-05-04T18:49:04.882474Z 6:49:04 PM [express] GET /api/route-negotiations/mine 304 in 4ms :: []
+2026-05-04T18:49:05.4017401Z 6:49:05 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:05.403213Z 6:49:05 PM [express] GET /api/rider-offers 304 in 4ms :: []
+2026-05-04T18:49:05.7337863Z 6:49:05 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:05.7473658Z 6:49:05 PM [express] GET /api/rider-offers 304 in 4ms :: []
+2026-05-04T18:49:06.1201255Z 6:49:06 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:06.1239815Z 6:49:06 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:06.619196Z 6:49:06 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:06.6244803Z 6:49:06 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:06.9592471Z 6:49:06 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:06.9606613Z 6:49:06 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:07.4454454Z 6:49:07 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:07.4471074Z 6:49:07 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:08.397884Z 6:49:08 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:08.3995415Z 6:49:08 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:08.8672507Z 6:49:08 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:08.8696842Z 6:49:08 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:09.5607578Z 6:49:09 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:09.6296198Z 6:49:09 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:09.731613Z 6:49:09 PM [express] GET /api/pro-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:49:09.7357365Z 6:49:09 PM [express] GET /api/bids/mine 304 in 7ms :: []
+2026-05-04T18:49:09.9390465Z 6:49:09 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:09.9652789Z 6:49:09 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:10.0134752Z 6:49:10 PM [express] GET /api/driver-routes/mine 304 in 5ms :: []
+2026-05-04T18:49:10.0149564Z 6:49:10 PM [express] GET /api/route-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:49:10.3289978Z 6:49:10 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:10.3344016Z 6:49:10 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:10.8599132Z 6:49:10 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:10.8610524Z 6:49:10 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:11.7644062Z 6:49:11 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:11.7668455Z 6:49:11 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:12.1624362Z 6:49:12 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:12.1624911Z 6:49:12 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:12.6409243Z 6:49:12 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:12.642125Z 6:49:12 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:12.983657Z 6:49:12 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:12.9892529Z 6:49:12 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:13.3251228Z 6:49:13 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:13.3263063Z 6:49:13 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:13.6843936Z 6:49:13 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:13.687566Z 6:49:13 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:14.0443118Z 6:49:14 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:14.047988Z 6:49:14 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:14.4094959Z 6:49:14 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:14.4108407Z 6:49:14 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:14.9913133Z 6:49:14 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:14.9929382Z 6:49:14 PM [express] GET /api/pro-negotiations/mine 304 in 5ms :: []
+2026-05-04T18:49:15.0590014Z 6:49:15 PM [express] GET /api/bids/mine 304 in 74ms :: []
+2026-05-04T18:49:15.0663606Z 6:49:15 PM [express] GET /api/rides 304 in 81ms :: []
+2026-05-04T18:49:15.1615311Z 6:49:15 PM [express] GET /api/driver-routes/mine 304 in 6ms :: []
+2026-05-04T18:49:15.1654019Z 6:49:15 PM [express] GET /api/route-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:49:15.4243038Z 6:49:15 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:15.4259125Z 6:49:15 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:15.759051Z 6:49:15 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:15.7673158Z 6:49:15 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:16.1252329Z 6:49:16 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:16.1269049Z 6:49:16 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:16.5093185Z 6:49:16 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:16.5102913Z 6:49:16 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:17.7501444Z 6:49:17 PM [express] GET /api/messages/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:49:17.7518322Z 6:49:17 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:17.787559Z 6:49:17 PM [express] GET /api/rides 304 in 44ms :: []
+2026-05-04T18:49:18.104339Z 6:49:18 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:18.1183534Z 6:49:18 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:18.6844387Z 6:49:18 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:18.6857834Z 6:49:18 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:19.019634Z 6:49:19 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:19.0241745Z 6:49:19 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:19.3896617Z 6:49:19 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:19.3929433Z 6:49:19 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:19.7636496Z 6:49:19 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:19.7729464Z 6:49:19 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:20.0892448Z 6:49:20 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:20.1036775Z 6:49:20 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:20.2355175Z 6:49:20 PM [express] GET /api/pro-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:49:20.2425872Z 6:49:20 PM [express] GET /api/bids/mine 304 in 8ms :: []
+2026-05-04T18:49:20.3977314Z 6:49:20 PM [express] GET /api/route-negotiations/mine 304 in 5ms :: []
+2026-05-04T18:49:20.3988028Z 6:49:20 PM [express] GET /api/driver-routes/mine 304 in 7ms :: []
+2026-05-04T18:49:20.4203048Z 6:49:20 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:20.4447713Z 6:49:20 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:20.7590855Z 6:49:20 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:22.3675835Z 6:49:22 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:49:22.3696047Z 6:49:22 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:23.616716Z 6:49:23 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:24.4032222Z 6:49:24 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:24.4044993Z 6:49:24 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:25.4238557Z 6:49:25 PM [express] GET /api/bids/mine 304 in 8ms :: []
+2026-05-04T18:49:25.4252955Z 6:49:25 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:25.4269205Z 6:49:25 PM [express] GET /api/pro-negotiations/mine 304 in 5ms :: []
+2026-05-04T18:49:25.4887555Z 6:49:25 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:25.5407507Z 6:49:25 PM [express] GET /api/driver-routes/mine 304 in 7ms :: []
+2026-05-04T18:49:25.5443255Z 6:49:25 PM [express] GET /api/route-negotiations/mine 304 in 10ms :: []
+2026-05-04T18:49:25.7869389Z 6:49:25 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:25.8329674Z 6:49:25 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:26.1488346Z 6:49:26 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:26.1787008Z 6:49:26 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:26.495858Z 6:49:26 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:26.5240181Z 6:49:26 PM [express] GET /api/rider-offers 304 in 10ms :: []
+2026-05-04T18:49:28.2421222Z 6:49:28 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:49:28.2447778Z 6:49:28 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:28.7013297Z 6:49:28 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:49:28.7040799Z 6:49:28 PM [express] GET /api/rider-offers 304 in 12ms :: []
+2026-05-04T18:49:29.0498238Z 6:49:29 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:29.0514551Z 6:49:29 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:29.4099663Z 6:49:29 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:29.41344Z 6:49:29 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:30.1259405Z 6:49:30 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:30.1272977Z 6:49:30 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:30.8230353Z 6:49:30 PM [express] GET /api/pro-negotiations/mine 304 in 10ms :: []
+2026-05-04T18:49:30.8239468Z 6:49:30 PM [express] GET /api/route-negotiations/mine 304 in 9ms :: []
+2026-05-04T18:49:30.8251256Z 6:49:30 PM [express] GET /api/bids/mine 304 in 13ms :: []
+2026-05-04T18:49:30.8727137Z 6:49:30 PM [express] GET /api/driver-routes/mine 304 in 57ms :: []
+2026-05-04T18:49:31.1251684Z 6:49:31 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:31.126627Z 6:49:31 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:31.4625258Z 6:49:31 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:31.4693142Z 6:49:31 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:31.6516006Z 6:49:31 PM [express] GET /api/notifications/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:49:31.9261085Z 6:49:31 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:31.9261753Z 6:49:31 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:32.5022913Z 6:49:32 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:32.5048189Z 6:49:32 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:32.846051Z 6:49:32 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:32.8473995Z 6:49:32 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:32.9901554Z 6:49:32 PM [express] GET /api/messages/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:49:33.1950904Z 6:49:33 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:33.198184Z 6:49:33 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:33.665191Z 6:49:33 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:33.8477909Z 6:49:33 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:34.0439823Z 6:49:34 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:34.1986523Z 6:49:34 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:34.4106339Z 6:49:34 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:35.8529666Z 6:49:35 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:36.0955045Z 6:49:36 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:36.1605695Z 6:49:36 PM [express] GET /api/pro-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:49:36.1949572Z 6:49:36 PM [express] GET /api/route-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:49:36.1963138Z 6:49:36 PM [express] GET /api/bids/mine 304 in 8ms :: []
+2026-05-04T18:49:36.1978264Z 6:49:36 PM [express] GET /api/driver-routes/mine 304 in 6ms :: []
+2026-05-04T18:49:36.2339313Z 6:49:36 PM [express] GET /api/rider-offers 304 in 45ms :: []
+2026-05-04T18:49:36.4742551Z 6:49:36 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:36.7591788Z 6:49:36 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:37.1745815Z 6:49:37 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:37.1757709Z 6:49:37 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:37.7913727Z 6:49:37 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:37.7931913Z 6:49:37 PM [express] GET /api/rider-offers 304 in 10ms :: []
+2026-05-04T18:49:38.140499Z 6:49:38 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:38.1420316Z 6:49:38 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:39.2988466Z 6:49:39 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:39.3000826Z 6:49:39 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:39.8361097Z 6:49:39 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:39.8379677Z 6:49:39 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:40.3354082Z 6:49:40 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:40.3550276Z 6:49:40 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:40.6739061Z 6:49:40 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:40.6991926Z 6:49:40 PM [express] GET /api/rider-offers 304 in 4ms :: []
+2026-05-04T18:49:41.9366801Z 6:49:41 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:41.9378215Z 6:49:41 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:41.9452264Z 6:49:41 PM [express] GET /api/pro-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:49:41.9463936Z 6:49:41 PM [express] GET /api/bids/mine 304 in 6ms :: []
+2026-05-04T18:49:41.9482484Z 6:49:41 PM [express] GET /api/driver-routes/mine 304 in 7ms :: []
+2026-05-04T18:49:41.9506699Z 6:49:41 PM [express] GET /api/route-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:49:42.3124502Z 6:49:42 PM [express] GET /api/rider-offers 304 in 17ms :: []
+2026-05-04T18:49:42.3132719Z 6:49:42 PM [express] GET /api/rides 304 in 21ms :: []
+2026-05-04T18:49:42.6690448Z 6:49:42 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:42.6777602Z 6:49:42 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:43.2350692Z 6:49:43 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:43.2367415Z 6:49:43 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:43.5949057Z 6:49:43 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:43.5993093Z 6:49:43 PM [express] GET /api/rides 304 in 4ms :: []
+2026-05-04T18:49:43.9390829Z 6:49:43 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:43.9441027Z 6:49:43 PM [express] GET /api/rides 304 in 4ms :: []
+2026-05-04T18:49:44.4794786Z 6:49:44 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:44.481107Z 6:49:44 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:44.8664697Z 6:49:44 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:44.8665071Z 6:49:44 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:45.3645986Z 6:49:45 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:45.3656482Z 6:49:45 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:46.1842396Z 6:49:46 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:46.1854786Z 6:49:46 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:46.5137567Z 6:49:46 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:46.5224627Z 6:49:46 PM [express] GET /api/rides 304 in 4ms :: []
+2026-05-04T18:49:46.8481462Z 6:49:46 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:46.8530526Z 6:49:46 PM [express] GET /api/rides 304 in 4ms :: []
+2026-05-04T18:49:47.1006781Z 6:49:47 PM [express] GET /api/bids/mine 304 in 6ms :: []
+2026-05-04T18:49:47.1018271Z 6:49:47 PM [express] GET /api/pro-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:49:47.1045017Z 6:49:47 PM [express] GET /api/route-negotiations/mine 304 in 5ms :: []
+2026-05-04T18:49:47.105901Z 6:49:47 PM [express] GET /api/driver-routes/mine 304 in 6ms :: []
+2026-05-04T18:49:47.1732035Z 6:49:47 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:47.193087Z 6:49:47 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:47.7699876Z 6:49:47 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:47.7712572Z 6:49:47 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:48.16476Z 6:49:48 PM [express] GET /api/messages/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:49:48.1677301Z 6:49:48 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:48.1735703Z 6:49:48 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:48.6441839Z 6:49:48 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:48.6455999Z 6:49:48 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:48.9856108Z 6:49:48 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:48.9872874Z 6:49:48 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:49.3399352Z 6:49:49 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:49.3442907Z 6:49:49 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:49.7040594Z 6:49:49 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:49.7052235Z 6:49:49 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:50.0398802Z 6:49:50 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:50.0408029Z 6:49:50 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:50.7009533Z 6:49:50 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:50.7023662Z 6:49:50 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:52.3124035Z 6:49:52 PM [express] GET /api/bids/mine 304 in 7ms :: []
+2026-05-04T18:49:52.3142514Z 6:49:52 PM [express] GET /api/pro-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:49:52.3196064Z 6:49:52 PM [express] GET /api/driver-routes/mine 304 in 7ms :: []
+2026-05-04T18:49:52.3211535Z 6:49:52 PM [express] GET /api/route-negotiations/mine 304 in 5ms :: []
+2026-05-04T18:49:52.6153934Z 6:49:52 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:52.616822Z 6:49:52 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:53.0648964Z 6:49:53 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:53.0666275Z 6:49:53 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:53.4090766Z 6:49:53 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:53.4103818Z 6:49:53 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:53.749101Z 6:49:53 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:53.7534396Z 6:49:53 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:54.1406806Z 6:49:54 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:54.1491445Z 6:49:54 PM [express] GET /api/rider-offers 304 in 15ms :: []
+2026-05-04T18:49:54.8345249Z 6:49:54 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:54.8370057Z 6:49:54 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:55.1721738Z 6:49:55 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:55.1736981Z 6:49:55 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:49:55.5393014Z 6:49:55 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:55.54145Z 6:49:55 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:56.4080008Z 6:49:56 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:56.413259Z 6:49:56 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:57.5155522Z 6:49:57 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:57.5244497Z 6:49:57 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:57.6463546Z 6:49:57 PM [express] GET /api/bids/mine 304 in 6ms :: []
+2026-05-04T18:49:57.6501018Z 6:49:57 PM [express] GET /api/pro-negotiations/mine 304 in 7ms :: []
+2026-05-04T18:49:57.7017744Z 6:49:57 PM [express] GET /api/driver-routes/mine 304 in 58ms :: []
+2026-05-04T18:49:57.7032953Z 6:49:57 PM [express] GET /api/route-negotiations/mine 304 in 59ms :: []
+2026-05-04T18:49:57.8872433Z 6:49:57 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:49:57.8896265Z 6:49:57 PM [express] GET /api/rides 304 in 15ms :: []
+2026-05-04T18:49:58.2288951Z 6:49:58 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:49:58.2301935Z 6:49:58 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:58.641763Z 6:49:58 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:49:58.6467723Z 6:49:58 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:49:58.9796378Z 6:49:58 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:49:58.9838396Z 6:49:58 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:49:59.3093557Z 6:49:59 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:49:59.3148952Z 6:49:59 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:00.4851885Z 6:50:00 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:50:00.4863231Z 6:50:00 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:50:01.0700245Z 6:50:01 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:01.0739184Z 6:50:01 PM [express] GET /api/rides 304 in 11ms :: []
+2026-05-04T18:50:01.416215Z 6:50:01 PM [express] GET /api/rides 304 in 11ms :: []
+2026-05-04T18:50:01.4162663Z 6:50:01 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:50:01.7696639Z 6:50:01 PM [express] GET /api/rides 304 in 16ms :: []
+2026-05-04T18:50:01.7715884Z 6:50:01 PM [express] GET /api/rider-offers 304 in 14ms :: []
+2026-05-04T18:50:01.783157Z 6:50:01 PM [express] GET /api/notifications/unread-count 304 in 6ms :: {"count":0}
+2026-05-04T18:50:02.1068937Z 6:50:02 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:02.1149125Z 6:50:02 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:50:02.4306431Z 6:50:02 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:50:02.4462762Z 6:50:02 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:03.321137Z 6:50:03 PM [express] GET /api/bids/mine 304 in 6ms :: []
+2026-05-04T18:50:03.3371283Z 6:50:03 PM [express] GET /api/driver-routes/mine 304 in 8ms :: []
+2026-05-04T18:50:03.3394056Z 6:50:03 PM [express] GET /api/pro-negotiations/mine 304 in 15ms :: []
+2026-05-04T18:50:03.3418815Z 6:50:03 PM [express] GET /api/messages/unread-count 304 in 7ms :: {"count":0}
+2026-05-04T18:50:03.3778093Z 6:50:03 PM [express] GET /api/route-negotiations/mine 304 in 55ms :: []
+2026-05-04T18:50:03.5720824Z 6:50:03 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:03.5826769Z 6:50:03 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:50:03.9141449Z 6:50:03 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:03.924354Z 6:50:03 PM [express] GET /api/rider-offers 304 in 11ms :: []
+2026-05-04T18:50:04.2870567Z 6:50:04 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:50:04.2914764Z 6:50:04 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:50:04.6200739Z 6:50:04 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:04.6340329Z 6:50:04 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:50:04.9539642Z 6:50:04 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:04.9620791Z 6:50:04 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:50:05.3265433Z 6:50:05 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:50:05.3339359Z 6:50:05 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:50:05.8287137Z 6:50:05 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:05.8310042Z 6:50:05 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:07.3652911Z 6:50:07 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:50:07.3716556Z 6:50:07 PM [express] GET /api/rider-offers 304 in 13ms :: []
+2026-05-04T18:50:07.6950207Z 6:50:07 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:07.7099828Z 6:50:07 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:50:08.8262371Z 6:50:08 PM [express] GET /api/driver-routes/mine 304 in 8ms :: []
+2026-05-04T18:50:08.8274084Z 6:50:08 PM [express] GET /api/route-negotiations/mine 304 in 6ms :: []
+2026-05-04T18:50:08.828844Z 6:50:08 PM [express] GET /api/bids/mine 304 in 11ms :: []
+2026-05-04T18:50:08.8715575Z 6:50:08 PM [express] GET /api/pro-negotiations/mine 304 in 45ms :: []
+2026-05-04T18:50:09.1392452Z 6:50:09 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:09.1407901Z 6:50:09 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:50:09.542413Z 6:50:09 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:09.5435977Z 6:50:09 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:10.683739Z 6:50:10 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:10.6846467Z 6:50:10 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:11.465841Z 6:50:11 PM [express] GET /api/rider-offers 304 in 6ms :: []
+2026-05-04T18:50:11.4681953Z 6:50:11 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:50:11.9396238Z 6:50:11 PM [express] GET /api/rides 304 in 12ms :: []
+2026-05-04T18:50:11.9441812Z 6:50:11 PM [express] GET /api/rider-offers 304 in 15ms :: []
+2026-05-04T18:50:12.4768819Z 6:50:12 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:50:12.4798456Z 6:50:12 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:50:12.8245634Z 6:50:12 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:50:12.8306559Z 6:50:12 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:50:13.2309415Z 6:50:13 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:13.2325097Z 6:50:13 PM [express] GET /api/rider-offers 304 in 8ms :: []
+2026-05-04T18:50:13.6978166Z 6:50:13 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:50:13.6988798Z 6:50:13 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:14.0633963Z 6:50:14 PM [express] GET /api/bids/mine 304 in 8ms :: []
+2026-05-04T18:50:14.0658248Z 6:50:14 PM [express] GET /api/driver-routes/mine 304 in 7ms :: []
+2026-05-04T18:50:14.0672093Z 6:50:14 PM [express] GET /api/route-negotiations/mine 304 in 11ms :: []
+2026-05-04T18:50:14.1180664Z 6:50:14 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:50:14.1278751Z 6:50:14 PM [express] GET /api/rides 304 in 5ms :: []
+2026-05-04T18:50:14.1512594Z 6:50:14 PM [express] GET /api/pro-negotiations/mine 304 in 12ms :: []
+2026-05-04T18:50:14.4802676Z 6:50:14 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:14.4837347Z 6:50:14 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:14.8609084Z 6:50:14 PM [express] GET /api/rides 304 in 8ms :: []
+2026-05-04T18:50:14.8621886Z 6:50:14 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:50:15.3585419Z 6:50:15 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:15.3597112Z 6:50:15 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:50:16.1596418Z 6:50:16 PM [express] GET /api/rider-offers 304 in 7ms :: []
+2026-05-04T18:50:16.1614552Z 6:50:16 PM [express] GET /api/rides 304 in 9ms :: []
+2026-05-04T18:50:17.5583761Z 6:50:17 PM [express] GET /api/rider-offers 304 in 5ms :: []
+2026-05-04T18:50:17.5602014Z 6:50:17 PM [express] GET /api/rides 304 in 7ms :: []
+2026-05-04T18:50:18.0072596Z 6:50:18 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:18.0157079Z 6:50:18 PM [express] GET /api/rider-offers 304 in 16ms :: []
+2026-05-04T18:50:18.8422046Z 6:50:18 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:18.8448281Z 6:50:18 PM [express] GET /api/rider-offers 304 in 9ms :: []
+2026-05-04T18:50:18.8811337Z 6:50:18 PM [express] GET /api/messages/unread-count 304 in 43ms :: {"count":0}
+2026-05-04T18:50:19.2000177Z 6:50:19 PM [express] GET /api/bids/mine 304 in 7ms :: []
+2026-05-04T18:50:19.2027721Z 6:50:19 PM [express] GET /api/route-negotiations/mine 304 in 5ms :: []
+2026-05-04T18:50:19.2042023Z 6:50:19 PM [express] GET /api/driver-routes/mine 304 in 6ms :: []
+2026-05-04T18:50:19.2171476Z 6:50:19 PM [express] GET /api/rider-offers 304 in 4ms :: []
+2026-05-04T18:50:19.2187258Z 6:50:19 PM [express] GET /api/rides 304 in 6ms :: []
+2026-05-04T18:50:19.2831486Z 6:50:19 PM [express] GET /api/pro-negotiations/mine 304 in 5ms :: []
+2026-05-04T18:50:20.9694734Z 6:50:20 PM [express] GET /api/rides 304 in 7ms :: []
