@@ -23,17 +23,24 @@ export async function startIdentityVerification(args: {
   email?: string | null;
 }): Promise<{ clientSecret: string; sessionId: string }> {
   const stripe = await getUncachableStripeClient();
-  const session = await stripe.identity.verificationSessions.create({
-    type: "document",
-    metadata: { userId: args.userId },
-    options: {
-      document: {
-        require_matching_selfie: true,
-        require_live_capture: true,
-        require_id_number: false,
-      },
-    },
-  });
+  const verificationFlow = process.env.STRIPE_IDENTITY_FLOW_ID;
+
+  const session = verificationFlow
+    ? await stripe.identity.verificationSessions.create({
+        verification_flow: verificationFlow,
+        metadata: { userId: args.userId },
+      })
+    : await stripe.identity.verificationSessions.create({
+        type: "document",
+        metadata: { userId: args.userId },
+        options: {
+          document: {
+            require_matching_selfie: true,
+            require_live_capture: true,
+            require_id_number: false,
+          },
+        },
+      });
 
   await storage.updateUserStripeIdentity(args.userId, {
     sessionId: session.id,
