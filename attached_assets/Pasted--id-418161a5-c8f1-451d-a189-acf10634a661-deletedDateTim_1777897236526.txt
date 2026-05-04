@@ -1,0 +1,91 @@
+{
+	"id": "418161a5-c8f1-451d-a189-acf10634a661",
+	"deletedDateTime": null,
+	"appId": "2a9e2989-cad9-4a0e-8176-31d27022e2f0",
+	"applicationTemplateId": null,
+	"disabledByMicrosoftStatus": null,
+	"createdByAppId": "18ed3507-a475-4ccb-b669-d66bc9f2a36e",
+	"createdDateTime": "2026-05-04T00:59:44Z",
+	"displayName": "Saviaj",
+	"description": null,
+	"groupMembershipClaims": null,
+	"identifierUris": [],
+	"isDeviceOnlyAuthSupported": null,
+	"isDisabled": null,
+	"isFallbackPublicClient": true,
+	"nativeAuthenticationApisEnabled": "all",
+	"notes": null,
+	"publisherDomain": "atlasridecustomers.onmicrosoft.com",
+	"serviceManagementReference": null,
+	"signInAudience": "AzureADMyOrg",
+	"tags": [],
+	"tokenEncryptionKeyId": null,
+	"samlMetadataUrl": null,
+	"defaultRedirectUri": null,
+	"certification": null,
+	"optionalClaims": null,
+	"servicePrincipalLockConfiguration": null,
+	"requestSignatureVerification": null,
+	"addIns": [],
+	"api": {
+		"acceptMappedClaims": null,
+		"knownClientApplications": [],
+		"requestedAccessTokenVersion": 2,
+		"oauth2PermissionScopes": [],
+		"preAuthorizedApplications": []
+	},
+	"appRoles": [],
+	"info": {
+		"logoUrl": null,
+		"marketingUrl": null,
+		"privacyStatementUrl": null,
+		"supportUrl": null,
+		"termsOfServiceUrl": null
+	},
+	"keyCredentials": [],
+	"parentalControlSettings": {
+		"countriesBlockedForMinors": [],
+		"legalAgeGroupRule": "Allow"
+	},
+	"passwordCredentials": [],
+	"publicClient": {
+		"redirectUris": []
+	},
+	"requiredResourceAccess": [
+		{
+			"resourceAppId": "00000003-0000-0000-c000-000000000000",
+			"resourceAccess": [
+				{
+					"id": "7427e0e9-2fba-42fe-b0c0-848c9e6a8182",
+					"type": "Scope"
+				},
+				{
+					"id": "37f7f235-527c-4136-accd-4a02d197296e",
+					"type": "Scope"
+				},
+				{
+					"id": "e1fe6dd8-ba31-4d61-89e7-88639da4683d",
+					"type": "Scope"
+				}
+			]
+		}
+	],
+	"verifiedPublisher": {
+		"displayName": null,
+		"verifiedPublisherId": null,
+		"addedDateTime": null
+	},
+	"web": {
+		"homePageUrl": null,
+		"logoutUrl": null,
+		"redirectUris": [],
+		"implicitGrantSettings": {
+			"enableAccessTokenIssuance": false,
+			"enableIdTokenIssuance": false
+		},
+		"redirectUriSettings": []
+	},
+	"spa": {
+		"redirectUris": []
+	}
+}
