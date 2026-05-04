@@ -207,12 +207,13 @@ export function setupLocalAuth(app: Express) {
         return res.status(400).json({ message: "Email not verified. Please complete email verification." });
       }
       
-      // Token is valid for 30 minutes after verification
+      // Token is valid for 2 hours after verification (signup forms may
+      // take a while to complete, especially for drivers with uploads).
       if (!verification.verifiedAt) {
         return res.status(400).json({ message: "Email verification incomplete. Please verify again." });
       }
       
-      const tokenValidUntil = new Date(verification.verifiedAt.getTime() + 30 * 60 * 1000);
+      const tokenValidUntil = new Date(verification.verifiedAt.getTime() + 2 * 60 * 60 * 1000);
       if (new Date() > tokenValidUntil) {
         return res.status(400).json({ message: "Email verification expired. Please verify your email again." });
       }

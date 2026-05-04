@@ -64,7 +64,7 @@ export default function AuthPage() {
               data-testid="button-email-signin"
             >
               <Mail className="mr-2 h-5 w-5" />
-              Sign In with Email
+              Sign In
             </Button>
 
             <GoogleSignInButton className="w-full h-12 text-base" showConsentNotice />

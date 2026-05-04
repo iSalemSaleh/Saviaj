@@ -74,11 +74,11 @@ export default function Login() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="identifier">Email or Username</Label>
+                <Label htmlFor="identifier">Email, Username, or Phone</Label>
                 <Input
                   id="identifier"
                   type="text"
-                  placeholder="you@example.com or username"
+                  placeholder="you@example.com, username, or +44..."
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   data-testid="input-login-identifier"
