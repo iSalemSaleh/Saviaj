@@ -1,0 +1,80 @@
+2026-05-04T01:58:34.3636967Z [WebSocket] Server initialized
+2026-05-04T01:58:34.3994013Z 1:58:34 AM [express] Payment timeout and expired rides cleanup job scheduled (every 5 minutes)
+2026-05-04T01:58:34.4005327Z 1:58:34 AM [express] Recurring schedule generation job scheduled (every 6 hours)
+2026-05-04T01:58:34.4005643Z 1:58:34 AM [express] Driver payout auto-retry job scheduled (every 5 minutes)
+2026-05-04T01:58:34.4025223Z 1:58:34 AM [express] serving on port 8080
+2026-05-04T01:58:34.4028913Z Syncing products
+2026-05-04T01:58:34.4086682Z Fetching items to sync from Stripe
+2026-05-04T01:58:34.5575453Z Sync complete: 0 items synced
+2026-05-04T01:58:34.5576421Z Syncing prices
+2026-05-04T01:58:34.5622409Z Fetching items to sync from Stripe
+2026-05-04T01:58:34.6980896Z Sync complete: 0 items synced
+2026-05-04T01:58:34.6984615Z Syncing plans
+2026-05-04T01:58:34.7036604Z Fetching items to sync from Stripe
+2026-05-04T01:58:34.8479088Z Sync complete: 0 items synced
+2026-05-04T01:58:34.8482652Z Syncing customers
+2026-05-04T01:58:34.8500285Z Incremental sync from cursor: 1767014803
+2026-05-04T01:58:34.8520669Z Fetching items to sync from Stripe
+2026-05-04T01:58:35.014831Z Upserting final batch of 1 items
+2026-05-04T01:58:35.0245522Z Sync complete: 1 items synced
+2026-05-04T01:58:35.0246582Z Syncing subscriptions
+2026-05-04T01:58:35.0286156Z Fetching items to sync from Stripe
+2026-05-04T01:58:35.1672565Z Sync complete: 0 items synced
+2026-05-04T01:58:35.1674955Z Syncing subscription schedules
+2026-05-04T01:58:35.1715217Z Fetching items to sync from Stripe
+2026-05-04T01:58:35.3129183Z Sync complete: 0 items synced
+2026-05-04T01:58:35.3129385Z Syncing invoices
+2026-05-04T01:58:35.3198145Z Fetching items to sync from Stripe
+2026-05-04T01:58:35.4639755Z Sync complete: 0 items synced
+2026-05-04T01:58:35.4645395Z Syncing charges
+2026-05-04T01:58:35.4662771Z Incremental sync from cursor: 1767309687
+2026-05-04T01:58:35.4682628Z Fetching items to sync from Stripe
+2026-05-04T01:58:35.7233751Z Upserting final batch of 1 items
+2026-05-04T01:58:35.7335536Z Sync complete: 1 items synced
+2026-05-04T01:58:35.7338217Z Syncing setup_intents
+2026-05-04T01:58:35.7372689Z Fetching items to sync from Stripe
+2026-05-04T01:58:35.8745906Z Sync complete: 0 items synced
+2026-05-04T01:58:35.8749478Z Syncing payment method
+2026-05-04T01:58:35.8774098Z Getting payment methods for 1 customers
+2026-05-04T01:58:35.8775543Z Fetching items to sync from Stripe
+2026-05-04T01:58:36.0144284Z Sync complete: 0 items synced
+2026-05-04T01:58:36.0146106Z Syncing payment_intents
+2026-05-04T01:58:36.0167935Z Incremental sync from cursor: 1767309686
+2026-05-04T01:58:36.0195211Z Fetching items to sync from Stripe
+2026-05-04T01:58:36.204806Z Upserting final batch of 1 items
+2026-05-04T01:58:36.2150445Z Sync complete: 1 items synced
+2026-05-04T01:58:36.2155134Z Syncing tax_ids
+2026-05-04T01:58:36.2161923Z Fetching items to sync from Stripe
+2026-05-04T01:58:36.3499312Z Sync complete: 0 items synced
+2026-05-04T01:58:36.350234Z Syncing credit notes
+2026-05-04T01:58:36.3549623Z Fetching items to sync from Stripe
+2026-05-04T01:58:36.4925912Z Sync complete: 0 items synced
+2026-05-04T01:58:36.4929934Z Syncing disputes
+2026-05-04T01:58:36.4966342Z Fetching items to sync from Stripe
+2026-05-04T01:58:36.6435985Z Sync complete: 0 items synced
+2026-05-04T01:58:36.6437816Z Syncing early fraud warnings
+2026-05-04T01:58:36.6513683Z Fetching items to sync from Stripe
+2026-05-04T01:58:36.7933161Z Sync complete: 0 items synced
+2026-05-04T01:58:36.7933645Z Syncing refunds
+2026-05-04T01:58:36.7939419Z Incremental sync from cursor: 1767293574
+2026-05-04T01:58:36.7963874Z Fetching items to sync from Stripe
+2026-05-04T01:58:36.9684057Z Upserting final batch of 1 items
+2026-05-04T01:58:36.9811884Z Sync complete: 1 items synced
+2026-05-04T01:58:36.9813771Z Syncing checkout sessions
+2026-05-04T01:58:36.9844441Z Incremental sync from cursor: 1767309610
+2026-05-04T01:58:36.9866724Z Fetching items to sync from Stripe
+2026-05-04T01:58:37.133888Z Upserting final batch of 1 items
+2026-05-04T01:58:37.2833903Z Sync complete: 1 items synced
+2026-05-04T01:58:37.2834924Z Stripe data synced
+2026-05-04T01:58:52.3155106Z [Entra] Sign-up start error: user_already_exists
+2026-05-04T01:58:52.3206704Z 1:58:52 AM [express] POST /api/auth/email-otp/request 409 in 303ms :: {"message":"This email already has an account. Please sign in instead.","userExists":true,"loginUrl":"/login"}
+2026-05-04T01:59:23.2572464Z 1:59:23 AM [express] GET /api/auth/google/status 304 in 3ms
+2026-05-04T01:59:48.4873849Z [Entra] Sign-up start error: user_already_exists
+2026-05-04T01:59:48.4885965Z 1:59:48 AM [express] POST /api/auth/email-otp/request 409 in 601ms :: {"message":"This email already has an account. Please sign in instead.","userExists":true,"loginUrl":"/login"}
+2026-05-04T02:01:01.657603Z [Entra] Sign-up start error: user_already_exists
+2026-05-04T02:01:01.6595041Z 2:01:01 AM [express] POST /api/auth/email-otp/request 409 in 612ms :: {"message":"This email already has an account. Please sign in instead.","userExists":true,"loginUrl":"/login"}
+2026-05-04T02:01:53.3733178Z 2:01:53 AM [express] POST /api/auth/email-otp/request 200 in 1063ms :: {"success":true,"message":"Verification code sent to s*******7@g*******m","codeLength":8,"continuationToken":"AQABIgEAAAAdDD7nC9b5Q7JPd_okEQRFRXZvU3RzQXJ0aWZhY3RzHQAAAAAAaXSnjrMaEqqzDjJgMee5haJm295YKHtaDDveFHCo7L7sm0ZC-gxMBYQ1vUjcQasnPnWWUEjABDYx5lg6BkjcnthmSCQLF4YzyoeW7AjRNSwN2lvq6ldc6Gub5HFIvhK7q_hbgAoyMEzqSchDJGG4W0IMxagFAFcHOwaE-L7061f3CUJ7MEzWEGDKHERJvVXgBGtdLUdTqi3BqyXN2TUwqWpsJ41ITNWJQ8pmb1sZ_48n7Uqnpj4mm3Ws0ghlnWvNOkPLoCAMw5LX_JYzEvBFe1IhxrjWVWhTMTX23NRBN7ZnDkHl_4zzr1j6jlDTFOWUA0bqsexpQDQvEkwm885HVPf7_WbWtoS-exlPjxB6Nw64v3Cb8DIXC-yfrpZiAyScTatpA4c6IZ5gd3IQXvuUVCAA"}
+2026-05-04T02:03:04.358Z No new trace in the past 1 min(s).
+2026-05-04T02:03:15.7467984Z 2:03:15 AM [express] GET /api/auth/google/status 304 in 8ms
+2026-05-04T02:03:34.0133257Z 2:03:34 AM [express] POST /api/auth/password-reset/request 404 in 49ms :: {"success":false,"noAccount":true,"message":"No account found with this email. Please sign up to create one.","signupUrl":"/signup"}
+2026-05-04T02:04:48.290Z No new trace in the past 1 min(s).

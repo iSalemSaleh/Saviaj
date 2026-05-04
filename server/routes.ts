@@ -691,15 +691,18 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         let result = await initiateEmailOtpSignUp(normalizedEmail);
 
         if (!result.success && result.error === 'user_already_exists') {
-          if (isResignup) {
-            // Soft-deleted account is being re-created. Entra still knows
-            // this email so signup is impossible — switch to SIGN-IN OTP
-            // and remember the flow so verify hits /signin/v1.0/continue.
+          if (isResignup || !anyUserWithEmail) {
+            // Either a soft-deleted account being re-created, or an orphan
+            // Entra account with no local DB record at all (e.g. DB was
+            // wiped but Entra still remembers the email). In both cases
+            // Entra signup is impossible — switch to SIGN-IN OTP and
+            // remember the flow so verify hits /signin/v1.0/continue.
+            // The verify + register endpoints will create a fresh local
+            // account.
             flowType = 'signin';
             result = await initiateEmailOtpSignIn(normalizedEmail);
           } else {
-            // Email is registered in Entra but NOT in our local DB at all
-            // (orphan / legacy / abandoned signup). Tell them to sign in.
+            // Active local account exists — genuine duplicate signup attempt.
             return res.status(409).json({
               message: "This email already has an account. Please sign in instead.",
               userExists: true,
