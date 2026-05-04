@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -114,6 +114,8 @@ export default function Signup() {
   const [step, setStep] = useState(1);
   const [isLookingUpPostcode, setIsLookingUpPostcode] = useState(false);
   const [postcodeLookupHint, setPostcodeLookupHint] = useState<string>("");
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const usernameCheckTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Postcode → city autofill via /api/lookup/postcode/:postcode (proxies
   // postcodes.io). On success we map the upstream `admin_district` to the
@@ -174,7 +176,7 @@ export default function Signup() {
     const verifiedEmail = localStorage.getItem('atlasride_verified_email');
     const token = localStorage.getItem('atlasride_email_token');
     const tokenTs = parseInt(localStorage.getItem('atlasride_email_token_ts') || '0', 10);
-    const TOKEN_TTL_MS = 30 * 60 * 1000; // server-side expiry is 30 minutes
+    const TOKEN_TTL_MS = 2 * 60 * 60 * 1000; // server-side expiry is 2 hours
     const isExpired = !tokenTs || Date.now() - tokenTs > TOKEN_TTL_MS;
     if (verifiedEmail && token && !isExpired) {
       setFormData(prev => ({ ...prev, email: verifiedEmail }));
@@ -213,6 +215,24 @@ export default function Signup() {
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
   }, [step]);
+
+  const checkUsernameAvailability = (value: string) => {
+    if (usernameCheckTimer.current) clearTimeout(usernameCheckTimer.current);
+    if (!value || value.length < 3) {
+      setUsernameStatus("idle");
+      return;
+    }
+    setUsernameStatus("checking");
+    usernameCheckTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/auth/username-available?username=${encodeURIComponent(value)}`);
+        const data = await res.json();
+        setUsernameStatus(data.available ? "available" : "taken");
+      } catch {
+        setUsernameStatus("idle");
+      }
+    }, 400);
+  };
 
   const confirmAbandon = (target: string) => {
     if (step > 1) {
@@ -400,6 +420,14 @@ export default function Signup() {
           setError("Password must be at least 8 characters");
           return false;
         }
+        if (formData.username && usernameStatus === "taken") {
+          setError("That username is already taken. Please choose a different one.");
+          return false;
+        }
+        if (formData.username && usernameStatus === "checking") {
+          setError("Please wait while we check username availability");
+          return false;
+        }
         if (formData.password !== formData.confirmPassword) {
           setError("Passwords do not match");
           return false;
@@ -548,13 +576,34 @@ export default function Signup() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="username">Username (Optional)</Label>
+                <Label htmlFor="username" className="flex items-center gap-2">
+                  Username (Optional)
+                  {usernameStatus === "checking" && (
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  )}
+                  {usernameStatus === "available" && (
+                    <span className="text-green-600 text-xs flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Available
+                    </span>
+                  )}
+                  {usernameStatus === "taken" && (
+                    <span className="text-red-600 text-xs flex items-center gap-1">
+                      This username is taken
+                    </span>
+                  )}
+                </Label>
                 <Input
                   id="username"
                   type="text"
                   placeholder="Choose a username (3-30 characters)"
                   value={formData.username}
-                  onChange={(e) => handleChange("username", e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                    handleChange("username", cleaned);
+                    checkUsernameAvailability(cleaned);
+                  }}
+                  className={usernameStatus === "taken" ? "border-red-400" : usernameStatus === "available" ? "border-green-400" : ""}
                   data-testid="input-username"
                 />
                 <p className="text-xs text-muted-foreground">
