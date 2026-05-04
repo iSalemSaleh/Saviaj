@@ -11,11 +11,12 @@ interface PhoneVerificationModalProps {
   open: boolean;
   onClose: () => void;
   onVerified: (phoneNumber: string, verificationToken: string) => void;
+  initialPhoneNumber?: string;
 }
 
-export function PhoneVerificationModal({ open, onClose, onVerified }: PhoneVerificationModalProps) {
+export function PhoneVerificationModal({ open, onClose, onVerified, initialPhoneNumber }: PhoneVerificationModalProps) {
   const [step, setStep] = useState<"phone" | "otp">("phone");
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber || "");
   const [otpCode, setOtpCode] = useState("");
   const [demoCode, setDemoCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,17 +33,17 @@ export function PhoneVerificationModal({ open, onClose, onVerified }: PhoneVerif
 
   useEffect(() => {
     if (!open) {
-      // Reset internal modal UI only. Do NOT wipe a previously verified
-      // phone token from localStorage – that's owned by the page that
-      // opened the modal and should outlive the dialog being dismissed.
       setStep("phone");
-      setPhoneNumber("");
       setOtpCode("");
       setDemoCode(null);
       setError(null);
       setCountdown(0);
+    } else {
+      if (initialPhoneNumber) {
+        setPhoneNumber(initialPhoneNumber);
+      }
     }
-  }, [open]);
+  }, [open, initialPhoneNumber]);
 
   const handleSendCode = async () => {
     setError(null);

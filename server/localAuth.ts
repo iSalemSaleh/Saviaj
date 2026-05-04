@@ -121,7 +121,8 @@ const registerSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
-  phoneNumber: z.string().optional(),
+  phoneNumber: z.string().min(1, "Phone number is required"),
+  phoneVerificationToken: z.string().min(1, "Phone verification token is required"),
   homeAddress: z.string().optional(),
   // City is REQUIRED — the Saviaj Pass ID encodes a 3-letter city code, so
   // we must have a value at signup. The frontend uses postcodes.io to
@@ -173,7 +174,7 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  identifier: z.string().min(1, "Email or username is required"),
+  identifier: z.string().min(1, "Email, phone or username is required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -228,6 +229,38 @@ export function setupLocalAuth(app: Express) {
       const anyUserWithEmail = await storage.getUserByEmail(validatedData.email);
       if (anyUserWithEmail && anyUserWithEmail.deletedAt) {
         await storage.releaseEmailForDeletedUser(anyUserWithEmail.id);
+      }
+
+      // Validate phone verification token
+      const { phoneVerifications } = await import("@shared/schema");
+      const normalizedPhone = validatedData.phoneNumber.replace(/\s/g, '');
+      const [phoneVerification] = await db
+        .select()
+        .from(phoneVerifications)
+        .where(eq(phoneVerifications.verificationToken, validatedData.phoneVerificationToken))
+        .limit(1);
+
+      if (!phoneVerification) {
+        return res.status(400).json({ message: "Invalid phone verification. Please verify your phone number again." });
+      }
+      if (phoneVerification.phoneNumber !== normalizedPhone) {
+        return res.status(400).json({ message: "Phone verification mismatch. Please verify your phone number again." });
+      }
+      if (phoneVerification.status !== "verified") {
+        return res.status(400).json({ message: "Phone not verified. Please complete phone verification." });
+      }
+      if (!phoneVerification.verifiedAt) {
+        return res.status(400).json({ message: "Phone verification incomplete. Please verify again." });
+      }
+      const phoneTokenValidUntil = new Date(phoneVerification.verifiedAt.getTime() + 2 * 60 * 60 * 1000);
+      if (new Date() > phoneTokenValidUntil) {
+        return res.status(400).json({ message: "Phone verification expired. Please verify your phone number again." });
+      }
+
+      // Check phone uniqueness (active accounts only)
+      const existingActivePhone = await storage.getActiveUserByPhone(normalizedPhone);
+      if (existingActivePhone) {
+        return res.status(400).json({ message: "An account with this phone number already exists" });
       }
 
       // Check username uniqueness if provided (active accounts only)
@@ -335,10 +368,14 @@ export function setupLocalAuth(app: Express) {
         commercialStatusVerified: validatedData.isCommercialDriver && new Date() < new Date('2026-03-01T00:00:00Z'),
       });
 
-      // Invalidate the verification token to prevent reuse
+      // Invalidate verification tokens to prevent reuse
       await db.update(emailVerifications)
         .set({ status: "used", verificationToken: null })
         .where(eq(emailVerifications.id, verification.id));
+
+      await db.update(phoneVerifications)
+        .set({ status: "used", verificationToken: null })
+        .where(eq(phoneVerifications.id, phoneVerification.id));
 
       (req.session as any).userId = user.id;
       (req.session as any).user = {
@@ -375,12 +412,15 @@ export function setupLocalAuth(app: Express) {
         });
       }
       
-      // Check if identifier is an email or username
+      // Check if identifier is an email, phone, or username
       const isEmail = validatedData.identifier.includes('@');
+      const isPhone = /^\+?\d{7,15}$/.test(validatedData.identifier.replace(/\s/g, ''));
       let user;
       
       if (isEmail) {
         user = await storage.getActiveUserByEmail(validatedData.identifier);
+      } else if (isPhone) {
+        user = await storage.getActiveUserByPhone(validatedData.identifier);
       } else {
         user = await storage.getActiveUserByUsername(validatedData.identifier);
       }

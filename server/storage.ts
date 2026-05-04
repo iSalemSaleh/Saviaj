@@ -381,6 +381,7 @@ export interface IStorage {
   // soft-deleted users (e.g., admin restore, OAuth refusal of deleted accounts).
   getActiveUserByEmail(email: string): Promise<User | undefined>;
   getActiveUserByUsername(username: string): Promise<User | undefined>;
+  getActiveUserByPhone(phoneNumber: string): Promise<User | undefined>;
   // Frees the email slot on a soft-deleted user so a new account can be created
   // with the same address. Renames email to <email>+deleted-<id>@deleted.local.
   releaseEmailForDeletedUser(userId: string): Promise<void>;
@@ -717,6 +718,15 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(users)
       .where(sql`lower(${users.username}) = ${normalizedUsername} AND ${users.deletedAt} IS NULL`);
+    return user;
+  }
+
+  async getActiveUserByPhone(phoneNumber: string): Promise<User | undefined> {
+    const normalized = phoneNumber.replace(/\s/g, '');
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`${users.phoneNumber} = ${normalized} AND ${users.deletedAt} IS NULL`);
     return user;
   }
 

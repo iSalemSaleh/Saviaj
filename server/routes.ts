@@ -373,6 +373,34 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   //
   // postcodes.io is free, key-less, and operated by Open Postcode Geo /
   // Ideal Postcodes — no auth header required.
+  app.get("/api/lookup/addresses/:postcode", async (req, res) => {
+    const raw = String(req.params.postcode || "").trim().toUpperCase();
+    const compact = raw.replace(/\s+/g, "");
+    const ukPostcodeRe = /^[A-Z]{1,2}\d[A-Z\d]?\d[A-Z]{2}$/;
+    if (!ukPostcodeRe.test(compact)) {
+      return res.status(400).json({ message: "Invalid UK postcode format" });
+    }
+    const ac = new AbortController();
+    const timeoutId = setTimeout(() => ac.abort(), 5000);
+    try {
+      const { searchAddress } = await import('./azureMapsService');
+      const results = await searchAddress(compact + ", United Kingdom");
+      const addresses = results
+        .filter((r: any) => r.address && r.address.length > 5)
+        .map((r: any) => ({
+          address: r.address,
+          lat: r.position.lat,
+          lon: r.position.lon,
+        }));
+      return res.json({ addresses });
+    } catch (err: any) {
+      console.error("[address-lookup] failed:", err);
+      return res.status(502).json({ message: "Address lookup failed" });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  });
+
   app.get("/api/lookup/postcode/:postcode", async (req, res) => {
     const raw = String(req.params.postcode || "").trim().toUpperCase();
     // Normalise: strip whitespace, then validate against the official UK

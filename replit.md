@@ -65,6 +65,7 @@ Preferred communication style: Simple, everyday language.
 - **Platform Fees**: Centralized management of platform fees with per-ride accounting and specific logic for casual route allocation.
 - **Stripe Connect Express**: Separate charges and transfers model for driver payouts, with onboarding, status synchronization, and payout triggers.
 - **Stripe Identity**: Hosted document and selfie verification for KYC, integrating with existing `kyc_status` fields.
+- **Signup Flow**: Step 1 requires email + phone verification (both mandatory, SMS OTP via Twilio). Address lookup via Azure Maps postcode search with dropdown + manual entry fallback. Login accepts email, phone, or username.
 - **Auth Lifecycle Rules**: Strict rules for active user lookups, account deletion, re-signup after deletion, OTP flow tracking, and password reset hardening.
 - **Entra CIAM Limitation**: Native Auth sign-in with email OTP is NOT supported by Microsoft CIAM (returns 404). Only sign-up OTP works. Workarounds:
   - *Orphan accounts* (Entra has user, local DB doesn't): auto-verify and skip OTP since email was previously verified.

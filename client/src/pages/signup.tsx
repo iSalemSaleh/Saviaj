@@ -9,10 +9,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCircle, Camera, Briefcase, Shield, Mail, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Car, User, Eye, EyeOff, Upload, CheckCircle, Camera, Briefcase, Shield, Mail, Search, Loader2, Phone } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import atlasRideLogo from "@assets/AtlasRideLogo_1767134626458.png";
 import { EmailVerificationModal } from "@/components/EmailVerificationModal";
+import { PhoneVerificationModal } from "@/components/PhoneVerificationModal";
 import { CountryPhoneInput } from "@/components/CountryPhoneInput";
 import { ukCityNames } from "@shared/data/uk-cities";
 import { ukCouncilNames } from "@shared/data/uk-councils";
@@ -117,48 +118,54 @@ export default function Signup() {
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const usernameCheckTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Postcode → city autofill via /api/lookup/postcode/:postcode (proxies
-  // postcodes.io). On success we map the upstream `admin_district` to the
-  // closest entry in our curated UK city dropdown — if no exact match is
-  // found we fall back to leaving the dropdown empty and just hint the
-  // user about what we received.
-  const handlePostcodeLookup = async () => {
+  const handleAddressLookup = async () => {
     const compact = formData.postcode.replace(/\s+/g, "").toUpperCase();
     if (!compact) return;
+    setIsLookingUpAddress(true);
     setIsLookingUpPostcode(true);
     setPostcodeLookupHint("");
+    setAddressResults([]);
     try {
-      const res = await fetch(`/api/lookup/postcode/${encodeURIComponent(compact)}`);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({} as any));
-        setPostcodeLookupHint(body?.message || "Postcode not found.");
-        return;
+      const [addrRes, postcodeRes] = await Promise.all([
+        fetch(`/api/lookup/addresses/${encodeURIComponent(compact)}`),
+        fetch(`/api/lookup/postcode/${encodeURIComponent(compact)}`),
+      ]);
+
+      if (postcodeRes.ok) {
+        const postcodeData: { city?: string; council?: string; postcode?: string } = await postcodeRes.json();
+        if (postcodeData.postcode) {
+          handleChange("postcode", postcodeData.postcode);
+        }
+        const upstreamCity = (postcodeData.city || "").trim();
+        let matched = ukCityNames.find((n) => n === upstreamCity);
+        if (!matched) {
+          matched = ukCityNames.find(
+            (n) => n.toLowerCase() === upstreamCity.toLowerCase(),
+          );
+        }
+        if (matched) {
+          handleChange("city", matched);
+        }
       }
-      const data: { city?: string; council?: string; postcode?: string } = await res.json();
-      if (data.postcode) {
-        handleChange("postcode", data.postcode);
-      }
-      const upstreamCity = (data.city || "").trim();
-      // Try exact match first, then case-insensitive.
-      let matched = ukCityNames.find((n) => n === upstreamCity);
-      if (!matched) {
-        matched = ukCityNames.find(
-          (n) => n.toLowerCase() === upstreamCity.toLowerCase(),
-        );
-      }
-      if (matched) {
-        handleChange("city", matched);
-        setPostcodeLookupHint(`City set to ${matched}.`);
-      } else if (upstreamCity) {
-        setPostcodeLookupHint(
-          `Postcode area is "${upstreamCity}" — please pick the closest city below.`,
-        );
+
+      if (addrRes.ok) {
+        const addrData = await addrRes.json();
+        if (addrData.addresses && addrData.addresses.length > 0) {
+          setAddressResults(addrData.addresses);
+          setPostcodeLookupHint(`${addrData.addresses.length} address(es) found. Select one below.`);
+        } else {
+          setPostcodeLookupHint("No addresses found for this postcode. Try entering your address manually.");
+          setEnterAddressManually(true);
+        }
       } else {
-        setPostcodeLookupHint("Please pick your city below.");
+        setPostcodeLookupHint("Address lookup unavailable. Please enter your address manually.");
+        setEnterAddressManually(true);
       }
     } catch {
-      setPostcodeLookupHint("Couldn't reach the lookup service. Please pick your city manually.");
+      setPostcodeLookupHint("Couldn't reach the lookup service. Please enter your address manually.");
+      setEnterAddressManually(true);
     } finally {
+      setIsLookingUpAddress(false);
       setIsLookingUpPostcode(false);
     }
   };
@@ -171,22 +178,41 @@ export default function Signup() {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [emailVerificationToken, setEmailVerificationToken] = useState<string | null>(null);
   const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [phoneVerificationToken, setPhoneVerificationToken] = useState<string | null>(null);
+  const [showPhoneVerificationModal, setShowPhoneVerificationModal] = useState(false);
+  const [addressResults, setAddressResults] = useState<Array<{ address: string; lat: number; lon: number }>>([]);
+  const [isLookingUpAddress, setIsLookingUpAddress] = useState(false);
+  const [enterAddressManually, setEnterAddressManually] = useState(false);
 
   useEffect(() => {
+    const TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
     const verifiedEmail = localStorage.getItem('atlasride_verified_email');
-    const token = localStorage.getItem('atlasride_email_token');
-    const tokenTs = parseInt(localStorage.getItem('atlasride_email_token_ts') || '0', 10);
-    const TOKEN_TTL_MS = 2 * 60 * 60 * 1000; // server-side expiry is 2 hours
-    const isExpired = !tokenTs || Date.now() - tokenTs > TOKEN_TTL_MS;
-    if (verifiedEmail && token && !isExpired) {
+    const emailToken = localStorage.getItem('atlasride_email_token');
+    const emailTokenTs = parseInt(localStorage.getItem('atlasride_email_token_ts') || '0', 10);
+    const emailExpired = !emailTokenTs || Date.now() - emailTokenTs > TOKEN_TTL_MS;
+    if (verifiedEmail && emailToken && !emailExpired) {
       setFormData(prev => ({ ...prev, email: verifiedEmail }));
       setIsEmailVerified(true);
-      setEmailVerificationToken(token);
-    } else if (verifiedEmail || token) {
-      // Stale token - clear it so the next user isn't pre-filled
+      setEmailVerificationToken(emailToken);
+    } else if (verifiedEmail || emailToken) {
       localStorage.removeItem('atlasride_verified_email');
       localStorage.removeItem('atlasride_email_token');
       localStorage.removeItem('atlasride_email_token_ts');
+    }
+
+    const verifiedPhone = localStorage.getItem('atlasride_verified_phone');
+    const phoneToken = localStorage.getItem('atlasride_phone_token');
+    const phoneTokenTs = parseInt(localStorage.getItem('atlasride_phone_token_ts') || '0', 10);
+    const phoneExpired = !phoneTokenTs || Date.now() - phoneTokenTs > TOKEN_TTL_MS;
+    if (verifiedPhone && phoneToken && !phoneExpired) {
+      setFormData(prev => ({ ...prev, phoneNumber: verifiedPhone }));
+      setIsPhoneVerified(true);
+      setPhoneVerificationToken(phoneToken);
+    } else if (verifiedPhone || phoneToken) {
+      localStorage.removeItem('atlasride_verified_phone');
+      localStorage.removeItem('atlasride_phone_token');
+      localStorage.removeItem('atlasride_phone_token_ts');
     }
   }, []);
 
@@ -254,9 +280,13 @@ export default function Signup() {
       if (!emailVerificationToken) {
         throw new Error("Email verification is required");
       }
+      if (!phoneVerificationToken) {
+        throw new Error("Phone verification is required");
+      }
       const response = await apiRequest("POST", "/api/auth/register", {
         email: data.email,
         emailVerificationToken: emailVerificationToken,
+        phoneVerificationToken: phoneVerificationToken,
         acceptedLegal: data.acceptedLegal,
         username: data.username || undefined,
         password: data.password,
@@ -302,6 +332,10 @@ export default function Signup() {
       localStorage.removeItem('atlasride_signup');
       localStorage.removeItem('atlasride_verified_email');
       localStorage.removeItem('atlasride_email_token');
+      localStorage.removeItem('atlasride_email_token_ts');
+      localStorage.removeItem('atlasride_verified_phone');
+      localStorage.removeItem('atlasride_phone_token');
+      localStorage.removeItem('atlasride_phone_token_ts');
       window.location.href = "/";
     },
     onError: (error: any) => {
@@ -416,6 +450,14 @@ export default function Signup() {
           setError("Please verify your email address before continuing");
           return false;
         }
+        if (!formData.phoneNumber) {
+          setError("Phone number is required");
+          return false;
+        }
+        if (!isPhoneVerified) {
+          setError("Please verify your phone number before continuing");
+          return false;
+        }
         if (formData.password.length < 8) {
           setError("Password must be at least 8 characters");
           return false;
@@ -523,7 +565,7 @@ export default function Signup() {
           <div className="space-y-6">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold mb-2">Create Your Account</h2>
-              <p className="text-muted-foreground">Verify your email and create a password</p>
+              <p className="text-muted-foreground">Verify your email and phone, then create a password</p>
             </div>
 
             <div className="space-y-4">
@@ -571,6 +613,53 @@ export default function Signup() {
                 {!isEmailVerified && (
                   <p className="text-xs text-muted-foreground">
                     You'll need to verify your email before continuing
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber" className="flex items-center gap-2">
+                  Phone Number *
+                  {isPhoneVerified && (
+                    <span className="text-green-600 text-xs flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Verified
+                    </span>
+                  )}
+                </Label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <CountryPhoneInput
+                      value={formData.phoneNumber}
+                      onChange={(value) => {
+                        handleChange("phoneNumber", value);
+                        if (isPhoneVerified) {
+                          setIsPhoneVerified(false);
+                          setPhoneVerificationToken(null);
+                          localStorage.removeItem('atlasride_verified_phone');
+                          localStorage.removeItem('atlasride_phone_token');
+                        }
+                      }}
+                      defaultCountry="GB"
+                      placeholder="7XXX XXXXXX"
+                    />
+                  </div>
+                  {!isPhoneVerified && formData.phoneNumber && formData.phoneNumber.length >= 7 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowPhoneVerificationModal(true)}
+                      className="shrink-0"
+                      data-testid="button-verify-phone"
+                    >
+                      <Phone className="h-4 w-4 mr-2" />
+                      Verify
+                    </Button>
+                  )}
+                </div>
+                {!isPhoneVerified && (
+                  <p className="text-xs text-muted-foreground">
+                    You'll need to verify your phone number before continuing
                   </p>
                 )}
               </div>
@@ -739,37 +828,23 @@ export default function Signup() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Phone Number (Optional)</Label>
-                <CountryPhoneInput
-                  value={formData.phoneNumber}
-                  onChange={(value) => handleChange("phoneNumber", value)}
-                  defaultCountry="GB"
-                  placeholder="7XXX XXXXXX"
-                />
-              </div>
-
-              {/* Postcode-first address block. The "Find my address"
-                  button hits /api/lookup/postcode/:postcode which proxies
-                  postcodes.io and returns city + council. We pre-select
-                  the city in the dropdown below so the user just has to
-                  confirm it. The dropdown remains the source of truth
-                  for the `city` field — the postcode value is optional
-                  and stored as-is. */}
-              <div className="space-y-2">
                 <Label htmlFor="postcode">Postcode</Label>
                 <div className="flex gap-2">
                   <Input
                     id="postcode"
                     placeholder="SW1A 1AA"
                     value={formData.postcode}
-                    onChange={(e) => handleChange("postcode", e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      handleChange("postcode", e.target.value.toUpperCase());
+                      setAddressResults([]);
+                    }}
                     data-testid="input-postcode"
                     className="flex-1"
                   />
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handlePostcodeLookup}
+                    onClick={handleAddressLookup}
                     disabled={isLookingUpPostcode || !formData.postcode}
                     data-testid="button-postcode-lookup"
                   >
@@ -778,7 +853,7 @@ export default function Signup() {
                     ) : (
                       <Search className="h-4 w-4" />
                     )}
-                    <span className="ml-2 hidden sm:inline">Find my city</span>
+                    <span className="ml-2 hidden sm:inline">Find my address</span>
                   </Button>
                 </div>
                 {postcodeLookupHint && (
@@ -788,34 +863,86 @@ export default function Signup() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="homeAddress">Home Address</Label>
-                <Input
-                  id="homeAddress"
-                  placeholder="123 Main Street"
-                  value={formData.homeAddress}
-                  onChange={(e) => handleChange("homeAddress", e.target.value)}
-                  data-testid="input-address"
+              {addressResults.length > 0 && !enterAddressManually && (
+                <div className="space-y-2">
+                  <Label>Select your address</Label>
+                  <Select
+                    value={formData.homeAddress}
+                    onValueChange={(value) => {
+                      handleChange("homeAddress", value);
+                    }}
+                  >
+                    <SelectTrigger data-testid="select-address">
+                      <SelectValue placeholder="Choose an address" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {addressResults.map((addr, idx) => (
+                        <SelectItem key={idx} value={addr.address} data-testid={`option-address-${idx}`}>
+                          {addr.address}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="enterManually"
+                  checked={enterAddressManually}
+                  onCheckedChange={(checked) => setEnterAddressManually(checked === true)}
+                  data-testid="checkbox-manual-address"
                 />
+                <Label htmlFor="enterManually" className="text-sm font-normal cursor-pointer">
+                  Enter address manually
+                </Label>
               </div>
+
+              {enterAddressManually && (
+                <div className="space-y-2">
+                  <Label htmlFor="homeAddress">Home Address</Label>
+                  <Input
+                    id="homeAddress"
+                    placeholder="123 Main Street"
+                    value={formData.homeAddress}
+                    onChange={(e) => handleChange("homeAddress", e.target.value)}
+                    data-testid="input-address"
+                  />
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="city">City *</Label>
-                <Select
-                  value={formData.city}
-                  onValueChange={(value) => handleChange("city", value)}
-                >
-                  <SelectTrigger id="city" data-testid="select-city">
-                    <SelectValue placeholder="Select your city" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {ukCityNames.map((name) => (
-                      <SelectItem key={name} value={name} data-testid={`option-city-${name}`}>
-                        {name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {enterAddressManually ? (
+                  <Select
+                    value={formData.city}
+                    onValueChange={(value) => handleChange("city", value)}
+                  >
+                    <SelectTrigger id="city" data-testid="select-city">
+                      <SelectValue placeholder="Select your city" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {ukCityNames.map((name) => (
+                        <SelectItem key={name} value={name} data-testid={`option-city-${name}`}>
+                          {name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <>
+                    {formData.city ? (
+                      <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        <span className="text-sm font-medium">{formData.city}</span>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Enter your postcode above and click "Find my address" to auto-detect your city
+                      </p>
+                    )}
+                  </>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Used to build your Saviaj Pass — your unique member ID.
                 </p>
@@ -1482,6 +1609,22 @@ export default function Signup() {
           localStorage.setItem('atlasride_email_token', token);
           localStorage.setItem('atlasride_email_token_ts', String(Date.now()));
           setShowEmailVerificationModal(false);
+          setError("");
+        }}
+      />
+
+      <PhoneVerificationModal
+        open={showPhoneVerificationModal}
+        onClose={() => setShowPhoneVerificationModal(false)}
+        initialPhoneNumber={formData.phoneNumber}
+        onVerified={(verifiedPhone, token) => {
+          setFormData(prev => ({ ...prev, phoneNumber: verifiedPhone }));
+          setIsPhoneVerified(true);
+          setPhoneVerificationToken(token);
+          localStorage.setItem('atlasride_verified_phone', verifiedPhone);
+          localStorage.setItem('atlasride_phone_token', token);
+          localStorage.setItem('atlasride_phone_token_ts', String(Date.now()));
+          setShowPhoneVerificationModal(false);
           setError("");
         }}
       />
