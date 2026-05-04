@@ -1,0 +1,159 @@
+2026-05-04T00:43:03.8572483Z    _____
+2026-05-04T00:43:03.8573622Z   /  _  \ __________ _________   ____
+2026-05-04T00:43:03.8573702Z  /  /_\  \\___   /  |  \_  __ \_/ __ \
+2026-05-04T00:43:03.8573743Z /    |    \/    /|  |  /|  | \/\  ___/
+2026-05-04T00:43:03.8573778Z \____|__  /_____ \____/ |__|    \___  >
+2026-05-04T00:43:03.8573816Z         \/      \/                  \/
+2026-05-04T00:43:03.8573852Z A P P   S E R V I C E   O N   L I N U X
+2026-05-04T00:43:03.8573884Z
+2026-05-04T00:43:03.8573931Z Documentation    : http://aka.ms/webapp-linux
+2026-05-04T00:43:03.8573969Z NodeJS quickstart: https://aka.ms/node-qs
+2026-05-04T00:43:03.8574003Z NodeJS Version   : v24.13.0
+2026-05-04T00:43:03.8574036Z Instance Name    : pl0sdlwk001DFA
+2026-05-04T00:43:03.8574074Z Instance Id      : 180768af8d5f37afa6ee9320e07f55ffb654f2d3d303b4e4753535d3ea6b11df
+2026-05-04T00:43:03.8574107Z
+2026-05-04T00:43:03.8574143Z Note: Any data outside '/home' is not persisted
+2026-05-04T00:43:04.5255024Z  * Starting OpenBSD Secure Shell server sshd
+2026-05-04T00:43:04.5363404Z    ...done.
+2026-05-04T00:43:04.548873Z WEBSITES_INCLUDE_CLOUD_CERTS is not set to true.
+2026-05-04T00:43:04.5707089Z Updating certificates in /etc/ssl/certs...
+2026-05-04T00:43:08.8176173Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-ECC.pem
+2026-05-04T00:43:08.8179067Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-RSA.pem
+2026-05-04T00:43:08.8862316Z rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
+2026-05-04T00:43:08.8952181Z 4 added, 0 removed; done.
+2026-05-04T00:43:08.895326Z Running hooks in /etc/ca-certificates/update.d...
+2026-05-04T00:43:08.8983173Z done.
+2026-05-04T00:43:08.9042095Z CA certificates copied and updated successfully.
+2026-05-04T00:43:08.9590791Z  * Starting periodic command scheduler cron
+2026-05-04T00:43:08.9644423Z    ...done.
+2026-05-04T00:43:09.0182084Z Found build manifest file at '/home/site/wwwroot/oryx-manifest.toml'. Deserializing it...
+2026-05-04T00:43:09.0206287Z Could not find operation ID in manifest. Generating an operation id...
+2026-05-04T00:43:09.0209254Z Build Operation ID: 70b4b186-cc2b-41f3-b2cb-481fc57a3d38
+2026-05-04T00:43:09.2035954Z Environment Variables for Application Insight's IPA Codeless Configuration exists..
+2026-05-04T00:43:09.2262958Z Writing output script to '/opt/startup/startup.sh'
+2026-05-04T00:43:09.2512339Z Running #!/bin/sh
+2026-05-04T00:43:09.2512815Z
+2026-05-04T00:43:09.2512872Z # Enter the source directory to make sure the script runs where the user expects
+2026-05-04T00:43:09.2512927Z cd "/home/site/wwwroot"
+2026-05-04T00:43:09.2512967Z
+2026-05-04T00:43:09.2513004Z export NODE_PATH=/usr/local/lib/node_modules:$NODE_PATH
+2026-05-04T00:43:09.251304Z if [ -z "$PORT" ]; then
+2026-05-04T00:43:09.2513136Z 		export PORT=8080
+2026-05-04T00:43:09.2513171Z fi
+2026-05-04T00:43:09.2513206Z
+2026-05-04T00:43:09.2513243Z echo Found tar.gz based node_modules.
+2026-05-04T00:43:09.2513279Z extractionCommand="tar -xzf node_modules.tar.gz -C /node_modules"
+2026-05-04T00:43:09.2513317Z echo "Removing existing modules directory from root..."
+2026-05-04T00:43:09.2513351Z rm -fr /node_modules
+2026-05-04T00:43:09.2513653Z mkdir -p /node_modules
+2026-05-04T00:43:09.2513696Z echo Extracting modules...
+2026-05-04T00:43:09.2513733Z $extractionCommand
+2026-05-04T00:43:09.2513796Z export NODE_PATH="/node_modules":$NODE_PATH
+2026-05-04T00:43:09.2513833Z export PATH=/node_modules/.bin:$PATH
+2026-05-04T00:43:09.2513871Z if [ -d node_modules ]; then
+2026-05-04T00:43:09.2513908Z     mv -f node_modules _del_node_modules || true
+2026-05-04T00:43:09.2513951Z fi
+2026-05-04T00:43:09.2513986Z
+2026-05-04T00:43:09.2514021Z if [ -d /node_modules ]; then
+2026-05-04T00:43:09.2514057Z     ln -sfn /node_modules ./node_modules
+2026-05-04T00:43:09.2514091Z fi
+2026-05-04T00:43:09.2514124Z
+2026-05-04T00:43:09.2514156Z echo "Done."
+2026-05-04T00:43:09.2514191Z npm start
+2026-05-04T00:43:09.2542035Z Found tar.gz based node_modules.
+2026-05-04T00:43:09.2548878Z Removing existing modules directory from root...
+2026-05-04T00:43:09.2608766Z Extracting modules...
+2026-05-04T00:43:17.3513871Z Done.
+2026-05-04T00:43:17.8054139Z npm info using npm@10.9.2
+2026-05-04T00:43:17.8061457Z npm info using node@v24.13.0
+2026-05-04T00:43:18.4267973Z
+2026-05-04T00:43:18.4268522Z > rest-express@1.0.0 start
+2026-05-04T00:43:18.4268633Z > NODE_ENV=production node dist/index.cjs
+2026-05-04T00:43:18.4268711Z
+2026-05-04T00:43:18.9191326Z Initializing Stripe schema...
+2026-05-04T00:43:19.0867554Z Stripe schema ready
+2026-05-04T00:43:19.286478Z { autoExpandLists: undefined, stripeApiVersion: undefined } StripeSync initialized
+2026-05-04T00:43:19.2872628Z Setting up managed webhook...
+2026-05-04T00:43:19.6231447Z Webhook configured: https://saviaj-eag6c8epg9hzaze6.canadacentral-01.azurewebsites.net/api/stripe/webhook/a0d06d7d-3714-49e7-9d30-d756a3123967 (UUID: a0d06d7d-3714-49e7-9d30-d756a3123967)
+2026-05-04T00:43:19.6234301Z Syncing Stripe data...
+2026-05-04T00:43:19.6296236Z [auth] REPL_ID not set — skipping Replit OIDC setup (Azure/external host mode)
+2026-05-04T00:43:19.6301093Z [auth] GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set — Google sign-in disabled
+2026-05-04T00:43:19.6307157Z [WebSocket] Server initialized
+2026-05-04T00:43:19.6694872Z 12:43:19 AM [express] Payment timeout and expired rides cleanup job scheduled (every 5 minutes)
+2026-05-04T00:43:19.6695324Z 12:43:19 AM [express] Recurring schedule generation job scheduled (every 6 hours)
+2026-05-04T00:43:19.669643Z 12:43:19 AM [express] Driver payout auto-retry job scheduled (every 5 minutes)
+2026-05-04T00:43:19.6718007Z 12:43:19 AM [express] serving on port 8080
+2026-05-04T00:43:19.6757092Z Syncing products
+2026-05-04T00:43:19.6799546Z Fetching items to sync from Stripe
+2026-05-04T00:43:19.7822979Z Sync complete: 0 items synced
+2026-05-04T00:43:19.7823736Z Syncing prices
+2026-05-04T00:43:19.7872665Z Fetching items to sync from Stripe
+2026-05-04T00:43:19.8904946Z Sync complete: 0 items synced
+2026-05-04T00:43:19.8905725Z Syncing plans
+2026-05-04T00:43:19.8943403Z Fetching items to sync from Stripe
+2026-05-04T00:43:20.0001848Z Sync complete: 0 items synced
+2026-05-04T00:43:20.0005515Z Syncing customers
+2026-05-04T00:43:20.0031378Z Incremental sync from cursor: 1767014803
+2026-05-04T00:43:20.0055185Z Fetching items to sync from Stripe
+2026-05-04T00:43:20.1654787Z Upserting final batch of 1 items
+2026-05-04T00:43:20.1750363Z Sync complete: 1 items synced
+2026-05-04T00:43:20.1752559Z Syncing subscriptions
+2026-05-04T00:43:20.1791751Z Fetching items to sync from Stripe
+2026-05-04T00:43:20.2821363Z Sync complete: 0 items synced
+2026-05-04T00:43:20.2824655Z Syncing subscription schedules
+2026-05-04T00:43:20.2867756Z Fetching items to sync from Stripe
+2026-05-04T00:43:20.4568853Z Sync complete: 0 items synced
+2026-05-04T00:43:20.4574Z Syncing invoices
+2026-05-04T00:43:20.4609509Z Fetching items to sync from Stripe
+2026-05-04T00:43:20.5580754Z Sync complete: 0 items synced
+2026-05-04T00:43:20.5585279Z Syncing charges
+2026-05-04T00:43:20.5601555Z Incremental sync from cursor: 1767309687
+2026-05-04T00:43:20.5621317Z Fetching items to sync from Stripe
+2026-05-04T00:43:20.7956029Z Upserting final batch of 1 items
+2026-05-04T00:43:20.8047277Z Sync complete: 1 items synced
+2026-05-04T00:43:20.804966Z Syncing setup_intents
+2026-05-04T00:43:20.8085334Z Fetching items to sync from Stripe
+2026-05-04T00:43:20.9356654Z Sync complete: 0 items synced
+2026-05-04T00:43:20.9359922Z Syncing payment method
+2026-05-04T00:43:20.9388789Z Getting payment methods for 1 customers
+2026-05-04T00:43:20.9398639Z Fetching items to sync from Stripe
+2026-05-04T00:43:21.0732212Z Sync complete: 0 items synced
+2026-05-04T00:43:21.0732595Z Syncing payment_intents
+2026-05-04T00:43:21.0757268Z Incremental sync from cursor: 1767309686
+2026-05-04T00:43:21.0819786Z Fetching items to sync from Stripe
+2026-05-04T00:43:21.2980206Z Upserting final batch of 1 items
+2026-05-04T00:43:21.3079055Z Sync complete: 1 items synced
+2026-05-04T00:43:21.3080934Z Syncing tax_ids
+2026-05-04T00:43:21.3091374Z Fetching items to sync from Stripe
+2026-05-04T00:43:21.441079Z Sync complete: 0 items synced
+2026-05-04T00:43:21.4412621Z Syncing credit notes
+2026-05-04T00:43:21.4479111Z Fetching items to sync from Stripe
+2026-05-04T00:43:21.5825969Z Sync complete: 0 items synced
+2026-05-04T00:43:21.5830071Z Syncing disputes
+2026-05-04T00:43:21.5871835Z Fetching items to sync from Stripe
+2026-05-04T00:43:21.7289704Z Sync complete: 0 items synced
+2026-05-04T00:43:21.7293573Z Syncing early fraud warnings
+2026-05-04T00:43:21.7338591Z Fetching items to sync from Stripe
+2026-05-04T00:43:21.8636343Z Sync complete: 0 items synced
+2026-05-04T00:43:21.8636765Z Syncing refunds
+2026-05-04T00:43:21.8653173Z Incremental sync from cursor: 1767293574
+2026-05-04T00:43:21.8713861Z Fetching items to sync from Stripe
+2026-05-04T00:43:22.0625208Z Upserting final batch of 1 items
+2026-05-04T00:43:22.0701253Z Sync complete: 1 items synced
+2026-05-04T00:43:22.0704184Z Syncing checkout sessions
+2026-05-04T00:43:22.0721404Z Incremental sync from cursor: 1767309610
+2026-05-04T00:43:22.0744412Z Fetching items to sync from Stripe
+2026-05-04T00:43:22.2262719Z Upserting final batch of 1 items
+2026-05-04T00:43:22.3744796Z Sync complete: 1 items synced
+2026-05-04T00:43:22.3746246Z Stripe data synced
+2026-05-04T00:45:04.1175023Z [Entra] Sign-up start error: unauthorized_client
+2026-05-04T00:45:04.1176674Z Entra Email OTP error: AADSTS700016: Application with identifier '4dd2516a-6796-4f16-bc61-a85463483091' was not found in the directory 'Sibranet Technologies'. This can happen if the application has not been installed by the administrator of the tenant or consented to by any user in the tenant. You may have sent your authentication request to the wrong tenant. Trace ID: c8625f72-8930-48c9-9841-6d91e2da0700 Correlation ID: 04ebce59-c4b9-4e7f-b3cd-99dab4d3ddd4 Timestamp: 2026-05-04 00:45:04Z
+2026-05-04T00:45:04.1218137Z 12:45:04 AM [express] POST /api/auth/email-otp/request 500 in 385ms :: {"message":"Failed to send verification code. Please check your email and try again."}
+2026-05-04T00:45:14.3864058Z 12:45:14 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-04T00:45:16.9305018Z 12:45:16 AM [express] GET /api/auth/google/status 200 in 10ms
+2026-05-04T00:45:53.0420043Z 12:45:53 AM [express] GET /api/auth/user 401 in 1ms :: {"message":"Unauthorized"}
+2026-05-04T00:45:53.2144021Z 12:45:53 AM [express] GET /api/auth/user 401 in 0ms :: {"message":"Unauthorized"}
+2026-05-04T00:45:55.7399065Z 12:45:55 AM [express] GET /api/auth/google/status 200 in 10ms
+2026-05-04T00:46:12.2698277Z [Entra] Sign-up start error: unauthorized_client
+2026-05-04T00:46:12.2703951Z Entra Email OTP error: AADSTS700016: Application with identifier '4dd2516a-6796-4f16-bc61-a85463483091' was not found in the directory 'Sibranet Technologies'. This can happen if the application has not been installed by the administrator of the tenant or consented to by any user in the tenant. You may have sent your authentication request to the wrong tenant. Trace ID: 7670b67e-33e3-4bf8-94f7-772ae62d0800 Correlation ID: 768da908-bdac-4e94-a96b-5e3d7a445856 Timestamp: 2026-05-04 00:46:12Z
+2026-05-04T00:46:12.271195Z 12:46:12 AM [express] POST /api/auth/email-otp/request 500 in 224ms :: {"message":"Failed to send verification code. Please check your email and try again."}
