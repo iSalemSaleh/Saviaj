@@ -30,8 +30,11 @@ export interface PlatformFeeConfig {
 export const PLATFORM_FEES: PlatformFeeConfig = {
   commercial: { type: "percentage", rate: 0.125, minFeePence: 0 },
   casual: { type: "flat", amountPence: 150 },
-  version: "2026-05-03",
+  version: "2026-05-04",
 };
+
+export const MINIMUM_RIDE_PRICE_POUNDS = 2;
+export const MINIMUM_RIDE_PRICE_PENCE = MINIMUM_RIDE_PRICE_POUNDS * 100;
 
 /** Identifies how the fee for a ride was derived. Stored on rides.fee_basis. */
 export type FeeBasis =

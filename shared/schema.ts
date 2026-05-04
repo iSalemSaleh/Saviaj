@@ -621,7 +621,7 @@ export type RecurringSchedule = typeof recurringSchedules.$inferSelect;
 export const insertRecurringScheduleEntrySchema = createInsertSchema(recurringScheduleEntries, {
   dayOfWeek: z.coerce.number().min(0).max(6),
   departureTime: z.string().regex(/^\d{2}:\d{2}$/),
-  offerPrice: z.coerce.number().min(0.30).max(500).optional().nullable(),
+  offerPrice: z.coerce.number().min(2).max(500).optional().nullable(),
   startLat: z.coerce.number().optional().nullable(),
   startLng: z.coerce.number().optional().nullable(),
   endLat: z.coerce.number().optional().nullable(),
@@ -629,7 +629,7 @@ export const insertRecurringScheduleEntrySchema = createInsertSchema(recurringSc
   maxDetourMiles: z.coerce.number().min(0.01).max(100).optional().nullable(),
   availableSeats: z.coerce.number().min(1).max(7).optional().nullable(),
   totalSeats: z.coerce.number().min(1).max(7).optional().nullable(),
-  pricePerSeat: z.coerce.number().min(0.01).max(100).optional().nullable(),
+  pricePerSeat: z.coerce.number().min(2).max(100).optional().nullable(),
   paymentTimeoutMinutes: z.coerce.number().min(1).max(30).optional().nullable(),
 }).omit({
   id: true,
@@ -668,7 +668,7 @@ export const riderOffersRelations = relations(riderOffers, ({ one }) => ({
 }));
 
 export const insertRiderOfferSchema = createInsertSchema(riderOffers, {
-  offerPrice: z.coerce.number().min(0.30).max(500),
+  offerPrice: z.coerce.number().min(2).max(500),
   pickupLat: z.coerce.number().optional(),
   pickupLng: z.coerce.number().optional(),
   dropoffLat: z.coerce.number().optional(),
@@ -722,7 +722,7 @@ export const insertDriverRouteSchema = createInsertSchema(driverRoutes, {
   maxDetourMiles: z.coerce.number().min(0.01).max(100),
   availableSeats: z.coerce.number().min(1).max(7),
   totalSeats: z.coerce.number().min(1).max(7).optional(),
-  pricePerSeat: z.coerce.number().min(0.01).max(100).optional().nullable(),
+  pricePerSeat: z.coerce.number().min(2).max(100).optional().nullable(),
   paymentTimeoutMinutes: z.coerce.number().min(1).max(30).optional(),
   departureTime: z.coerce.date(),
   startLat: z.coerce.number().optional(),

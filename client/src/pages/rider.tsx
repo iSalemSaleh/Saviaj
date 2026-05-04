@@ -639,10 +639,10 @@ export default function RiderPage() {
   // Submit negotiation
   const submitNegotiation = async () => {
     const price = parseFloat(negotiatePrice);
-    if (isNaN(price) || price < 0.30) {
+    if (isNaN(price) || price < 2) {
       toast({
         title: "Invalid Price",
-        description: "Minimum price is £0.30",
+        description: "Minimum price is £2.00",
         variant: "destructive",
       });
       return;
@@ -709,10 +709,10 @@ export default function RiderPage() {
   const handleRevisePrice = () => {
     if (!selectedOffer || !editPrice) return;
     const price = parseFloat(editPrice);
-    if (isNaN(price) || price <= 0 || price > 500) {
+    if (isNaN(price) || price < 2 || price > 500) {
       toast({
         title: "Invalid Price",
-        description: "Please enter a price between £0.01 and £500",
+        description: "Please enter a price between £2.00 and £500",
         variant: "destructive",
       });
       return;
@@ -898,10 +898,10 @@ export default function RiderPage() {
     }
 
     const price = parseFloat(offerPrice);
-    if (isNaN(price) || price <= 0 || price > 500) {
+    if (isNaN(price) || price < 2 || price > 500) {
       toast({
         title: "Invalid Price",
-        description: "Please enter a price between £0.01 and £500",
+        description: "Please enter a price between £2.00 and £500",
         variant: "destructive",
       });
       return;
@@ -1094,7 +1094,7 @@ export default function RiderPage() {
                 <Input 
                   type="number" 
                   placeholder="Offer"
-                  min="0.30"
+                  min="2"
                   max="500"
                   step="0.01"
                   className="pl-5 h-7 text-[11px] bg-white dark:bg-slate-900 border-gray-200"
@@ -1598,7 +1598,7 @@ export default function RiderPage() {
                 <Input 
                   type="number"
                   placeholder="Enter new price"
-                  min="0.30"
+                  min="2"
                   max="500"
                   className="pl-9"
                   value={editPrice}
@@ -1889,13 +1889,13 @@ export default function RiderPage() {
                 id="negotiate-price"
                 type="number"
                 step="0.50"
-                min="0.30"
+                min="2"
                 value={negotiatePrice}
                 onChange={(e) => setNegotiatePrice(e.target.value)}
                 placeholder="Enter your price offer"
                 data-testid="input-negotiate-price"
               />
-              <p className="text-xs text-muted-foreground">Minimum £0.30</p>
+              <p className="text-xs text-muted-foreground">Minimum £2.00</p>
             </div>
             
             {/* Optional message */}

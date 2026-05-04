@@ -826,10 +826,10 @@ export default function DriverPage() {
     let price = null;
     if (pricePerSeat) {
       price = parseFloat(pricePerSeat);
-      if (isNaN(price) || price < 1 || price > 100) {
+      if (isNaN(price) || price < 2 || price > 100) {
         toast({
           title: "Invalid Price",
-          description: "Please enter a price between £1 and £100 per seat",
+          description: "Please enter a price between £2 and £100 per seat",
           variant: "destructive",
         });
         return;
@@ -928,10 +928,10 @@ export default function DriverPage() {
     }
 
     const price = parseFloat(bidPrice);
-    if (isNaN(price) || price < 0.01 || price > 500) {
+    if (isNaN(price) || price < 2 || price > 500) {
       toast({
         title: "Invalid Price",
-        description: "Please enter a price between £0.01 and £500",
+        description: "Please enter a price between £2.00 and £500",
         variant: "destructive",
       });
       return;

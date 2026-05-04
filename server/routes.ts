@@ -2806,8 +2806,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       // Validate price
       const price = parseFloat(proposedPrice);
-      if (isNaN(price) || price < 0.30) {
-        return res.status(400).json({ message: "Minimum price is £0.30" });
+      if (isNaN(price) || price < 2) {
+        return res.status(400).json({ message: "Minimum price is £2.00" });
       }
       
       // Get the route
@@ -2962,8 +2962,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const { counterPrice, message } = req.body;
       
       const price = parseFloat(counterPrice);
-      if (isNaN(price) || price < 0.30) {
-        return res.status(400).json({ message: "Minimum price is £0.30" });
+      if (isNaN(price) || price < 2) {
+        return res.status(400).json({ message: "Minimum price is £2.00" });
       }
       
       const negotiation = await storage.getRouteNegotiationById(negotiationId);
@@ -3238,8 +3238,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const { driverId, pickupLocation, dropoffLocation, pickupLat, pickupLng, dropoffLat, dropoffLng, estimatedDistance, proposedPrice, message } = req.body;
       
       const price = parseFloat(proposedPrice);
-      if (isNaN(price) || price < 0.30) {
-        return res.status(400).json({ message: "Minimum price is £0.30" });
+      if (isNaN(price) || price < 2) {
+        return res.status(400).json({ message: "Minimum price is £2.00" });
       }
       
       // Verify driver is a Pro driver and online
@@ -3388,8 +3388,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const { counterPrice, message } = req.body;
       
       const price = parseFloat(counterPrice);
-      if (isNaN(price) || price < 0.30) {
-        return res.status(400).json({ message: "Minimum price is £0.30" });
+      if (isNaN(price) || price < 2) {
+        return res.status(400).json({ message: "Minimum price is £2.00" });
       }
       
       const negotiation = await storage.getProHireNegotiationById(negotiationId);
