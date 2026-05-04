@@ -1,0 +1,116 @@
+import React, { useState, useEffect } from "react";
+import { useAccount } from "./AccountProvider";
+import useAccountStatus from "./useAccountStatus";
+import ConnectOnboarding from "./ConnectOnboarding";
+import StorefrontNav from "./StorefrontNav";
+import Products from "./Products";
+
+const ProductForm = ({ onSubmit }) => {
+  const [formData, setFormData] = useState({
+    productName: "",
+    productDescription: "",
+    productPrice: 1000,
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmit(formData);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="form-group">
+      <div className="form-group">
+        <label>Product Name</label>
+        <input
+          type="text"
+          value={formData.productName}
+          onChange={(e) =>
+            setFormData({ ...formData, productName: e.target.value })
+          }
+          required
+        />
+      </div>
+      <div className="form-group">
+        <label>Description</label>
+        <input
+          type="text"
+          value={formData.productDescription}
+          onChange={(e) =>
+            setFormData({ ...formData, productDescription: e.target.value })
+          }
+        />
+      </div>
+      <div className="form-group">
+        <label>Price (in cents)</label>
+        <input
+          type="number"
+          value={formData.productPrice}
+          onChange={(e) =>
+            setFormData({ ...formData, productPrice: parseInt(e.target.value) })
+          }
+          required
+        />
+      </div>
+      <button type="submit" className="button">
+        Create Product
+      </button>
+    </form>
+  );
+};
+
+export default function Page() {
+  const [showProducts, setShowProducts] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const { accountId } = useAccount();
+  const { needsOnboarding } = useAccountStatus();
+
+  const handleCreateProduct = async (formData) => {
+    if (!accountId) return;
+    if (needsOnboarding) return;
+
+    const response = await fetch("/api/create-product", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...formData, accountId }),
+    });
+
+    const data = await response.json();
+    setShowForm(false);
+  };
+
+  const handleToggleProducts = () => {
+    setShowProducts(!showProducts);
+  };
+
+  return (
+    <div className="container">
+      <div className="logo">Sample Connect Business | Dashboard</div>
+      <ConnectOnboarding />
+      {!needsOnboarding && (
+      <>
+        <button className="button" onClick={() => setShowForm(!showForm)}>
+          {showForm ? "Cancel" : "Add New Product"}
+        </button>
+
+        {showForm && (
+          <ProductForm
+            accountId={accountId}
+            onSubmit={handleCreateProduct}
+          />
+        )}
+        <button className="button" onClick={handleToggleProducts}>
+          {showProducts ? "Hide Products" : "Show Products"}
+        </button>
+        {showProducts && (
+          <div className="products-section">
+            <h3>Products</h3>
+            <Products />
+          </div>
+        )}
+        <StorefrontNav />
+      </>
+      )}
+    </div>
+  );
+}
