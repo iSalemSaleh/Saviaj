@@ -1,0 +1,24 @@
+node /tmp/sync.js
+Connected. Applying 43589 bytes...
+FAILED: syntax error at or near "";
+CREATE UNIQUE INDEX IF NOT EXISTS driver_profiles_user_id_unique ON public.driver_profiles USING btree (user_id);
+CREATE INDEX IF NOT EXISTS idx_orgdoc_org ON public.org_documents USING btree (org_id);
+CREATE INDEX IF NOT EXISTS idx_orgdoc_type ON public.org_documents USING btree (document_type);
+CREATE INDEX IF NOT EXISTS idx_orginvite_email ON public.org_invitations USING btree (email);
+CREATE INDEX IF NOT EXISTS idx_orginvite_org ON public.org_invitations USING btree (org_id);
+CREATE INDEX IF NOT EXISTS idx_orginvite_status ON public.org_invitations USING btree (status);
+CREATE INDEX IF NOT EXISTS idx_orginvite_token ON public.org_invitations USING btree (token);
+CREATE INDEX IF NOT EXISTS idx_orgmember_org ON public.org_members USING btree (org_id);
+CREATE INDEX IF NOT EXISTS idx_orgmember_status ON public.org_members USING btree (status);
+CREATE INDEX IF NOT EXISTS idx_orgmember_user ON public.org_members USING btree (user_id);
+CREATE INDEX IF NOT EXISTS idx_orgvehicle_driver ON public.org_vehicles USING btree (assigned_driver_user_id);
+CREATE INDEX IF NOT EXISTS idx_orgvehicle_org ON public.org_vehicles USING btree (org_id);
+CREATE INDEX IF NOT EXISTS idx_orgvehicle_status ON public.org_vehicles USING btree (status);
+CREATE INDEX IF NOT EXISTS idx_org_owner ON public.organizations USING btree (owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_org_status ON public.organizations USING btree (status);
+CREATE INDEX IF NOT EXISTS idx_recentry_day ON public.recurring_schedule_entries USING btree (day_of_week);
+CREATE INDEX IF NOT EXISTS idx_recentry_schedule ON public.recurring_schedule_entries USING btree (schedule_id);
+CREATE INDEX IF NOT EXISTS idx_recsched_status ON public.recurring_schedules USING btree (status);
+CREATE INDEX IF NOT EXISTS idx_recsched_type ON public.recurring_schedules USING btree (type);
+CREATE INDEX IF NOT EXISTS idx_recsched_user ON public.recurring_schedules USING btree (user_id);
+CREATE INDEX IF NOT EXISTS ""

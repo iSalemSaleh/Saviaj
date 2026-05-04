@@ -496,7 +496,7 @@ ALTER TABLE "vehicles" ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMP DEFAULT n
 ALTER TABLE "vehicles" ADD COLUMN IF NOT EXISTS "updated_at" TIMESTAMP DEFAULT now();
 CREATE UNIQUE INDEX IF NOT EXISTS driver_availability_user_id_unique ON public.driver_availability USING btree (user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS driver_commercial_user_id_unique ON public.driver_commercial USING btree (user_id);
-CREATE UNIQUE INDEX IF NOT EXISTS driver_payouts_one_active_per_ride ON public.driver_payouts USING btree (ride_id) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'transferred'::character varying])::text[]))";
+CREATE UNIQUE INDEX IF NOT EXISTS driver_payouts_one_active_per_ride ON public.driver_payouts USING btree (ride_id) WHERE ((status)::text = ANY ((ARRAY['pending'::character varying, 'transferred'::character varying])::text[]));
 CREATE UNIQUE INDEX IF NOT EXISTS driver_profiles_user_id_unique ON public.driver_profiles USING btree (user_id);
 CREATE INDEX IF NOT EXISTS idx_orgdoc_org ON public.org_documents USING btree (org_id);
 CREATE INDEX IF NOT EXISTS idx_orgdoc_type ON public.org_documents USING btree (document_type);
