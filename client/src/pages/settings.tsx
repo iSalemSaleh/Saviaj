@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck, RefreshCw, CheckCircle2, XCircle, Clock, TrendingUp, Download, Pencil, Check, X, Mail, Phone, MapPin, Home, Building2 } from "lucide-react";
+import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck, RefreshCw, CheckCircle2, XCircle, Clock, TrendingUp, Download, Pencil, Check, X, Mail, Phone, MapPin, Home, Building2, ChevronRight, ChevronsLeft, ChevronsRight, ArrowRight, PoundSterling } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -122,7 +122,7 @@ export default function SettingsPage() {
 
           {user?.isDriver && (
             <TabsContent value="payouts">
-              <PayoutsSection />
+              <PayoutsAndHistory />
               <div className="h-6" />
               <IdentityVerificationSection />
             </TabsContent>
@@ -1346,8 +1346,18 @@ function PayoutsSection() {
           </>
         )}
       </CardContent>
-      <PayoutHistory />
     </Card>
+  );
+}
+
+// PayoutsSection now renders as two sibling cards (Status + History/Earnings)
+// for cleaner visual separation and easier per-section scanning.
+function PayoutsAndHistory() {
+  return (
+    <div className="space-y-6">
+      <PayoutsSection />
+      <PayoutHistory />
+    </div>
   );
 }
 
@@ -1536,11 +1546,14 @@ function EarningsTrendChart({
   );
 }
 
+const PAYOUT_PAGE_SIZE = 8;
+
 function PayoutHistory() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [trendPeriod, setTrendPeriod] = useState<'week' | 'month'>('week');
+  const [page, setPage] = useState(0);
   // Custom queryFn so the trendPeriod param is part of the URL.
   // Keeping the period in the queryKey lets React Query cache each
   // view separately and still invalidate cleanly via the prefix.
@@ -1740,11 +1753,28 @@ function PayoutHistory() {
   // export — saves the driver from downloading an empty CSV.
   const hasTransferred = (summary?.paidLifetimePence ?? 0) > 0;
 
+  // Pagination — keep the on-page list manageable for drivers with
+  // hundreds of completed rides. Reset to first page when the data
+  // changes (e.g. after a refetch or a successful retry).
+  const total = payouts?.length ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAYOUT_PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageStart = safePage * PAYOUT_PAGE_SIZE;
+  const pageEnd = Math.min(pageStart + PAYOUT_PAGE_SIZE, total);
+  const pagedPayouts = payouts?.slice(pageStart, pageEnd) ?? [];
+
   return (
-    <CardContent className="border-t pt-6 space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold text-sm" data-testid="heading-payout-summary">Earnings summary</h3>
-        <Popover open={exportOpen} onOpenChange={setExportOpen}>
+    <Card data-testid="card-earnings">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <PoundSterling className="h-4 w-4 text-accent" />
+              Earnings
+            </CardTitle>
+            <CardDescription className="mt-0.5">Your payout activity at a glance</CardDescription>
+          </div>
+          <Popover open={exportOpen} onOpenChange={setExportOpen}>
           <PopoverTrigger asChild>
             <Button
               size="sm"
@@ -1855,113 +1885,232 @@ function PayoutHistory() {
             </Button>
           </PopoverContent>
         </Popover>
-      </div>
-      {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" data-testid="summary-payout-totals">
-          <SummaryCard
-            label="Paid this week"
-            valuePence={summary.paidThisWeekPence}
-            testId="summary-paid-week"
-          />
-          <SummaryCard
-            label="Paid this month"
-            valuePence={summary.paidThisMonthPence}
-            testId="summary-paid-month"
-          />
-          <SummaryCard
-            label="Lifetime earnings"
-            valuePence={summary.paidLifetimePence}
-            testId="summary-paid-lifetime"
-            highlight
-          />
-          <SummaryCard
-            label="Pending"
-            valuePence={summary.pendingPence}
-            testId="summary-pending"
-          />
-          <SummaryCard
-            label="Failed (stuck)"
-            valuePence={summary.failedStuckPence}
-            testId="summary-failed-stuck"
-            tone={summary.failedStuckPence > 0 ? 'danger' : undefined}
-          />
         </div>
-      )}
-      <EarningsTrendChart
-        trend={trend}
-        period={trendPeriod}
-        onPeriodChange={setTrendPeriod}
-        isLoading={isLoading}
-      />
-      <div>
-        <h3 className="font-semibold text-sm" data-testid="heading-payout-history">Payout history</h3>
-        <p className="text-xs text-muted-foreground">
-          One row per ride. Failed transfers can be retried once your Stripe account is active.
-        </p>
-      </div>
-      {isLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : error ? (
-        <p className="text-sm text-destructive" data-testid="text-payouts-error">Couldn't load payout history.</p>
-      ) : !payouts || payouts.length === 0 ? (
-        <p className="text-sm text-muted-foreground" data-testid="text-payouts-empty">
-          No payouts yet. Completed rides will show up here.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {payouts.map((p) => (
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {summary && (
+          <div className="space-y-3" data-testid="summary-payout-totals">
+            {/* Hero: lifetime earnings stand out as the headline number */}
             <div
-              key={p.id}
-              className="border rounded-md p-3 space-y-2"
-              data-testid={`row-payout-${p.id}`}
+              className="rounded-lg border bg-gradient-to-br from-accent/10 via-accent/5 to-transparent p-4"
+              data-testid="summary-paid-lifetime"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium" data-testid={`text-payout-amount-${p.id}`}>
-                      {formatAmount(p.amountPence)}
-                    </span>
-                    {statusBadge(p.status)}
-                  </div>
-                  {(p.pickupLocation || p.dropoffLocation) && (
-                    <p className="text-xs text-muted-foreground truncate" data-testid={`text-payout-route-${p.id}`}>
-                      {p.pickupLocation || "?"} → {p.dropoffLocation || "?"}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground" data-testid={`text-payout-date-${p.id}`}>
-                    Ride #{p.rideId} · {formatDate(p.rideCompletedAt || p.createdAt)}
-                  </p>
-                </div>
-                {p.status === 'failed' && (
-                  <Button
-                    size="sm"
-                    onClick={() => retryMutation.mutate(p.id)}
-                    disabled={retryMutation.isPending}
-                    data-testid={`button-retry-payout-${p.id}`}
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Lifetime earnings</p>
+              <p
+                className="text-3xl font-bold tabular-nums text-accent mt-0.5"
+                data-testid="summary-paid-lifetime-value"
+              >
+                £{(summary.paidLifetimePence / 100).toFixed(2)}
+              </p>
+            </div>
+            {/* Period split: this week / this month side by side */}
+            <div className="grid grid-cols-2 gap-2">
+              <SummaryCard
+                label="Paid this week"
+                valuePence={summary.paidThisWeekPence}
+                testId="summary-paid-week"
+              />
+              <SummaryCard
+                label="Paid this month"
+                valuePence={summary.paidThisMonthPence}
+                testId="summary-paid-month"
+              />
+            </div>
+            {/* Pending / failed only surface when there's something to know */}
+            {(summary.pendingPence > 0 || summary.failedStuckPence > 0) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {summary.pendingPence > 0 && (
+                  <div
+                    className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2"
+                    data-testid="summary-pending"
                   >
-                    {retryMutation.isPending && retryMutation.variables === p.id ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-1" />
-                    )}
-                    Retry payout
-                  </Button>
+                    <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Pending</p>
+                      <p
+                        className="text-sm font-semibold tabular-nums"
+                        data-testid="summary-pending-value"
+                      >
+                        £{(summary.pendingPence / 100).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {summary.failedStuckPence > 0 && (
+                  <div
+                    className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2"
+                    data-testid="summary-failed-stuck"
+                  >
+                    <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-[11px] uppercase tracking-wide text-red-700">Failed (needs action)</p>
+                      <p
+                        className="text-sm font-semibold tabular-nums text-red-700"
+                        data-testid="summary-failed-stuck-value"
+                      >
+                        £{(summary.failedStuckPence / 100).toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
-              {p.status === 'failed' && p.failureReason && (
+            )}
+          </div>
+        )}
+        <EarningsTrendChart
+          trend={trend}
+          period={trendPeriod}
+          onPeriodChange={setTrendPeriod}
+          isLoading={isLoading}
+        />
+        <div className="border-t pt-4 space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <h3 className="font-semibold text-sm" data-testid="heading-payout-history">Payout history</h3>
+              <p className="text-xs text-muted-foreground">
+                One row per ride. Failed transfers can be retried once your Stripe account is active.
+              </p>
+            </div>
+            {total > 0 && (
+              <span
+                className="text-xs text-muted-foreground tabular-nums"
+                data-testid="text-payout-history-count"
+              >
+                {pageStart + 1}–{pageEnd} of {total}
+              </span>
+            )}
+          </div>
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : error ? (
+            <p className="text-sm text-destructive" data-testid="text-payouts-error">Couldn't load payout history.</p>
+          ) : !payouts || payouts.length === 0 ? (
+            <p className="text-sm text-muted-foreground" data-testid="text-payouts-empty">
+              No payouts yet. Completed rides will show up here.
+            </p>
+          ) : (
+            <>
+              <div className="space-y-2">
+                {pagedPayouts.map((p) => (
+                  <div
+                    key={p.id}
+                    className="border rounded-md p-3 space-y-2 hover:bg-muted/30 transition-colors"
+                    data-testid={`row-payout-${p.id}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className="font-semibold tabular-nums"
+                            data-testid={`text-payout-amount-${p.id}`}
+                          >
+                            {formatAmount(p.amountPence)}
+                          </span>
+                          {statusBadge(p.status)}
+                        </div>
+                        {(p.pickupLocation || p.dropoffLocation) && (
+                          <p
+                            className="text-xs text-muted-foreground mt-1 flex items-center gap-1 min-w-0"
+                            data-testid={`text-payout-route-${p.id}`}
+                          >
+                            <span className="truncate">{p.pickupLocation || "?"}</span>
+                            <ArrowRight className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{p.dropoffLocation || "?"}</span>
+                          </p>
+                        )}
+                        <p
+                          className="text-[11px] text-muted-foreground mt-0.5"
+                          data-testid={`text-payout-date-${p.id}`}
+                        >
+                          Ride #{p.rideId} · {formatDate(p.rideCompletedAt || p.createdAt)}
+                        </p>
+                      </div>
+                      {p.status === 'failed' && (
+                        <Button
+                          size="sm"
+                          onClick={() => retryMutation.mutate(p.id)}
+                          disabled={retryMutation.isPending}
+                          data-testid={`button-retry-payout-${p.id}`}
+                        >
+                          {retryMutation.isPending && retryMutation.variables === p.id ? (
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                          )}
+                          Retry
+                        </Button>
+                      )}
+                    </div>
+                    {p.status === 'failed' && p.failureReason && (
+                      <div
+                        className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-900"
+                        data-testid={`text-payout-failure-${p.id}`}
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-red-600" />
+                        <span>{p.failureReason}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {pageCount > 1 && (
                 <div
-                  className="flex items-start gap-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-900"
-                  data-testid={`text-payout-failure-${p.id}`}
+                  className="flex items-center justify-between gap-2 pt-2"
+                  data-testid="pagination-payout-history"
                 >
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0 text-red-600" />
-                  <span>{p.failureReason}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(0)}
+                    disabled={safePage === 0}
+                    data-testid="button-payout-page-first"
+                    aria-label="First page"
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={safePage === 0}
+                    data-testid="button-payout-page-prev"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Prev
+                  </Button>
+                  <span
+                    className="text-xs text-muted-foreground tabular-nums"
+                    data-testid="text-payout-page-indicator"
+                  >
+                    Page {safePage + 1} of {pageCount}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                    disabled={safePage >= pageCount - 1}
+                    data-testid="button-payout-page-next"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(pageCount - 1)}
+                    disabled={safePage >= pageCount - 1}
+                    data-testid="button-payout-page-last"
+                    aria-label="Last page"
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
                 </div>
               )}
-            </div>
-          ))}
+            </>
+          )}
         </div>
-      )}
-    </CardContent>
+      </CardContent>
+    </Card>
   );
 }
 
