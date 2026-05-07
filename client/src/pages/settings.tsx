@@ -54,30 +54,55 @@ export default function SettingsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={user?.isDriver ? "grid w-full grid-cols-5" : "grid w-full grid-cols-3"}>
-            <TabsTrigger value="profile" data-testid="tab-profile">
-              <User className="h-4 w-4 mr-2" />
-              Profile
+          <TabsList
+            className={
+              (user?.isDriver ? "grid w-full grid-cols-5" : "grid w-full grid-cols-3") +
+              " h-auto gap-1 p-1"
+            }
+          >
+            <TabsTrigger
+              value="profile"
+              data-testid="tab-profile"
+              className="flex-col gap-1 py-2 px-1 text-[11px] sm:text-sm sm:flex-row sm:gap-2"
+            >
+              <User className="h-4 w-4 shrink-0" />
+              <span className="truncate">Profile</span>
             </TabsTrigger>
-            <TabsTrigger value="security" data-testid="tab-security">
-              <Lock className="h-4 w-4 mr-2" />
-              Security
+            <TabsTrigger
+              value="security"
+              data-testid="tab-security"
+              className="flex-col gap-1 py-2 px-1 text-[11px] sm:text-sm sm:flex-row sm:gap-2"
+            >
+              <Lock className="h-4 w-4 shrink-0" />
+              <span className="truncate">Security</span>
             </TabsTrigger>
             {user?.isDriver && (
-              <TabsTrigger value="compliance" data-testid="tab-compliance">
-                <ShieldCheck className="h-4 w-4 mr-2" />
-                Compliance
+              <TabsTrigger
+                value="compliance"
+                data-testid="tab-compliance"
+                className="flex-col gap-1 py-2 px-1 text-[11px] sm:text-sm sm:flex-row sm:gap-2"
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                <span className="truncate">Compliance</span>
               </TabsTrigger>
             )}
             {user?.isDriver && (
-              <TabsTrigger value="payouts" data-testid="tab-payouts">
-                <Wallet className="h-4 w-4 mr-2" />
-                Payouts
+              <TabsTrigger
+                value="payouts"
+                data-testid="tab-payouts"
+                className="flex-col gap-1 py-2 px-1 text-[11px] sm:text-sm sm:flex-row sm:gap-2"
+              >
+                <Wallet className="h-4 w-4 shrink-0" />
+                <span className="truncate">Payouts</span>
               </TabsTrigger>
             )}
-            <TabsTrigger value="account" data-testid="tab-account">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Account
+            <TabsTrigger
+              value="account"
+              data-testid="tab-account"
+              className="flex-col gap-1 py-2 px-1 text-[11px] sm:text-sm sm:flex-row sm:gap-2"
+            >
+              <Trash2 className="h-4 w-4 shrink-0" />
+              <span className="truncate">Account</span>
             </TabsTrigger>
           </TabsList>
 
