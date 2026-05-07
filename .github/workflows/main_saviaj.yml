@@ -32,11 +32,28 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
+      # Package only the files Azure App Service actually needs.
+      # Excluding node_modules, .git, attached_assets, and other dev-only
+      # paths shrinks the artifact from ~500MB to ~20MB and avoids
+      # GitHub's artifact storage quota. Azure (Oryx) will run
+      # `npm install --omit=dev` on the App Service after deploy because
+      # SCM_DO_BUILD_DURING_DEPLOYMENT=true is set on the App Service.
+      - name: Zip artifact for deployment
+        run: |
+          zip -r release.zip . \
+            -x "node_modules/*" \
+            -x ".git/*" \
+            -x ".github/*" \
+            -x "attached_assets/*" \
+            -x ".local/*" \
+            -x "screenshots/*" \
+            -x "*.log"
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v5
         with:
           name: node-app
-          path: .
+          path: release.zip
           retention-days: 1
 
   deploy:
@@ -51,7 +68,7 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           name: node-app
-      
+
       - name: Login to Azure
         uses: azure/login@v3
         with:
@@ -63,4 +80,4 @@ jobs:
         with:
           app-name: 'Saviaj'
           slot-name: 'Production'
-          package: .
+          package: release.zip
