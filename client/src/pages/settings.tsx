@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck, RefreshCw, CheckCircle2, XCircle, Clock, TrendingUp, Download } from "lucide-react";
+import { User, Lock, Trash2, Camera, Loader2, AlertTriangle, ChevronLeft, ShieldCheck, Wallet, BadgeCheck, RefreshCw, CheckCircle2, XCircle, Clock, TrendingUp, Download, Pencil, Check, X, Mail, Phone, MapPin, Home, Building2 } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -594,22 +594,18 @@ function ProfileSection({ user }: { user: any }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [firstName, setFirstName] = useState(user?.firstName || "");
-  const [lastName, setLastName] = useState(user?.lastName || "");
-  const [countryCode, setCountryCode] = useState(() => {
-    const phone = user?.phoneNumber || "";
-    const match = COUNTRY_CODES.find((c: CountryCode) => phone.startsWith(c.code));
-    return match?.code || "+44";
-  });
-  const [phoneNumber, setPhoneNumber] = useState(() => {
-    const phone = user?.phoneNumber || "";
-    const match = COUNTRY_CODES.find((c: CountryCode) => phone.startsWith(c.code));
-    return match ? phone.slice(match.code.length) : phone;
-  });
-  const [homeAddress, setHomeAddress] = useState(user?.homeAddress || "");
-  const [city, setCity] = useState(user?.city || "");
-  const [postcode, setPostcode] = useState(user?.postcode || "");
+  // Per-field edit state — only one field is editable at a time. Each
+  // field has its own draft value so editing one doesn't dirty others.
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Record<string, string>>({});
   const [isUploading, setIsUploading] = useState(false);
+
+  // Derive display values straight from `user` so they always reflect
+  // the latest server state after a successful save.
+  const phoneFull = user?.phoneNumber || "";
+  const phoneMatch = COUNTRY_CODES.find((c: CountryCode) => phoneFull.startsWith(c.code));
+  const phoneCountryCode = phoneMatch?.code || "+44";
+  const phoneLocal = phoneMatch ? phoneFull.slice(phoneMatch.code.length) : phoneFull;
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -617,10 +613,9 @@ function ProfileSection({ user }: { user: any }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully.",
-      });
+      setEditingField(null);
+      setDraft({});
+      toast({ title: "Profile updated" });
     },
     onError: (error: any) => {
       toast({
@@ -631,16 +626,18 @@ function ProfileSection({ user }: { user: any }) {
     },
   });
 
-  const handleSaveProfile = () => {
-    const fullPhone = phoneNumber ? `${countryCode}${phoneNumber.replace(/\s/g, '')}` : undefined;
-    updateProfileMutation.mutate({
-      firstName: firstName || undefined,
-      lastName: lastName || undefined,
-      phoneNumber: fullPhone,
-      homeAddress: homeAddress || undefined,
-      city: city || undefined,
-      postcode: postcode || undefined,
-    });
+  const startEdit = (field: string, initial: Record<string, string>) => {
+    setEditingField(field);
+    setDraft(initial);
+  };
+
+  const cancelEdit = () => {
+    setEditingField(null);
+    setDraft({});
+  };
+
+  const saveEdit = (payload: Record<string, any>) => {
+    updateProfileMutation.mutate(payload);
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -662,10 +659,7 @@ function ProfileSection({ user }: { user: any }) {
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      toast({
-        title: "Photo updated",
-        description: "Your profile photo has been updated.",
-      });
+      toast({ title: "Photo updated" });
     } catch (error) {
       toast({
         title: "Upload failed",
@@ -677,83 +671,136 @@ function ProfileSection({ user }: { user: any }) {
     }
   };
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Profile Information</CardTitle>
-        <CardDescription>Update your personal details</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <Avatar className="h-24 w-24">
-              <AvatarImage src={user?.profileImageUrl} />
-              <AvatarFallback className="text-2xl bg-accent text-white">
-                {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
-            <label
-              htmlFor="profile-image-upload"
-              className="absolute bottom-0 right-0 p-2 bg-accent text-white rounded-full cursor-pointer hover:bg-accent/90 transition-colors"
-            >
-              {isUploading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Camera className="h-4 w-4" />
-              )}
-            </label>
-            <input
-              id="profile-image-upload"
-              type="file"
-              accept="image/*"
-              onChange={handleImageUpload}
-              className="hidden"
-              disabled={isUploading}
-              data-testid="input-profile-image"
-            />
-          </div>
-          <p className="text-sm text-muted-foreground">{user?.email}</p>
-          {user?.passId && (
-            <div
-              className="mt-1 inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs font-mono"
-              data-testid="text-saviaj-pass"
-              title="Your unique Saviaj member identifier"
-            >
-              <span className="text-muted-foreground">Saviaj Pass</span>
-              <span className="font-semibold tracking-wide">{user.passId}</span>
-            </div>
-          )}
-        </div>
+  const isPending = updateProfileMutation.isPending;
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Add your name";
 
-        <div className="grid gap-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First name</Label>
+  return (
+    <div className="space-y-6">
+      {/* Profile header card — avatar, name, email, Saviaj Pass */}
+      <Card className="overflow-hidden">
+        <div className="h-24 bg-gradient-to-br from-accent/80 via-accent to-primary/60" />
+        <CardContent className="-mt-12 pb-6">
+          <div className="flex flex-col items-center text-center">
+            <div className="relative">
+              <Avatar className="h-24 w-24 ring-4 ring-background shadow-lg">
+                <AvatarImage src={user?.profileImageUrl} />
+                <AvatarFallback className="text-2xl bg-accent text-white">
+                  {user?.firstName?.[0] || user?.email?.[0]?.toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <label
+                htmlFor="profile-image-upload"
+                className="absolute bottom-0 right-0 p-2 bg-accent text-white rounded-full cursor-pointer hover:bg-accent/90 transition-colors shadow-md"
+                title="Change photo"
+              >
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="h-4 w-4" />
+                )}
+              </label>
+              <input
+                id="profile-image-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+                disabled={isUploading}
+                data-testid="input-profile-image"
+              />
+            </div>
+            <h2 className="mt-3 text-xl font-semibold text-foreground" data-testid="text-profile-name">
+              {fullName}
+            </h2>
+            <p className="text-sm text-muted-foreground" data-testid="text-profile-email">
+              {user?.email}
+            </p>
+            {user?.passId && (
+              <div
+                className="mt-3 inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3 py-1 text-xs font-mono"
+                data-testid="text-saviaj-pass"
+                title="Your unique Saviaj member identifier"
+              >
+                <BadgeCheck className="h-3.5 w-3.5 text-accent" />
+                <span className="text-muted-foreground">Saviaj Pass</span>
+                <span className="font-semibold tracking-wide">{user.passId}</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Personal details — per-field editing */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Personal details</CardTitle>
+          <CardDescription>Tap the pencil to edit a field</CardDescription>
+        </CardHeader>
+        <CardContent className="divide-y divide-border">
+          {/* Name */}
+          <EditableRow
+            icon={<User className="h-4 w-4" />}
+            label="Name"
+            value={fullName}
+            isEditing={editingField === "name"}
+            isPending={isPending}
+            onEdit={() => startEdit("name", { firstName: user?.firstName || "", lastName: user?.lastName || "" })}
+            onCancel={cancelEdit}
+            onSave={() => saveEdit({ firstName: draft.firstName || undefined, lastName: draft.lastName || undefined })}
+            testId="row-name"
+          >
+            <div className="grid grid-cols-2 gap-2">
               <Input
-                id="firstName"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                value={draft.firstName || ""}
+                onChange={(e) => setDraft({ ...draft, firstName: e.target.value })}
+                placeholder="First name"
                 aria-label="First name"
                 data-testid="input-first-name"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last name</Label>
               <Input
-                id="lastName"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                value={draft.lastName || ""}
+                onChange={(e) => setDraft({ ...draft, lastName: e.target.value })}
+                placeholder="Last name"
                 aria-label="Last name"
                 data-testid="input-last-name"
               />
             </div>
+          </EditableRow>
+
+          {/* Email — read-only (changing email needs verification flow) */}
+          <div className="flex items-center gap-3 py-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <Mail className="h-4 w-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-muted-foreground">Email</div>
+              <div className="text-sm font-medium truncate" data-testid="text-email-value">{user?.email}</div>
+            </div>
+            <Badge variant="secondary" className="text-[10px]">Verified</Badge>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone number</Label>
+          {/* Phone */}
+          <EditableRow
+            icon={<Phone className="h-4 w-4" />}
+            label="Phone number"
+            value={phoneFull || "Not set"}
+            isEditing={editingField === "phone"}
+            isPending={isPending}
+            onEdit={() => startEdit("phone", { countryCode: phoneCountryCode, phone: phoneLocal })}
+            onCancel={cancelEdit}
+            onSave={() => {
+              const cc = draft.countryCode || phoneCountryCode;
+              const local = (draft.phone || "").replace(/\s/g, "");
+              saveEdit({ phoneNumber: local ? `${cc}${local}` : undefined });
+            }}
+            testId="row-phone"
+          >
             <div className="flex gap-2">
-              <Select value={countryCode} onValueChange={setCountryCode}>
-                <SelectTrigger className="w-[140px]" data-testid="select-country-code">
+              <Select
+                value={draft.countryCode || phoneCountryCode}
+                onValueChange={(v) => setDraft({ ...draft, countryCode: v })}
+              >
+                <SelectTrigger className="w-[120px]" data-testid="select-country-code">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]" style={{ zIndex: 9999 }}>
@@ -765,69 +812,166 @@ function ProfileSection({ user }: { user: any }) {
                 </SelectContent>
               </Select>
               <Input
-                id="phone"
                 type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
+                value={draft.phone || ""}
+                onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+                placeholder="Phone number"
                 aria-label="Phone number"
                 className="flex-1"
                 data-testid="input-phone"
               />
             </div>
-          </div>
+          </EditableRow>
 
-          <div className="space-y-2">
-            <Label htmlFor="address">Home address</Label>
+          {/* Home address */}
+          <EditableRow
+            icon={<Home className="h-4 w-4" />}
+            label="Home address"
+            value={user?.homeAddress || "Not set"}
+            isEditing={editingField === "address"}
+            isPending={isPending}
+            onEdit={() => startEdit("address", { homeAddress: user?.homeAddress || "" })}
+            onCancel={cancelEdit}
+            onSave={() => saveEdit({ homeAddress: draft.homeAddress || undefined })}
+            testId="row-address"
+          >
             <Input
-              id="address"
-              value={homeAddress}
-              onChange={(e) => setHomeAddress(e.target.value)}
+              value={draft.homeAddress || ""}
+              onChange={(e) => setDraft({ ...draft, homeAddress: e.target.value })}
+              placeholder="Street address"
               aria-label="Home address"
               data-testid="input-address"
             />
-          </div>
+          </EditableRow>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                aria-label="City"
-                data-testid="input-city"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="postcode">Postcode</Label>
-              <Input
-                id="postcode"
-                value={postcode}
-                onChange={(e) => setPostcode(e.target.value)}
-                aria-label="Postcode"
-                data-testid="input-postcode"
-              />
-            </div>
+          {/* City */}
+          <EditableRow
+            icon={<Building2 className="h-4 w-4" />}
+            label="City"
+            value={user?.city || "Not set"}
+            isEditing={editingField === "city"}
+            isPending={isPending}
+            onEdit={() => startEdit("city", { city: user?.city || "" })}
+            onCancel={cancelEdit}
+            onSave={() => saveEdit({ city: draft.city || undefined })}
+            testId="row-city"
+          >
+            <Input
+              value={draft.city || ""}
+              onChange={(e) => setDraft({ ...draft, city: e.target.value })}
+              placeholder="City"
+              aria-label="City"
+              data-testid="input-city"
+            />
+          </EditableRow>
+
+          {/* Postcode */}
+          <EditableRow
+            icon={<MapPin className="h-4 w-4" />}
+            label="Postcode"
+            value={user?.postcode || "Not set"}
+            isEditing={editingField === "postcode"}
+            isPending={isPending}
+            onEdit={() => startEdit("postcode", { postcode: user?.postcode || "" })}
+            onCancel={cancelEdit}
+            onSave={() => saveEdit({ postcode: draft.postcode || undefined })}
+            testId="row-postcode"
+          >
+            <Input
+              value={draft.postcode || ""}
+              onChange={(e) => setDraft({ ...draft, postcode: e.target.value })}
+              placeholder="Postcode"
+              aria-label="Postcode"
+              data-testid="input-postcode"
+            />
+          </EditableRow>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Reusable row that toggles between read-only display and an inline editor.
+// Pass the editor controls via `children`; the row handles the icon, label,
+// value, pencil/check/x buttons, and pending state.
+function EditableRow({
+  icon,
+  label,
+  value,
+  isEditing,
+  isPending,
+  onEdit,
+  onCancel,
+  onSave,
+  children,
+  testId,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  isEditing: boolean;
+  isPending: boolean;
+  onEdit: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+  children: React.ReactNode;
+  testId?: string;
+}) {
+  if (isEditing) {
+    return (
+      <div className="py-3 space-y-2" data-testid={testId}>
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 text-accent">
+            {icon}
           </div>
+          <Label className="text-xs text-muted-foreground">{label}</Label>
         </div>
-
-        <Button
-          onClick={handleSaveProfile}
-          disabled={updateProfileMutation.isPending}
-          className="w-full bg-accent hover:bg-accent/90"
-          data-testid="button-save-profile"
-        >
-          {updateProfileMutation.isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            "Save Changes"
-          )}
-        </Button>
-      </CardContent>
-    </Card>
+        <div className="pl-12">{children}</div>
+        <div className="pl-12 flex gap-2 pt-1">
+          <Button
+            size="sm"
+            onClick={onSave}
+            disabled={isPending}
+            className="bg-accent hover:bg-accent/90"
+            data-testid={`button-save-${testId}`}
+          >
+            {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+            <span className="ml-1">Save</span>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onCancel}
+            disabled={isPending}
+            data-testid={`button-cancel-${testId}`}
+          >
+            <X className="h-3.5 w-3.5" />
+            <span className="ml-1">Cancel</span>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-3 py-3 group" data-testid={testId}>
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-sm font-medium truncate" data-testid={`value-${testId}`}>{value}</div>
+      </div>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-8 w-8 opacity-60 group-hover:opacity-100 transition-opacity"
+        onClick={onEdit}
+        title={`Edit ${label.toLowerCase()}`}
+        data-testid={`button-edit-${testId}`}
+      >
+        <Pencil className="h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 }
 
