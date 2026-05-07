@@ -80,6 +80,28 @@ Preferred communication style: Simple, everyday language.
   The runner executes the full file in one transaction; every statement is `CREATE/ADD ... IF NOT EXISTS` so re-runs are safe.
 - Restart the App Service after the sync so cached query plans refresh.
 
+## Chat 10/10 — Optional Integrations
+The in-app chat ships with Tier 3 (media), Tier 4 (push), and Tier 5 (translate) features. Each
+integration is **gracefully gated**: if the env vars are absent the app keeps running and the UI
+hides the corresponding controls (queried via `GET /api/chat/integrations`).
+
+| Feature                | Required env vars                                                                 |
+|------------------------|-----------------------------------------------------------------------------------|
+| Image / voice / file   | `AZURE_STORAGE_ACCOUNT`, `AZURE_STORAGE_KEY`, `AZURE_STORAGE_CONTAINER` (default `chat-media`) |
+| Push notifications     | `FIREBASE_SERVICE_ACCOUNT` (full JSON string OR a path to a JSON file). Plus `VITE_FIREBASE_*` config in the client for FCM Web token registration. |
+| Auto-translate         | `AZURE_TRANSLATOR_KEY`, `AZURE_TRANSLATOR_REGION`, optional `AZURE_TRANSLATOR_ENDPOINT` |
+
+**Container setup (Azure Blob)**
+- Create a container named `chat-media` (private access). The server mints SAS PUT URLs valid
+  for 10 minutes for upload; SAS GET URLs valid for 14 days are persisted with each message.
+- Allowed MIME types: jpg/png/webp/gif, webm/mpeg/mp4/ogg/wav audio, pdf. Max 25 MB per file.
+
+**Firebase / FCM**
+- Server uses `firebase-admin` (FCM HTTP v1) — covers Web Push, Android (Capacitor), and iOS
+  (Capacitor + APNs via FCM bridging).
+- Client uses the Firebase JS SDK + `client/public/firebase-messaging-sw.js` service worker
+  to obtain a Web Push token.
+
 ## External Dependencies
 - **Stripe**: Payment processing.
 - **Azure Maps**: Geocoding and routing.

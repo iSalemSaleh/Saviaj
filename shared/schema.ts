@@ -211,6 +211,12 @@ export const users = pgTable("users", {
   deletedAt: timestamp("deleted_at"),
   deletedReason: varchar("deleted_reason"),
   deletedBy: varchar("deleted_by"), // 'self' or admin userId
+  // Chat preferences
+  // BCP-47 language code (eg. 'en', 'es', 'fr', 'ar'). When set, incoming chat messages in
+  // a different language can be auto-translated client-side via /api/messages/:id/translate.
+  preferredLanguage: varchar("preferred_language", { length: 10 }),
+  // When false, the user does NOT broadcast read receipts to senders (privacy).
+  sendReadReceipts: boolean("send_read_receipts").default(true),
 });
 
 // Driver payouts - one row per Stripe Transfer we initiate (typically
@@ -934,7 +940,7 @@ export const chatMessages = pgTable("chat_messages", {
   clientId: varchar("client_id", { length: 64 }),
   // 'sent' | 'delivered' | 'read'. Defaults to 'sent' on creation.
   status: varchar("status", { length: 16 }).default("sent").notNull(),
-  // 'text' | 'location'. Future: 'image', 'voice'.
+  // 'text' | 'location' | 'image' | 'voice' | 'file'.
   messageType: varchar("message_type", { length: 16 }).default("text").notNull(),
   // For messageType='location'.
   locationLat: decimal("location_lat", { precision: 10, scale: 7 }),
@@ -945,6 +951,28 @@ export const chatMessages = pgTable("chat_messages", {
   readAt: timestamp("read_at"),
   read: boolean("read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  // ── Tier 3 (media) ──
+  // Direct CDN/blob URL of the uploaded asset. Populated for messageType in (image|voice|file).
+  mediaUrl: text("media_url"),
+  // MIME type (eg. 'image/jpeg', 'audio/webm', 'application/pdf'). Useful for client rendering.
+  mediaMimeType: varchar("media_mime_type", { length: 80 }),
+  // Original filename (file attach) or generated name. Cosmetic.
+  mediaName: varchar("media_name", { length: 255 }),
+  // Size in bytes — for the bubble's "12 KB" label and server-side abuse limits.
+  mediaSizeBytes: integer("media_size_bytes"),
+  // Voice note duration in milliseconds. Lets the client render a fixed bubble width pre-load.
+  mediaDurationMs: integer("media_duration_ms"),
+  // Optional thumbnail URL (server-generated for images / videos in the future).
+  mediaThumbnailUrl: text("media_thumbnail_url"),
+  // ── Tier 5 (reply / edit / delete / pin) ──
+  // Quoted-reply target. Self-FK so we can show the small quoted bubble inside the new message.
+  replyToMessageId: integer("reply_to_message_id"),
+  editedAt: timestamp("edited_at"),
+  // Soft-delete: tombstone — UI shows "this message was deleted" instead of the original text.
+  deletedAt: timestamp("deleted_at"),
+  // When non-null this message is pinned in the chat header. Only one pinned per ride is enforced
+  // at the application layer (not the DB) so admins/system can pin without locking riders out.
+  pinnedAt: timestamp("pinned_at"),
 }, (table) => ({
   // Loading a chat scrolls by ride + time order.
   rideCreatedIdx: index("chat_messages_ride_created_idx").on(table.rideId, table.createdAt),
@@ -952,6 +980,8 @@ export const chatMessages = pgTable("chat_messages", {
   receiverReadIdx: index("chat_messages_receiver_read_idx").on(table.receiverId, table.read),
   // Dedup lookup on resend: (rideId, senderId, clientId).
   rideSenderClientIdx: uniqueIndex("chat_messages_ride_sender_client_uniq").on(table.rideId, table.senderId, table.clientId),
+  // Pinned-message lookup per ride.
+  ridePinnedIdx: index("chat_messages_ride_pinned_idx").on(table.rideId, table.pinnedAt),
 }));
 
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
@@ -975,6 +1005,35 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({
 });
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// Tier 4 — push notification tokens.
+// One row per (user, device). The `token` is the FCM/APNs registration token sent up by the
+// client after the user grants permission. We keep the platform separately so the dispatcher
+// can pick the correct delivery path. `lastSeenAt` is bumped on every app boot so we can
+// purge stale tokens nightly.
+export const pushTokens = pgTable("push_tokens", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  token: text("token").notNull(),
+  // 'web' (FCM Web Push), 'android' (Capacitor + FCM), 'ios' (Capacitor + APNs via FCM).
+  platform: varchar("platform", { length: 16 }).notNull(),
+  // User-Agent / device label (for display in a future "manage devices" screen).
+  deviceLabel: varchar("device_label", { length: 255 }),
+  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  userIdx: index("push_tokens_user_idx").on(table.userId),
+  // Dedup: same token belongs to exactly one user.
+  tokenUniq: uniqueIndex("push_tokens_token_uniq").on(table.token),
+}));
+
+export const insertPushTokenSchema = createInsertSchema(pushTokens).omit({
+  id: true,
+  createdAt: true,
+  lastSeenAt: true,
+});
+export type InsertPushToken = z.infer<typeof insertPushTokenSchema>;
+export type PushToken = typeof pushTokens.$inferSelect;
 
 // Daily driver activity tracking for private driver limits
 export const driverDailyActivity = pgTable("driver_daily_activity", {

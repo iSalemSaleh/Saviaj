@@ -537,4 +537,32 @@ ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "read_at" TIMESTAMP;
 CREATE INDEX IF NOT EXISTS chat_messages_ride_created_idx ON public.chat_messages USING btree (ride_id, created_at);
 CREATE INDEX IF NOT EXISTS chat_messages_receiver_read_idx ON public.chat_messages USING btree (receiver_id, read);
 CREATE UNIQUE INDEX IF NOT EXISTS chat_messages_ride_sender_client_uniq ON public.chat_messages USING btree (ride_id, sender_id, client_id);
+
+-- Chat 10/10 Tier 3-5 (May 2026): media attachments, reply-to, edit/delete/pin, push tokens, user prefs
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "media_url" TEXT;
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "media_mime_type" VARCHAR(80);
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "media_name" VARCHAR(255);
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "media_size_bytes" INTEGER;
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "media_duration_ms" INTEGER;
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "media_thumbnail_url" TEXT;
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "reply_to_message_id" INTEGER;
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "edited_at" TIMESTAMP;
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "deleted_at" TIMESTAMP;
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "pinned_at" TIMESTAMP;
+CREATE INDEX IF NOT EXISTS chat_messages_ride_pinned_idx ON public.chat_messages USING btree (ride_id, pinned_at);
+
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "preferred_language" VARCHAR(10);
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "send_read_receipts" BOOLEAN DEFAULT true;
+
+CREATE TABLE IF NOT EXISTS "push_tokens" (
+  id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  user_id VARCHAR NOT NULL,
+  token TEXT NOT NULL,
+  platform VARCHAR(16) NOT NULL,
+  device_label VARCHAR(255),
+  last_seen_at TIMESTAMP DEFAULT now(),
+  created_at TIMESTAMP DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS push_tokens_user_idx ON public.push_tokens USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS push_tokens_token_uniq ON public.push_tokens USING btree (token);
 COMMIT;

@@ -7,8 +7,11 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth } from "./localAuth";
 import { setupGoogleAuth } from "./googleAuth";
-import { setupWebSocket } from "./websocket";
-import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema, users } from "@shared/schema";
+import { setupWebSocket, broadcast as wsBroadcast } from "./websocket";
+import { createUploadSas, getStatus as azureBlobStatus } from "./lib/azureBlob";
+import { translateText, getStatus as translatorStatus } from "./lib/translator";
+import { getStatus as pushStatus } from "./lib/pushNotifications";
+import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema, users, insertPushTokenSchema } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and } from "drizzle-orm";
 import { stripeService } from "./stripeService";
@@ -5234,6 +5237,255 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       console.error("Error removing reaction:", error);
       res.status(500).json({ message: "Failed to remove reaction" });
     }
+  });
+
+  // ============================================================
+  // Chat Tier 3-5: media uploads, edit/delete/pin, translate, push tokens, prefs
+  // ============================================================
+
+  // Mint a SAS PUT URL for direct browser→Azure upload of a chat attachment.
+  // The client uploads bytes there, then sends a chat_message over WS with
+  // messageType=image|voice|file + mediaUrl=<readUrl>.
+  app.post('/api/uploads/chat-media-sas', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const { rideId, mimeType, fileName } = req.body ?? {};
+      if (!Number.isFinite(Number(rideId)) || !mimeType || typeof mimeType !== 'string') {
+        return res.status(400).json({ message: 'rideId and mimeType are required' });
+      }
+      const ride = await storage.getRideById(Number(rideId));
+      if (!ride) return res.status(404).json({ message: 'Ride not found' });
+      if (ride.riderId !== userId && ride.driverId !== userId) {
+        return res.status(403).json({ message: 'Not a participant' });
+      }
+      if (!azureBlobStatus().ready) {
+        // Surface a structured 503 so the UI can hide the attach button gracefully.
+        return res.status(503).json({ message: 'Media uploads not configured', code: 'AZURE_BLOB_DISABLED' });
+      }
+      const sas = createUploadSas({ userId, rideId: Number(rideId), mimeType, fileName });
+      res.json(sas);
+    } catch (err: any) {
+      console.error('SAS mint failed:', err);
+      res.status(400).json({ message: err.message || 'Failed to mint upload URL' });
+    }
+  });
+
+  // Edit a message body (text only) — only the original sender, only within 5 minutes.
+  app.patch('/api/rides/:id/messages/:messageId', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const messageId = parseInt(req.params.messageId);
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      const { message } = req.body ?? {};
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      if (typeof message !== 'string' || message.trim().length === 0 || message.length > 4000) {
+        return res.status(400).json({ message: 'Invalid message body' });
+      }
+
+      const target = await storage.getChatMessageById(messageId);
+      if (!target || target.rideId !== rideId) return res.status(404).json({ message: 'Message not found' });
+      if (target.senderId !== userId) return res.status(403).json({ message: 'Not your message' });
+      if (target.deletedAt) return res.status(400).json({ message: 'Cannot edit a deleted message' });
+      if (target.messageType !== 'text') return res.status(400).json({ message: 'Only text messages are editable' });
+      const ageMs = Date.now() - new Date(target.createdAt!).getTime();
+      if (ageMs > 5 * 60 * 1000) return res.status(400).json({ message: 'Edit window expired (5 minutes)' });
+
+      const updated = await storage.editChatMessage(messageId, userId, message.trim());
+      if (!updated) return res.status(500).json({ message: 'Edit failed' });
+
+      // Push the edit to the other party in real time.
+      const other = target.senderId === target.receiverId ? null : target.receiverId;
+      if (other) wsBroadcast({ type: 'chat_message_edited', id: updated.id, message: updated.message, editedAt: updated.editedAt }, other);
+      // Echo to the editor too so the bubble shows "edited" without a refetch.
+      wsBroadcast({ type: 'chat_message_edited', id: updated.id, message: updated.message, editedAt: updated.editedAt }, userId);
+      res.json(updated);
+    } catch (err) {
+      console.error('Edit message failed:', err);
+      res.status(500).json({ message: 'Failed to edit message' });
+    }
+  });
+
+  // Soft-delete a message — only the original sender, no time limit.
+  app.delete('/api/rides/:id/messages/:messageId', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const messageId = parseInt(req.params.messageId);
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+      const target = await storage.getChatMessageById(messageId);
+      if (!target || target.rideId !== rideId) return res.status(404).json({ message: 'Message not found' });
+      if (target.senderId !== userId) return res.status(403).json({ message: 'Not your message' });
+
+      const updated = await storage.softDeleteChatMessage(messageId, userId);
+      if (!updated) return res.status(500).json({ message: 'Delete failed' });
+
+      // Notify both parties so the bubble swaps to "this message was deleted".
+      wsBroadcast({ type: 'chat_message_deleted', id: updated.id, deletedAt: updated.deletedAt }, target.senderId);
+      wsBroadcast({ type: 'chat_message_deleted', id: updated.id, deletedAt: updated.deletedAt }, target.receiverId);
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Delete message failed:', err);
+      res.status(500).json({ message: 'Failed to delete message' });
+    }
+  });
+
+  // Pin (or unpin via DELETE) a message in this ride's chat.
+  app.post('/api/rides/:id/messages/:messageId/pin', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const messageId = parseInt(req.params.messageId);
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const ride = await storage.getRideById(rideId);
+      if (!ride) return res.status(404).json({ message: 'Ride not found' });
+      if (ride.riderId !== userId && ride.driverId !== userId) return res.status(403).json({ message: 'Not a participant' });
+
+      const updated = await storage.setPinnedMessage(rideId, messageId);
+      if (!updated) return res.status(404).json({ message: 'Message not found' });
+      wsBroadcast({ type: 'chat_pinned', rideId, messageId: updated.id }, ride.riderId);
+      wsBroadcast({ type: 'chat_pinned', rideId, messageId: updated.id }, ride.driverId);
+      res.json(updated);
+    } catch (err) {
+      console.error('Pin failed:', err);
+      res.status(500).json({ message: 'Failed to pin message' });
+    }
+  });
+
+  app.delete('/api/rides/:id/messages/pin', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const ride = await storage.getRideById(rideId);
+      if (!ride) return res.status(404).json({ message: 'Ride not found' });
+      if (ride.riderId !== userId && ride.driverId !== userId) return res.status(403).json({ message: 'Not a participant' });
+
+      await storage.setPinnedMessage(rideId, null);
+      wsBroadcast({ type: 'chat_pinned', rideId, messageId: null }, ride.riderId);
+      wsBroadcast({ type: 'chat_pinned', rideId, messageId: null }, ride.driverId);
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Unpin failed:', err);
+      res.status(500).json({ message: 'Failed to unpin message' });
+    }
+  });
+
+  app.get('/api/rides/:id/messages/pin', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const ride = await storage.getRideById(rideId);
+      if (!ride) return res.status(404).json({ message: 'Ride not found' });
+      if (ride.riderId !== userId && ride.driverId !== userId) return res.status(403).json({ message: 'Not a participant' });
+      const pinned = await storage.getPinnedMessage(rideId);
+      res.json(pinned ?? null);
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to fetch pinned message' });
+    }
+  });
+
+  // Translate a single message into the requesting user's preferredLanguage (or ?to=xx).
+  // Returned text is NOT persisted — it's a per-request, per-viewer convenience.
+  app.post('/api/messages/:id/translate', isAuthenticated, async (req: any, res) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const target = await storage.getChatMessageById(messageId);
+      if (!target) return res.status(404).json({ message: 'Message not found' });
+      // Participant check via the ride.
+      const ride = await storage.getRideById(target.rideId);
+      if (!ride || (ride.riderId !== userId && ride.driverId !== userId)) {
+        return res.status(403).json({ message: 'Not a participant' });
+      }
+      if (!translatorStatus().ready) {
+        return res.status(503).json({ message: 'Translation not configured', code: 'TRANSLATOR_DISABLED' });
+      }
+      const me = await storage.getUser(userId);
+      const to = (req.body?.to as string) || me?.preferredLanguage || 'en';
+      if (!/^[a-z]{2}(-[A-Z]{2})?$/.test(to)) return res.status(400).json({ message: 'Invalid language code' });
+
+      const result = await translateText(target.message ?? '', to);
+      res.json(result);
+    } catch (err: any) {
+      console.error('Translate failed:', err);
+      res.status(500).json({ message: err.message || 'Failed to translate' });
+    }
+  });
+
+  // Register / refresh a push notification token for the current user + device.
+  app.post('/api/push-tokens', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const parsed = insertPushTokenSchema.safeParse({ ...req.body, userId });
+      if (!parsed.success) return res.status(400).json({ message: 'Invalid token payload', issues: parsed.error.issues });
+      const row = await storage.upsertPushToken(parsed.data);
+      res.json({ success: true, id: row.id });
+    } catch (err) {
+      console.error('Push token register failed:', err);
+      res.status(500).json({ message: 'Failed to register push token' });
+    }
+  });
+
+  app.delete('/api/push-tokens', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const token = (req.body?.token as string) || (req.query?.token as string);
+      if (!token) return res.status(400).json({ message: 'token required' });
+      await storage.deletePushTokens([token]);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: 'Failed to delete push token' });
+    }
+  });
+
+  // Read or update chat preferences (preferredLanguage + sendReadReceipts).
+  app.get('/api/users/me/chat-prefs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const u = await storage.getUser(userId);
+      res.json({
+        preferredLanguage: u?.preferredLanguage ?? null,
+        sendReadReceipts: u?.sendReadReceipts ?? true,
+      });
+    } catch {
+      res.status(500).json({ message: 'Failed to fetch prefs' });
+    }
+  });
+
+  app.patch('/api/users/me/chat-prefs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const { preferredLanguage, sendReadReceipts } = req.body ?? {};
+      if (preferredLanguage != null && (typeof preferredLanguage !== 'string' || !/^[a-z]{2}(-[A-Z]{2})?$/.test(preferredLanguage))) {
+        return res.status(400).json({ message: 'Invalid preferredLanguage (use BCP-47 like "en", "fr", "ar")' });
+      }
+      if (sendReadReceipts != null && typeof sendReadReceipts !== 'boolean') {
+        return res.status(400).json({ message: 'Invalid sendReadReceipts' });
+      }
+      await storage.updateChatPreferences(userId, { preferredLanguage, sendReadReceipts });
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Update chat prefs failed:', err);
+      res.status(500).json({ message: 'Failed to update prefs' });
+    }
+  });
+
+  // Health: surfaces which chat integrations are actually wired so the client can hide
+  // disabled features (eg. translation toggle, attach button).
+  app.get('/api/chat/integrations', isAuthenticated, async (_req, res) => {
+    res.json({
+      media: azureBlobStatus().ready,
+      translator: translatorStatus().ready,
+      push: (await pushStatus()).ready,
+    });
   });
 
   // ==================== Settings Routes ====================

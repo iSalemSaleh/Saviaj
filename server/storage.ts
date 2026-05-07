@@ -46,6 +46,9 @@ import {
   type InsertProHireNegotiation,
   type ProHireNegotiationOffer,
   type InsertProHireNegotiationOffer,
+  pushTokens,
+  type PushToken,
+  type InsertPushToken,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, lt, gt, or, isNotNull, ne, inArray } from "drizzle-orm";
@@ -624,6 +627,20 @@ export interface IStorage {
   removeReaction(messageId: number, userId: string, emoji: string): Promise<ChatMessage | undefined>;
   getChatMessageById(messageId: number): Promise<ChatMessage | undefined>;
   getUnreadMessageCount(userId: string): Promise<number>;
+
+  // Tier 5 chat ops
+  editChatMessage(messageId: number, senderId: string, newText: string): Promise<ChatMessage | undefined>;
+  softDeleteChatMessage(messageId: number, senderId: string): Promise<ChatMessage | undefined>;
+  setPinnedMessage(rideId: number, messageId: number | null): Promise<ChatMessage | undefined>;
+  getPinnedMessage(rideId: number): Promise<ChatMessage | undefined>;
+
+  // Tier 4 push tokens
+  upsertPushToken(token: InsertPushToken): Promise<PushToken>;
+  getPushTokensForUser(userId: string): Promise<PushToken[]>;
+  deletePushTokens(tokens: string[]): Promise<void>;
+
+  // Chat preferences (used by privacy-aware read receipts + auto-translate target language)
+  updateChatPreferences(userId: string, prefs: { preferredLanguage?: string | null; sendReadReceipts?: boolean }): Promise<void>;
   
   // Driver daily activity (for private driver limits)
   getDriverDailyActivity(driverId: string, date: string): Promise<{ ridesCount: number; totalEarnings: number } | null>;
@@ -2427,6 +2444,96 @@ export class DatabaseStorage implements IStorage {
       .from(chatMessages)
       .where(and(eq(chatMessages.receiverId, userId), eq(chatMessages.read, false)));
     return result[0]?.count ?? 0;
+  }
+
+  // Tier 5: edit only by the original sender, only if not soft-deleted.
+  // The 5-minute window is enforced at the route layer so admin/system edits remain possible.
+  async editChatMessage(messageId: number, senderId: string, newText: string): Promise<ChatMessage | undefined> {
+    const [row] = await db
+      .update(chatMessages)
+      .set({ message: newText, editedAt: new Date() })
+      .where(and(
+        eq(chatMessages.id, messageId),
+        eq(chatMessages.senderId, senderId),
+        sql`${chatMessages.deletedAt} IS NULL`,
+      ))
+      .returning();
+    return row;
+  }
+
+  // Soft-delete: keep the row (so reactions / replies remain valid) but blank the body
+  // and set deletedAt. The UI swaps in "this message was deleted" based on deletedAt.
+  async softDeleteChatMessage(messageId: number, senderId: string): Promise<ChatMessage | undefined> {
+    const [row] = await db
+      .update(chatMessages)
+      .set({ message: '', deletedAt: new Date(), mediaUrl: null, mediaThumbnailUrl: null })
+      .where(and(
+        eq(chatMessages.id, messageId),
+        eq(chatMessages.senderId, senderId),
+      ))
+      .returning();
+    return row;
+  }
+
+  // Pin (or unpin when messageId === null). Atomically un-pins any prior pinned message
+  // for this ride so we always have at most one pinned message visible in the header.
+  async setPinnedMessage(rideId: number, messageId: number | null): Promise<ChatMessage | undefined> {
+    return await db.transaction(async (tx) => {
+      // Clear current pin(s) for this ride.
+      await tx
+        .update(chatMessages)
+        .set({ pinnedAt: null })
+        .where(and(eq(chatMessages.rideId, rideId), sql`${chatMessages.pinnedAt} IS NOT NULL`));
+      if (messageId === null) return undefined;
+      const [row] = await tx
+        .update(chatMessages)
+        .set({ pinnedAt: new Date() })
+        .where(and(eq(chatMessages.id, messageId), eq(chatMessages.rideId, rideId)))
+        .returning();
+      return row;
+    });
+  }
+
+  async getPinnedMessage(rideId: number): Promise<ChatMessage | undefined> {
+    const [row] = await db
+      .select()
+      .from(chatMessages)
+      .where(and(eq(chatMessages.rideId, rideId), sql`${chatMessages.pinnedAt} IS NOT NULL`))
+      .orderBy(desc(chatMessages.pinnedAt))
+      .limit(1);
+    return row;
+  }
+
+  // Tier 4: push tokens — upsert keyed by `token` so the same device cannot register twice.
+  async upsertPushToken(token: InsertPushToken): Promise<PushToken> {
+    const [row] = await db
+      .insert(pushTokens)
+      .values(token as any)
+      .onConflictDoUpdate({
+        target: pushTokens.token,
+        set: { userId: (token as any).userId, platform: (token as any).platform, deviceLabel: (token as any).deviceLabel ?? null, lastSeenAt: new Date() },
+      })
+      .returning();
+    return row;
+  }
+
+  async getPushTokensForUser(userId: string): Promise<PushToken[]> {
+    return await db.select().from(pushTokens).where(eq(pushTokens.userId, userId));
+  }
+
+  async deletePushTokens(tokens: string[]): Promise<void> {
+    if (tokens.length === 0) return;
+    await db.delete(pushTokens).where(inArray(pushTokens.token, tokens));
+  }
+
+  // Updates the user-facing chat preference fields. Both fields are optional so the route
+  // can patch one without nullifying the other.
+  async updateChatPreferences(userId: string, prefs: { preferredLanguage?: string | null; sendReadReceipts?: boolean }): Promise<void> {
+    const patch: any = {};
+    if (prefs.preferredLanguage !== undefined) patch.preferredLanguage = prefs.preferredLanguage;
+    if (prefs.sendReadReceipts !== undefined) patch.sendReadReceipts = prefs.sendReadReceipts;
+    if (Object.keys(patch).length === 0) return;
+    await db.update(users).set(patch).where(eq(users.id, userId));
   }
 
   // Driver daily activity (for private driver limits)

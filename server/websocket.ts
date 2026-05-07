@@ -3,6 +3,7 @@ import type { Server, IncomingMessage } from 'http';
 import passport from 'passport';
 import { storage } from './storage';
 import { getSession } from './replitAuth';
+import { dispatchChatPush } from './lib/pushNotifications';
 
 // Re-use a single session middleware instance so we share connect-pg-simple's PG pool.
 const sessionMiddleware = getSession();
@@ -236,9 +237,16 @@ export function setupWebSocket(server: Server) {
 
             const senderId = ws.userId;
             const receiverId = ws.userType === 'rider' ? ws.verifiedRide.driverId : ws.verifiedRide.riderId;
-            const messageType: string = message.messageType === 'location' ? 'location' : 'text';
+            const allowedTypes = new Set(['text', 'location', 'image', 'voice', 'file']);
+            const messageType: string = allowedTypes.has(message.messageType) ? message.messageType : 'text';
             const text = String(message.message ?? '');
             const clientId: string | undefined = typeof message.clientId === 'string' ? message.clientId : undefined;
+            // Reply-to: only honor if the parent belongs to the same ride.
+            let replyToMessageId: number | null = null;
+            if (Number.isFinite(message.replyToMessageId)) {
+              const parent = await storage.getChatMessageById(Number(message.replyToMessageId));
+              if (parent && parent.rideId === ws.rideId) replyToMessageId = parent.id;
+            }
 
             // Persist (idempotent on (rideId, senderId, clientId))
             const saved = await storage.createChatMessage({
@@ -250,6 +258,14 @@ export function setupWebSocket(server: Server) {
               messageType,
               locationLat: messageType === 'location' && message.locationLat != null ? String(message.locationLat) : null,
               locationLng: messageType === 'location' && message.locationLng != null ? String(message.locationLng) : null,
+              // Tier 3 media — only persisted when the type calls for it.
+              mediaUrl: ['image', 'voice', 'file'].includes(messageType) ? (message.mediaUrl ?? null) : null,
+              mediaMimeType: message.mediaMimeType ?? null,
+              mediaName: message.mediaName ?? null,
+              mediaSizeBytes: Number.isFinite(message.mediaSizeBytes) ? Number(message.mediaSizeBytes) : null,
+              mediaDurationMs: Number.isFinite(message.mediaDurationMs) ? Number(message.mediaDurationMs) : null,
+              mediaThumbnailUrl: message.mediaThumbnailUrl ?? null,
+              replyToMessageId,
             } as any);
 
             const room = rideRooms.get(ws.rideId);
@@ -277,6 +293,13 @@ export function setupWebSocket(server: Server) {
               messageType: saved.messageType,
               locationLat: saved.locationLat,
               locationLng: saved.locationLng,
+              mediaUrl: saved.mediaUrl,
+              mediaMimeType: saved.mediaMimeType,
+              mediaName: saved.mediaName,
+              mediaSizeBytes: saved.mediaSizeBytes,
+              mediaDurationMs: saved.mediaDurationMs,
+              mediaThumbnailUrl: saved.mediaThumbnailUrl,
+              replyToMessageId: saved.replyToMessageId,
               status: finalStatus,
               read: saved.read,
               createdAt: saved.createdAt,
@@ -301,6 +324,27 @@ export function setupWebSocket(server: Server) {
                 deliveredAt,
               });
             }
+
+            // Push notification: only when the receiver is NOT currently looking at this socket.
+            // Fire-and-forget; the helper handles its own no-op when Firebase isn't configured.
+            if (!receiverWs || receiverWs.readyState !== WebSocket.OPEN) {
+              const sender = await storage.getUser(senderId).catch(() => null);
+              const senderName = [sender?.firstName, sender?.lastName].filter(Boolean).join(' ') || sender?.username || 'New message';
+              const preview =
+                messageType === 'image' ? '📷 Photo' :
+                messageType === 'voice' ? '🎤 Voice note' :
+                messageType === 'file'  ? '📎 Attachment' :
+                messageType === 'location' ? '📍 Shared location' :
+                (text || '').slice(0, 120);
+              dispatchChatPush({
+                receiverId,
+                senderId,
+                senderName,
+                rideId: ws.rideId!,
+                messageId: saved.id,
+                preview,
+              }).catch(() => { /* never block the send path */ });
+            }
             break;
           }
 
@@ -321,6 +365,9 @@ export function setupWebSocket(server: Server) {
             // Marks all unread messages addressed to this user as read.
             const updated = await storage.markMessagesAsRead(ws.rideId, ws.userId);
             if (updated.length === 0) return;
+            // Privacy: only broadcast the read receipt if the reader has not opted out.
+            const me = await storage.getUser(ws.userId).catch(() => null);
+            if (me && me.sendReadReceipts === false) return;
             const ids = updated.map((m) => m.id);
             const room = rideRooms.get(ws.rideId);
             if (!room) return;

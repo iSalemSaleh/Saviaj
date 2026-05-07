@@ -120,7 +120,22 @@ interface UseLocationTrackingResult {
   resendChatMessage: (clientId: string) => void;
 
   /** Snapshot of currently queued (unacked) outbound messages — useful for UI restoration. */
-  getQueuedMessages: () => Array<{ clientId: string; receiverId: string; message: string; messageType: 'text' | 'location'; locationLat?: number; locationLng?: number; attempts: number }>;
+  getQueuedMessages: () => Array<{
+    clientId: string;
+    receiverId: string;
+    message: string;
+    messageType: 'text' | 'location' | 'image' | 'voice' | 'file';
+    locationLat?: number;
+    locationLng?: number;
+    mediaUrl?: string;
+    mediaMimeType?: string;
+    mediaName?: string;
+    mediaSizeBytes?: number;
+    mediaDurationMs?: number;
+    mediaThumbnailUrl?: string;
+    replyToMessageId?: number;
+    attempts: number;
+  }>;
 
   /**
    * Reference to the WebSocket client (for advanced use cases like direct event subscriptions).

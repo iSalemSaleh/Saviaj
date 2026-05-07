@@ -21,7 +21,7 @@ export interface Location {
 }
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
-export type MessageKind = 'text' | 'location';
+export type MessageKind = 'text' | 'location' | 'image' | 'voice' | 'file';
 
 export interface ChatMessage {
   id?: number;
@@ -33,6 +33,18 @@ export interface ChatMessage {
   messageType?: MessageKind;
   locationLat?: string | number | null;
   locationLng?: string | number | null;
+  // Tier 3 media
+  mediaUrl?: string | null;
+  mediaMimeType?: string | null;
+  mediaName?: string | null;
+  mediaSizeBytes?: number | null;
+  mediaDurationMs?: number | null;
+  mediaThumbnailUrl?: string | null;
+  // Tier 5 reply / edit / delete / pin
+  replyToMessageId?: number | null;
+  editedAt?: string | Date | null;
+  deletedAt?: string | Date | null;
+  pinnedAt?: string | Date | null;
   status?: MessageStatus;
   reactions?: Record<string, string[]>;
   createdAt?: string | Date;
@@ -40,6 +52,10 @@ export interface ChatMessage {
   readAt?: string | Date | null;
   read?: boolean;
 }
+
+export interface MessageEditedEvent { id: number; message: string; editedAt: string | Date; }
+export interface MessageDeletedEvent { id: number; deletedAt: string | Date; }
+export interface PinnedEvent { rideId: number; messageId: number | null; }
 
 export interface PresenceEvent {
   online: boolean;
@@ -83,6 +99,9 @@ type PresenceCallback = (event: PresenceEvent) => void;
 type DeliveryCallback = (event: DeliveryReceiptEvent) => void;
 type ReadCallback = (event: ReadReceiptEvent) => void;
 type ReactionCallback = (event: ReactionUpdateEvent) => void;
+type MessageEditedCallback = (event: MessageEditedEvent) => void;
+type MessageDeletedCallback = (event: MessageDeletedEvent) => void;
+type PinnedCallback = (event: PinnedEvent) => void;
 
 interface QueuedMessage {
   clientId: string;
@@ -91,6 +110,15 @@ interface QueuedMessage {
   messageType: MessageKind;
   locationLat?: number;
   locationLng?: number;
+  // Tier 3 media — persisted in the queue so retries on reload still work.
+  mediaUrl?: string;
+  mediaMimeType?: string;
+  mediaName?: string;
+  mediaSizeBytes?: number;
+  mediaDurationMs?: number;
+  mediaThumbnailUrl?: string;
+  // Tier 5 reply
+  replyToMessageId?: number;
   attempts: number;
 }
 
@@ -124,6 +152,9 @@ export class WebSocketRideClient {
   private deliveryCallbacks: DeliveryCallback[] = [];
   private readCallbacks: ReadCallback[] = [];
   private reactionCallbacks: ReactionCallback[] = [];
+  private editedCallbacks: MessageEditedCallback[] = [];
+  private deletedCallbacks: MessageDeletedCallback[] = [];
+  private pinnedCallbacks: PinnedCallback[] = [];
 
   // Queue of outbound chat messages awaiting an ack. Keyed by clientId for O(1) ack drain.
   private sendQueue: Map<string, QueuedMessage> = new Map();
@@ -243,6 +274,15 @@ export class WebSocketRideClient {
         case 'reaction_update':
           this.reactionCallbacks.forEach((cb) => cb({ messageId: m.messageId, reactions: m.reactions || {} }));
           break;
+        case 'chat_message_edited':
+          this.editedCallbacks.forEach((cb) => cb({ id: m.id, message: m.message, editedAt: m.editedAt }));
+          break;
+        case 'chat_message_deleted':
+          this.deletedCallbacks.forEach((cb) => cb({ id: m.id, deletedAt: m.deletedAt }));
+          break;
+        case 'chat_pinned':
+          this.pinnedCallbacks.forEach((cb) => cb({ rideId: m.rideId, messageId: m.messageId }));
+          break;
       }
     } catch (err) {
       console.error('Error parsing WebSocket message:', err);
@@ -288,6 +328,50 @@ export class WebSocketRideClient {
       messageType: 'location',
       locationLat: lat,
       locationLng: lng,
+      attempts: 0,
+    });
+  }
+
+  /**
+   * Send a media chat message (image/voice/file). The caller is responsible for uploading
+   * the bytes to Azure Blob first via the SAS URL, then passing the resulting read URL here.
+   */
+  public sendMediaMessage(opts: {
+    receiverId: string;
+    kind: 'image' | 'voice' | 'file';
+    mediaUrl: string;
+    mediaMimeType: string;
+    mediaName?: string;
+    mediaSizeBytes?: number;
+    mediaDurationMs?: number;
+    mediaThumbnailUrl?: string;
+    caption?: string;
+    replyToMessageId?: number;
+  }): string {
+    return this.enqueueAndSend({
+      clientId: uuid(),
+      receiverId: opts.receiverId,
+      message: opts.caption ?? '',
+      messageType: opts.kind,
+      mediaUrl: opts.mediaUrl,
+      mediaMimeType: opts.mediaMimeType,
+      mediaName: opts.mediaName,
+      mediaSizeBytes: opts.mediaSizeBytes,
+      mediaDurationMs: opts.mediaDurationMs,
+      mediaThumbnailUrl: opts.mediaThumbnailUrl,
+      replyToMessageId: opts.replyToMessageId,
+      attempts: 0,
+    });
+  }
+
+  /** Send a text reply quoting an existing message. */
+  public sendReply(receiverId: string, message: string, replyToMessageId: number): string {
+    return this.enqueueAndSend({
+      clientId: uuid(),
+      receiverId,
+      message,
+      messageType: 'text',
+      replyToMessageId,
       attempts: 0,
     });
   }
@@ -388,6 +472,15 @@ export class WebSocketRideClient {
       payload.locationLat = msg.locationLat;
       payload.locationLng = msg.locationLng;
     }
+    if (msg.messageType === 'image' || msg.messageType === 'voice' || msg.messageType === 'file') {
+      payload.mediaUrl = msg.mediaUrl;
+      payload.mediaMimeType = msg.mediaMimeType;
+      payload.mediaName = msg.mediaName;
+      payload.mediaSizeBytes = msg.mediaSizeBytes;
+      payload.mediaDurationMs = msg.mediaDurationMs;
+      payload.mediaThumbnailUrl = msg.mediaThumbnailUrl;
+    }
+    if (msg.replyToMessageId != null) payload.replyToMessageId = msg.replyToMessageId;
     this.sendRaw(payload);
   }
 
@@ -425,6 +518,9 @@ export class WebSocketRideClient {
   public onDeliveryReceipt(cb: DeliveryCallback) { this.deliveryCallbacks.push(cb); return () => { this.deliveryCallbacks = this.deliveryCallbacks.filter((c) => c !== cb); }; }
   public onReadReceipt(cb: ReadCallback) { this.readCallbacks.push(cb); return () => { this.readCallbacks = this.readCallbacks.filter((c) => c !== cb); }; }
   public onReactionUpdate(cb: ReactionCallback) { this.reactionCallbacks.push(cb); return () => { this.reactionCallbacks = this.reactionCallbacks.filter((c) => c !== cb); }; }
+  public onMessageEdited(cb: MessageEditedCallback) { this.editedCallbacks.push(cb); return () => { this.editedCallbacks = this.editedCallbacks.filter((c) => c !== cb); }; }
+  public onMessageDeleted(cb: MessageDeletedCallback) { this.deletedCallbacks.push(cb); return () => { this.deletedCallbacks = this.deletedCallbacks.filter((c) => c !== cb); }; }
+  public onPinned(cb: PinnedCallback) { this.pinnedCallbacks.push(cb); return () => { this.pinnedCallbacks = this.pinnedCallbacks.filter((c) => c !== cb); }; }
 
   public getState(): ConnectionState { return this.state; }
   public isConnected(): boolean { return this.state === ConnectionState.CONNECTED; }
