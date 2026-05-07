@@ -2055,55 +2055,61 @@ function PayoutHistory() {
               </div>
               {pageCount > 1 && (
                 <div
-                  className="flex items-center justify-between gap-2 pt-2"
+                  className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3"
                   data-testid="pagination-payout-history"
                 >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(0)}
-                    disabled={safePage === 0}
-                    data-testid="button-payout-page-first"
-                    aria-label="First page"
-                  >
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    disabled={safePage === 0}
-                    data-testid="button-payout-page-prev"
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Prev
-                  </Button>
                   <span
-                    className="text-xs text-muted-foreground tabular-nums"
+                    className="text-xs text-muted-foreground tabular-nums whitespace-nowrap order-2 sm:order-1"
                     data-testid="text-payout-page-indicator"
                   >
                     Page {safePage + 1} of {pageCount}
                   </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
-                    disabled={safePage >= pageCount - 1}
-                    data-testid="button-payout-page-next"
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(pageCount - 1)}
-                    disabled={safePage >= pageCount - 1}
-                    data-testid="button-payout-page-last"
-                    aria-label="Last page"
-                  >
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
+                  <div className="inline-flex items-center gap-1.5 order-1 sm:order-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setPage(0)}
+                      disabled={safePage === 0}
+                      data-testid="button-payout-page-first"
+                      aria-label="First page"
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => setPage((p) => Math.max(0, p - 1))}
+                      disabled={safePage === 0}
+                      data-testid="button-payout-page-prev"
+                    >
+                      <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Prev</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                      disabled={safePage >= pageCount - 1}
+                      data-testid="button-payout-page-next"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="h-4 w-4 sm:ml-1" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setPage(pageCount - 1)}
+                      disabled={safePage >= pageCount - 1}
+                      data-testid="button-payout-page-last"
+                      aria-label="Last page"
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </>
