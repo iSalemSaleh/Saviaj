@@ -97,15 +97,33 @@ interface UseLocationTrackingResult {
   riderLocation: Location | TrackedLocation | null;
   
   /**
-   * Function to send a chat message.
-   * @param receiverId - The recipient's user ID
-   * @param message - The message content
+   * Function to send a chat message. Returns the generated clientId so the caller
+   * can render an optimistic bubble keyed by the same id.
    */
-  sendChatMessage: (receiverId: string, message: string) => void;
-  
+  sendChatMessage: (receiverId: string, message: string) => string | undefined;
+
   /**
-   * Reference to the WebSocket client (for advanced use cases).
-   * @deprecated Prefer using the exposed methods instead
+   * Send a location-share chat bubble (renders as a tappable map link in the UI).
+   */
+  sendLocationMessage: (receiverId: string, lat: number, lng: number, label?: string) => string | undefined;
+
+  /** Notify the other party that we're typing (or have stopped). */
+  sendTyping: (typing: boolean) => void;
+
+  /** Mark all unread messages addressed to us as read (server emits read_receipt to sender). */
+  sendReadReceipt: () => void;
+
+  /** Add or remove an emoji reaction on a message. */
+  sendReaction: (messageId: number, emoji: string, remove?: boolean) => void;
+
+  /** Resend a previously-failed message; reuses the original clientId for dedup safety. */
+  resendChatMessage: (clientId: string) => void;
+
+  /** Snapshot of currently queued (unacked) outbound messages — useful for UI restoration. */
+  getQueuedMessages: () => Array<{ clientId: string; receiverId: string; message: string; messageType: 'text' | 'location'; locationLat?: number; locationLng?: number; attempts: number }>;
+
+  /**
+   * Reference to the WebSocket client (for advanced use cases like direct event subscriptions).
    */
   wsRef: React.MutableRefObject<WebSocketRideClient | null>;
 }
@@ -192,8 +210,32 @@ export function useLocationTracking({
    * The message is sent via WebSocket and will be delivered
    * to the other party in real-time.
    */
-  const sendChatMessage = useCallback((receiverId: string, message: string) => {
-    wsClientRef.current?.sendChatMessage(receiverId, message);
+  const sendChatMessage = useCallback((receiverId: string, message: string): string | undefined => {
+    return wsClientRef.current?.sendChatMessage(receiverId, message);
+  }, []);
+
+  const sendLocationMessage = useCallback((receiverId: string, lat: number, lng: number, label?: string): string | undefined => {
+    return wsClientRef.current?.sendLocationMessage(receiverId, lat, lng, label);
+  }, []);
+
+  const sendTyping = useCallback((typing: boolean) => {
+    wsClientRef.current?.sendTyping(typing);
+  }, []);
+
+  const sendReadReceipt = useCallback(() => {
+    wsClientRef.current?.sendReadReceipt();
+  }, []);
+
+  const sendReaction = useCallback((messageId: number, emoji: string, remove = false) => {
+    wsClientRef.current?.sendReaction(messageId, emoji, remove);
+  }, []);
+
+  const resendChatMessage = useCallback((clientId: string) => {
+    wsClientRef.current?.resendChatMessage(clientId);
+  }, []);
+
+  const getQueuedMessages = useCallback(() => {
+    return wsClientRef.current?.getQueuedMessages() ?? [];
   }, []);
   
   // ============================================================
@@ -325,6 +367,12 @@ export function useLocationTracking({
     driverLocation,
     riderLocation,
     sendChatMessage,
+    sendLocationMessage,
+    sendTyping,
+    sendReadReceipt,
+    sendReaction,
+    resendChatMessage,
+    getQueuedMessages,
     wsRef: wsClientRef,
   };
 }

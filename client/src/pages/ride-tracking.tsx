@@ -67,7 +67,6 @@ export default function RideTrackingPage() {
   const [rating, setRating] = useState(5);
   const [ratingComment, setRatingComment] = useState("");
   const [showChat, setShowChat] = useState(false);
-  const [pendingMessages, setPendingMessages] = useState<any[]>([]);
   const [showDetails, setShowDetails] = useState(false);
 
   const [pendingPaymentSecret, setPendingPaymentSecret] = useState<string | null>(null);
@@ -81,7 +80,6 @@ export default function RideTrackingPage() {
     setRating(5);
     setRatingComment("");
     setShowChat(false);
-    setPendingMessages([]);
     setShowDetails(false);
     setPendingPaymentSecret(null);
     
@@ -308,15 +306,10 @@ export default function RideTrackingPage() {
     }
   };
 
+  // Toast on incoming chat messages while the chat panel is closed.
+  // The Chat component itself owns message state via direct WebSocket subscription,
+  // so we no longer need the legacy `__chatAddMessage` window bridge or pending-messages buffer.
   const handleChatMessage = useCallback((message: any) => {
-    // Always try to add to chat if it's open
-    if ((window as any).__chatAddMessage) {
-      (window as any).__chatAddMessage(message);
-    } else {
-      // Store pending messages if chat is not open
-      setPendingMessages(prev => [...prev, message]);
-    }
-    // Show toast notification for incoming messages (not messages we sent)
     if (message.type === 'chat_message' && message.senderId !== currentUserId && !showChat) {
       toast({
         title: "New Message",
@@ -327,22 +320,18 @@ export default function RideTrackingPage() {
     }
   }, [currentUserId, showChat, toast]);
 
-  // When chat opens, flush pending messages
-  useEffect(() => {
-    if (showChat && pendingMessages.length > 0 && (window as any).__chatAddMessage) {
-      pendingMessages.forEach(msg => {
-        (window as any).__chatAddMessage(msg);
-      });
-      setPendingMessages([]);
-    }
-  }, [showChat, pendingMessages]);
-
   const {
     driverLocation,
     riderLocation,
     isConnected,
     error: locationError,
     sendChatMessage,
+    sendLocationMessage,
+    sendTyping,
+    sendReadReceipt,
+    sendReaction,
+    resendChatMessage,
+    wsRef,
   } = useLocationTracking({
     rideId,
     userType,
@@ -560,7 +549,13 @@ export default function RideTrackingPage() {
             rideId={rideId}
             currentUserId={currentUserId}
             otherUserId={otherUserId}
+            wsRef={wsRef}
             sendChatMessage={sendChatMessage}
+            sendLocationMessage={sendLocationMessage}
+            sendTyping={sendTyping}
+            sendReadReceipt={sendReadReceipt}
+            sendReaction={sendReaction}
+            resendChatMessage={resendChatMessage}
             isConnected={isConnected}
             isOpen={showChat}
             onClose={() => setShowChat(false)}

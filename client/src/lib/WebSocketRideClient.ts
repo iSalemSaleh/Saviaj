@@ -1,133 +1,67 @@
 /**
- * WebSocket Ride Client
- * 
- * This class manages WebSocket connections for real-time ride tracking.
- * It handles connection lifecycle, message parsing, and provides a clean
- * interface for sending location updates and chat messages.
- * 
- * @class WebSocketRideClient
- * 
- * @example
- * // Create client and connect
- * const client = new WebSocketRideClient();
- * 
- * client.onLocationUpdate((location, userType) => {
- *   console.log(`${userType} moved to`, location);
- * });
- * 
- * client.onChatMessage((message) => {
- *   console.log('New message:', message);
- * });
- * 
- * await client.connect(rideId, 'rider', userId);
- * 
- * // Send updates
- * client.sendLocation({ lat: 51.5, lng: -0.1, heading: 90 });
- * client.sendChatMessage('recipientId', 'Hello!');
- * 
- * // Cleanup
- * client.disconnect();
+ * WebSocketRideClient
+ *
+ * Real-time client for the rider/driver experience. Provides:
+ *  - Auto-reconnect with exponential backoff.
+ *  - Outbound message queue (mirrored to localStorage) that survives reconnects and refreshes.
+ *  - Per-message client IDs (uuid) so the server can dedup retries and the UI can reconcile
+ *    optimistic bubbles with the server-confirmed row.
+ *  - Heartbeat health check (relies on server pings; the `ws` library handles pong frames
+ *    automatically in the browser).
+ *  - Typed event callbacks for location, chat, presence, typing, delivery + read receipts,
+ *    and reaction updates.
  */
 
-/**
- * Location data structure for tracking.
- */
 export interface Location {
-  /**
-   * Latitude in decimal degrees.
-   */
   lat: number;
-  
-  /**
-   * Longitude in decimal degrees.
-   */
   lng: number;
-  
-  /**
-   * Heading in degrees (0-360, 0 = North).
-   * Optional, may not be available from all GPS sources.
-   */
   heading?: number;
-  
-  /**
-   * Speed in meters per second.
-   * Optional, may not be available from all GPS sources.
-   */
   speed?: number;
-  
-  /**
-   * Timestamp of the location reading.
-   */
   timestamp: number;
 }
 
-/**
- * Chat message structure.
- */
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+export type MessageKind = 'text' | 'location';
+
 export interface ChatMessage {
-  /**
-   * Unique message ID (assigned by server).
-   */
   id?: number;
-  
-  /**
-   * Ride ID this message belongs to.
-   */
+  clientId?: string;
   rideId: number;
-  
-  /**
-   * User ID of the sender.
-   */
   senderId: string;
-  
-  /**
-   * User ID of the recipient.
-   */
   receiverId: string;
-  
-  /**
-   * Message content.
-   */
   message: string;
-  
-  /**
-   * When the message was created.
-   */
-  createdAt?: Date;
-  
-  /**
-   * Whether the message has been read.
-   */
+  messageType?: MessageKind;
+  locationLat?: string | number | null;
+  locationLng?: string | number | null;
+  status?: MessageStatus;
+  reactions?: Record<string, string[]>;
+  createdAt?: string | Date;
+  deliveredAt?: string | Date | null;
+  readAt?: string | Date | null;
   read?: boolean;
 }
 
-/**
- * WebSocket message types supported by the server.
- */
-type MessageType =
-  | 'location_update'
-  | 'join_ride'
-  | 'leave_ride'
-  | 'chat_message'
-  | 'chat_message_sent';
-
-/**
- * Outbound message structure.
- */
-interface OutboundMessage {
-  type: MessageType;
-  rideId: number;
-  userType: 'rider' | 'driver';
-  userId?: string;
-  location?: Location;
-  senderId?: string;
-  receiverId?: string;
-  message?: string;
+export interface PresenceEvent {
+  online: boolean;
+  lastSeen: number | string | null;
 }
 
-/**
- * Connection state enum.
- */
+export interface DeliveryReceiptEvent {
+  id: number;
+  clientId?: string;
+  deliveredAt: string | Date;
+}
+
+export interface ReadReceiptEvent {
+  messageIds: number[];
+  readAt: string | Date;
+}
+
+export interface ReactionUpdateEvent {
+  messageId: number;
+  reactions: Record<string, string[]>;
+}
+
 export enum ConnectionState {
   DISCONNECTED = 'disconnected',
   CONNECTING = 'connecting',
@@ -135,404 +69,363 @@ export enum ConnectionState {
   RECONNECTING = 'reconnecting',
 }
 
-/**
- * Configuration options for the WebSocket client.
- */
 export interface WebSocketClientOptions {
-  /**
-   * Maximum number of reconnection attempts.
-   * @default 5
-   */
   maxReconnectAttempts?: number;
-  
-  /**
-   * Base delay between reconnection attempts (ms).
-   * Uses exponential backoff.
-   * @default 1000
-   */
   reconnectBaseDelayMs?: number;
 }
 
-/**
- * Event callback types.
- */
 type LocationCallback = (location: Location, userType: 'rider' | 'driver') => void;
 type ChatCallback = (message: ChatMessage) => void;
 type ConnectionCallback = (state: ConnectionState) => void;
 type ErrorCallback = (error: string) => void;
+type TypingCallback = (event: { senderId: string; typing: boolean }) => void;
+type PresenceCallback = (event: PresenceEvent) => void;
+type DeliveryCallback = (event: DeliveryReceiptEvent) => void;
+type ReadCallback = (event: ReadReceiptEvent) => void;
+type ReactionCallback = (event: ReactionUpdateEvent) => void;
 
-/**
- * WebSocket client for real-time ride tracking and chat.
- * 
- * Features:
- * - Automatic reconnection with exponential backoff
- * - Clean event-based API for location and chat updates
- * - Proper cleanup on disconnect
- * - Type-safe message handling
- */
+interface QueuedMessage {
+  clientId: string;
+  receiverId: string;
+  message: string;
+  messageType: MessageKind;
+  locationLat?: number;
+  locationLng?: number;
+  attempts: number;
+}
+
+// Polyfill-safe UUID. crypto.randomUUID is available in modern browsers + Node 16+.
+function uuid(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
+      return (crypto as any).randomUUID();
+    }
+  } catch { /* fall through */ }
+  return 'id-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
 export class WebSocketRideClient {
-  /**
-   * The WebSocket connection instance.
-   */
   private ws: WebSocket | null = null;
-  
-  /**
-   * Current connection state.
-   */
   private state: ConnectionState = ConnectionState.DISCONNECTED;
-  
-  /**
-   * Current ride ID (set after joining).
-   */
   private rideId: number | null = null;
-  
-  /**
-   * Current user type (rider or driver).
-   */
   private userType: 'rider' | 'driver' | null = null;
-  
-  /**
-   * Current user ID.
-   */
   private userId: string | null = null;
-  
-  /**
-   * Configuration options.
-   */
+
   private options: Required<WebSocketClientOptions>;
-  
-  /**
-   * Number of reconnection attempts made.
-   */
-  private reconnectAttempts: number = 0;
-  
-  /**
-   * Timeout ID for reconnection delay.
-   */
-  private reconnectTimeout: NodeJS.Timeout | null = null;
-  
-  /**
-   * Event callbacks.
-   */
+  private reconnectAttempts = 0;
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
   private locationCallbacks: LocationCallback[] = [];
   private chatCallbacks: ChatCallback[] = [];
   private connectionCallbacks: ConnectionCallback[] = [];
   private errorCallbacks: ErrorCallback[] = [];
-  
-  /**
-   * Creates a new WebSocketRideClient.
-   * 
-   * @param options - Configuration options
-   */
+  private typingCallbacks: TypingCallback[] = [];
+  private presenceCallbacks: PresenceCallback[] = [];
+  private deliveryCallbacks: DeliveryCallback[] = [];
+  private readCallbacks: ReadCallback[] = [];
+  private reactionCallbacks: ReactionCallback[] = [];
+
+  // Queue of outbound chat messages awaiting an ack. Keyed by clientId for O(1) ack drain.
+  private sendQueue: Map<string, QueuedMessage> = new Map();
+
   constructor(options: WebSocketClientOptions = {}) {
     this.options = {
-      maxReconnectAttempts: options.maxReconnectAttempts ?? 5,
+      maxReconnectAttempts: options.maxReconnectAttempts ?? 8,
       reconnectBaseDelayMs: options.reconnectBaseDelayMs ?? 1000,
     };
   }
-  
-  /**
-   * Connects to the WebSocket server and joins a ride.
-   * 
-   * @param rideId - The ride ID to join
-   * @param userType - Whether the user is a 'rider' or 'driver'
-   * @param userId - The user's unique identifier
-   * @returns Promise that resolves when connected
-   */
-  public async connect(
-    rideId: number,
-    userType: 'rider' | 'driver',
-    userId: string
-  ): Promise<void> {
+
+  // ============================================================
+  // Connection lifecycle
+  // ============================================================
+
+  public async connect(rideId: number, userType: 'rider' | 'driver', userId: string): Promise<void> {
     this.rideId = rideId;
     this.userType = userType;
     this.userId = userId;
     this.reconnectAttempts = 0;
-    
+    this.loadQueueFromStorage();
     return this.createConnection();
   }
-  
-  /**
-   * Creates the WebSocket connection.
-   */
+
   private createConnection(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.updateState(ConnectionState.CONNECTING);
-      
-      // Build WebSocket URL based on current page protocol
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws`;
-      
       this.ws = new WebSocket(wsUrl);
-      
-      /**
-       * Handle successful connection.
-       */
+
       this.ws.onopen = () => {
         this.updateState(ConnectionState.CONNECTED);
         this.reconnectAttempts = 0;
-        
-        // Send join message
-        this.sendMessage({
+        this.sendRaw({
           type: 'join_ride',
           rideId: this.rideId!,
           userType: this.userType!,
           userId: this.userId!,
         });
-        
+        // Drain any queued outbound messages now that we're back online.
+        this.flushQueue();
         resolve();
       };
-      
-      /**
-       * Handle incoming messages.
-       */
-      this.ws.onmessage = (event) => {
-        this.handleMessage(event.data);
-      };
-      
-      /**
-       * Handle connection close.
-       */
+
+      this.ws.onmessage = (event) => this.handleMessage(event.data);
+
       this.ws.onclose = () => {
         this.updateState(ConnectionState.DISCONNECTED);
-        
-        // Attempt reconnection if not intentionally disconnected
-        if (this.rideId !== null) {
-          this.attemptReconnect();
-        }
+        if (this.rideId !== null) this.attemptReconnect();
       };
-      
-      /**
-       * Handle connection errors.
-       */
+
       this.ws.onerror = () => {
         this.notifyError('WebSocket connection error');
         reject(new Error('WebSocket connection failed'));
       };
     });
   }
-  
-  /**
-   * Attempts to reconnect with exponential backoff.
-   */
+
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.options.maxReconnectAttempts) {
       this.notifyError('Max reconnection attempts reached');
       return;
     }
-    
     this.updateState(ConnectionState.RECONNECTING);
     this.reconnectAttempts++;
-    
-    // Calculate delay with exponential backoff
-    const delay = this.options.reconnectBaseDelayMs * Math.pow(2, this.reconnectAttempts - 1);
-    
+    const delay = Math.min(this.options.reconnectBaseDelayMs * Math.pow(2, this.reconnectAttempts - 1), 30_000);
     this.reconnectTimeout = setTimeout(() => {
-      this.createConnection().catch(() => {
-        // Error will trigger another reconnect attempt
-      });
+      this.createConnection().catch(() => { /* error triggers another retry */ });
     }, delay);
   }
-  
-  /**
-   * Parses and routes incoming messages.
-   * 
-   * @param data - Raw message data from WebSocket
-   */
+
+  // ============================================================
+  // Inbound dispatch
+  // ============================================================
+
   private handleMessage(data: string): void {
     try {
-      const message = JSON.parse(data);
-      
-      switch (message.type) {
+      const m = JSON.parse(data);
+      switch (m.type) {
         case 'location_update':
-          // Only process updates from the other party
-          if (message.userType !== this.userType) {
-            this.notifyLocationUpdate(message.location, message.userType);
+          if (m.userType !== this.userType) {
+            this.locationCallbacks.forEach((cb) => cb(m.location, m.userType));
           }
           break;
-          
         case 'chat_message':
+          this.chatCallbacks.forEach((cb) => cb(m));
+          break;
         case 'chat_message_sent':
-          this.notifyChatMessage(message);
+          // Drain ack from queue, then notify.
+          if (m.clientId) {
+            this.sendQueue.delete(m.clientId);
+            this.persistQueue();
+          }
+          this.chatCallbacks.forEach((cb) => cb(m));
+          break;
+        case 'delivery_receipt':
+          this.deliveryCallbacks.forEach((cb) => cb(m));
+          break;
+        case 'read_receipt':
+          this.readCallbacks.forEach((cb) => cb(m));
+          break;
+        case 'typing':
+          this.typingCallbacks.forEach((cb) => cb({ senderId: m.senderId, typing: true }));
+          break;
+        case 'typing_stop':
+          this.typingCallbacks.forEach((cb) => cb({ senderId: m.senderId, typing: false }));
+          break;
+        case 'presence':
+          this.presenceCallbacks.forEach((cb) => cb({ online: !!m.online, lastSeen: m.lastSeen ?? null }));
+          break;
+        case 'joined':
+          if (m.presence) {
+            this.presenceCallbacks.forEach((cb) => cb({ online: !!m.presence.online, lastSeen: m.presence.lastSeen ?? null }));
+          }
+          break;
+        case 'reaction_update':
+          this.reactionCallbacks.forEach((cb) => cb({ messageId: m.messageId, reactions: m.reactions || {} }));
           break;
       }
     } catch (err) {
       console.error('Error parsing WebSocket message:', err);
     }
   }
-  
-  /**
-   * Sends a message through the WebSocket.
-   * 
-   * @param message - Message to send
-   */
-  private sendMessage(message: OutboundMessage): void {
+
+  // ============================================================
+  // Outbound API
+  // ============================================================
+
+  private sendRaw(payload: any): boolean {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+      this.ws.send(JSON.stringify(payload));
+      return true;
     }
+    return false;
   }
-  
-  /**
-   * Sends a location update to the server.
-   * 
-   * @param location - Current location data
-   */
+
   public sendLocation(location: Location): void {
     if (!this.rideId || !this.userType) return;
-    
-    this.sendMessage({
-      type: 'location_update',
-      rideId: this.rideId,
-      userType: this.userType,
-      location,
-    });
+    this.sendRaw({ type: 'location_update', rideId: this.rideId, userType: this.userType, location });
   }
-  
+
   /**
-   * Sends a chat message.
-   * 
-   * @param receiverId - ID of the message recipient
-   * @param message - Message content
+   * Sends a text chat message. Returns the generated clientId so the caller can
+   * render an optimistic bubble keyed by the same id.
    */
-  public sendChatMessage(receiverId: string, message: string): void {
-    if (!this.rideId || !this.userId) return;
-    
-    this.sendMessage({
-      type: 'chat_message',
-      rideId: this.rideId,
-      userType: this.userType!,
-      senderId: this.userId,
+  public sendChatMessage(receiverId: string, message: string): string {
+    return this.enqueueAndSend({
+      clientId: uuid(),
       receiverId,
       message,
+      messageType: 'text',
+      attempts: 0,
     });
   }
-  
+
+  public sendLocationMessage(receiverId: string, lat: number, lng: number, label = 'Shared location'): string {
+    return this.enqueueAndSend({
+      clientId: uuid(),
+      receiverId,
+      message: label,
+      messageType: 'location',
+      locationLat: lat,
+      locationLng: lng,
+      attempts: 0,
+    });
+  }
+
   /**
-   * Disconnects from the WebSocket server.
-   * 
-   * Sends a leave message and cleanly closes the connection.
+   * Resend a message that previously failed. Re-uses its clientId so the server
+   * dedups against the original row if it actually went through.
    */
+  public resendChatMessage(clientId: string): void {
+    const msg = this.sendQueue.get(clientId);
+    if (!msg) return;
+    msg.attempts += 1;
+    this.persistQueue();
+    this.dispatchQueued(msg);
+  }
+
+  public sendTyping(typing: boolean): void {
+    if (!this.rideId) return;
+    this.sendRaw({ type: typing ? 'typing' : 'typing_stop', rideId: this.rideId });
+  }
+
+  public sendReadReceipt(): void {
+    if (!this.rideId) return;
+    this.sendRaw({ type: 'read_receipt', rideId: this.rideId });
+  }
+
+  public sendReaction(messageId: number, emoji: string, remove = false): void {
+    if (!this.rideId) return;
+    this.sendRaw({ type: remove ? 'reaction_remove' : 'reaction_add', rideId: this.rideId, messageId, emoji });
+  }
+
   public disconnect(): void {
-    // Cancel any pending reconnection
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
-    
-    // Send leave message if connected
     if (this.ws?.readyState === WebSocket.OPEN && this.rideId && this.userType) {
-      this.sendMessage({
-        type: 'leave_ride',
-        rideId: this.rideId,
-        userType: this.userType,
-      });
+      this.sendRaw({ type: 'leave_ride', rideId: this.rideId, userType: this.userType });
     }
-    
-    // Close connection
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
-    
-    // Clear state
     this.rideId = null;
     this.userType = null;
     this.userId = null;
     this.updateState(ConnectionState.DISCONNECTED);
   }
-  
+
+  // ============================================================
+  // Queue persistence
+  // ============================================================
+
+  private queueStorageKey(): string {
+    return `chat_queue_${this.rideId ?? 'none'}_${this.userId ?? 'anon'}`;
+  }
+
+  private loadQueueFromStorage(): void {
+    this.sendQueue.clear();
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(this.queueStorageKey());
+      if (!raw) return;
+      const parsed: QueuedMessage[] = JSON.parse(raw);
+      parsed.forEach((m) => this.sendQueue.set(m.clientId, m));
+    } catch { /* ignore */ }
+  }
+
+  private persistQueue(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const arr = Array.from(this.sendQueue.values());
+      if (arr.length === 0) localStorage.removeItem(this.queueStorageKey());
+      else localStorage.setItem(this.queueStorageKey(), JSON.stringify(arr));
+    } catch { /* ignore */ }
+  }
+
+  private enqueueAndSend(msg: QueuedMessage): string {
+    this.sendQueue.set(msg.clientId, msg);
+    this.persistQueue();
+    this.dispatchQueued(msg);
+    return msg.clientId;
+  }
+
+  private dispatchQueued(msg: QueuedMessage): void {
+    if (!this.rideId || !this.userId) return;
+    const payload: any = {
+      type: 'chat_message',
+      rideId: this.rideId,
+      userType: this.userType,
+      senderId: this.userId,
+      receiverId: msg.receiverId,
+      message: msg.message,
+      messageType: msg.messageType,
+      clientId: msg.clientId,
+    };
+    if (msg.messageType === 'location') {
+      payload.locationLat = msg.locationLat;
+      payload.locationLng = msg.locationLng;
+    }
+    this.sendRaw(payload);
+  }
+
   /**
-   * Updates connection state and notifies listeners.
+   * Returns the list of currently queued (unacked) messages so the UI can render
+   * them as "sending..." bubbles after a refresh.
    */
+  public getQueuedMessages(): QueuedMessage[] {
+    return Array.from(this.sendQueue.values());
+  }
+
+  private flushQueue(): void {
+    this.sendQueue.forEach((msg) => this.dispatchQueued(msg));
+  }
+
+  // ============================================================
+  // Event registration
+  // ============================================================
+
   private updateState(state: ConnectionState): void {
     this.state = state;
     this.connectionCallbacks.forEach((cb) => cb(state));
   }
-  
-  /**
-   * Notifies location update listeners.
-   */
-  private notifyLocationUpdate(location: Location, userType: 'rider' | 'driver'): void {
-    this.locationCallbacks.forEach((cb) => cb(location, userType));
-  }
-  
-  /**
-   * Notifies chat message listeners.
-   */
-  private notifyChatMessage(message: ChatMessage): void {
-    this.chatCallbacks.forEach((cb) => cb(message));
-  }
-  
-  /**
-   * Notifies error listeners.
-   */
+
   private notifyError(error: string): void {
     this.errorCallbacks.forEach((cb) => cb(error));
   }
-  
-  /**
-   * Registers a callback for location updates.
-   * 
-   * @param callback - Function to call when a location update is received
-   * @returns Unsubscribe function
-   */
-  public onLocationUpdate(callback: LocationCallback): () => void {
-    this.locationCallbacks.push(callback);
-    return () => {
-      this.locationCallbacks = this.locationCallbacks.filter((cb) => cb !== callback);
-    };
-  }
-  
-  /**
-   * Registers a callback for chat messages.
-   * 
-   * @param callback - Function to call when a chat message is received
-   * @returns Unsubscribe function
-   */
-  public onChatMessage(callback: ChatCallback): () => void {
-    this.chatCallbacks.push(callback);
-    return () => {
-      this.chatCallbacks = this.chatCallbacks.filter((cb) => cb !== callback);
-    };
-  }
-  
-  /**
-   * Registers a callback for connection state changes.
-   * 
-   * @param callback - Function to call when connection state changes
-   * @returns Unsubscribe function
-   */
-  public onConnectionStateChange(callback: ConnectionCallback): () => void {
-    this.connectionCallbacks.push(callback);
-    return () => {
-      this.connectionCallbacks = this.connectionCallbacks.filter((cb) => cb !== callback);
-    };
-  }
-  
-  /**
-   * Registers a callback for errors.
-   * 
-   * @param callback - Function to call when an error occurs
-   * @returns Unsubscribe function
-   */
-  public onError(callback: ErrorCallback): () => void {
-    this.errorCallbacks.push(callback);
-    return () => {
-      this.errorCallbacks = this.errorCallbacks.filter((cb) => cb !== callback);
-    };
-  }
-  
-  /**
-   * Gets the current connection state.
-   */
-  public getState(): ConnectionState {
-    return this.state;
-  }
-  
-  /**
-   * Checks if currently connected.
-   */
-  public isConnected(): boolean {
-    return this.state === ConnectionState.CONNECTED;
-  }
+
+  public onLocationUpdate(cb: LocationCallback) { this.locationCallbacks.push(cb); return () => { this.locationCallbacks = this.locationCallbacks.filter((c) => c !== cb); }; }
+  public onChatMessage(cb: ChatCallback) { this.chatCallbacks.push(cb); return () => { this.chatCallbacks = this.chatCallbacks.filter((c) => c !== cb); }; }
+  public onConnectionStateChange(cb: ConnectionCallback) { this.connectionCallbacks.push(cb); return () => { this.connectionCallbacks = this.connectionCallbacks.filter((c) => c !== cb); }; }
+  public onError(cb: ErrorCallback) { this.errorCallbacks.push(cb); return () => { this.errorCallbacks = this.errorCallbacks.filter((c) => c !== cb); }; }
+  public onTyping(cb: TypingCallback) { this.typingCallbacks.push(cb); return () => { this.typingCallbacks = this.typingCallbacks.filter((c) => c !== cb); }; }
+  public onPresence(cb: PresenceCallback) { this.presenceCallbacks.push(cb); return () => { this.presenceCallbacks = this.presenceCallbacks.filter((c) => c !== cb); }; }
+  public onDeliveryReceipt(cb: DeliveryCallback) { this.deliveryCallbacks.push(cb); return () => { this.deliveryCallbacks = this.deliveryCallbacks.filter((c) => c !== cb); }; }
+  public onReadReceipt(cb: ReadCallback) { this.readCallbacks.push(cb); return () => { this.readCallbacks = this.readCallbacks.filter((c) => c !== cb); }; }
+  public onReactionUpdate(cb: ReactionCallback) { this.reactionCallbacks.push(cb); return () => { this.reactionCallbacks = this.reactionCallbacks.filter((c) => c !== cb); }; }
+
+  public getState(): ConnectionState { return this.state; }
+  public isConnected(): boolean { return this.state === ConnectionState.CONNECTED; }
 }

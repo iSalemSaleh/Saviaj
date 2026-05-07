@@ -524,4 +524,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS user_stats_user_id_unique ON public.user_stats
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON public.users USING btree (email);
 CREATE UNIQUE INDEX IF NOT EXISTS users_pass_id_unique ON public.users USING btree (pass_id);
 CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON public.users USING btree (username);
+
+-- Chat 10/10 (May 2026): per-message clientId dedup, status/receipts, reactions, location messages
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "client_id" VARCHAR(64);
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "status" VARCHAR(16) NOT NULL DEFAULT 'sent';
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "message_type" VARCHAR(16) NOT NULL DEFAULT 'text';
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "location_lat" NUMERIC(10,7);
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "location_lng" NUMERIC(10,7);
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "reactions" JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "delivered_at" TIMESTAMP;
+ALTER TABLE "chat_messages" ADD COLUMN IF NOT EXISTS "read_at" TIMESTAMP;
+CREATE INDEX IF NOT EXISTS chat_messages_ride_created_idx ON public.chat_messages USING btree (ride_id, created_at);
+CREATE INDEX IF NOT EXISTS chat_messages_receiver_read_idx ON public.chat_messages USING btree (receiver_id, read);
+CREATE UNIQUE INDEX IF NOT EXISTS chat_messages_ride_sender_client_uniq ON public.chat_messages USING btree (ride_id, sender_id, client_id);
 COMMIT;

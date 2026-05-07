@@ -5167,11 +5167,72 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(403).json({ message: "Unauthorized" });
       }
       
-      await storage.markMessagesAsRead(rideId, userId);
-      res.json({ success: true });
+      const updated = await storage.markMessagesAsRead(rideId, userId);
+      res.json({ success: true, count: updated.length, messageIds: updated.map((m) => m.id) });
     } catch (error) {
       console.error("Error marking messages as read:", error);
       res.status(500).json({ message: "Failed to mark messages as read" });
+    }
+  });
+
+  // Reactions: REST fallback for adding/removing emoji reactions on a chat message.
+  // The realtime path is via the WebSocket reaction_add/remove events; this endpoint
+  // exists so the UI works even if the socket happens to be down.
+  app.post('/api/rides/:id/messages/:messageId/reactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const messageId = parseInt(req.params.messageId);
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      const { emoji } = req.body ?? {};
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      if (!emoji || typeof emoji !== 'string' || emoji.length > 16) {
+        return res.status(400).json({ message: "Invalid emoji" });
+      }
+
+      const ride = await storage.getRideById(rideId);
+      if (!ride) return res.status(404).json({ message: "Ride not found" });
+      if (ride.riderId !== userId && ride.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      const target = await storage.getChatMessageById(messageId);
+      if (!target || target.rideId !== rideId) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+
+      const updated = await storage.addReaction(messageId, userId, emoji);
+      res.json({ success: true, reactions: updated?.reactions ?? {} });
+    } catch (error) {
+      console.error("Error adding reaction:", error);
+      res.status(500).json({ message: "Failed to add reaction" });
+    }
+  });
+
+  app.delete('/api/rides/:id/messages/:messageId/reactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const rideId = parseInt(req.params.id);
+      const messageId = parseInt(req.params.messageId);
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      const emoji = (req.query.emoji as string) || (req.body && req.body.emoji);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+      if (!emoji || typeof emoji !== 'string') {
+        return res.status(400).json({ message: "Invalid emoji" });
+      }
+
+      const ride = await storage.getRideById(rideId);
+      if (!ride) return res.status(404).json({ message: "Ride not found" });
+      if (ride.riderId !== userId && ride.driverId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      const target = await storage.getChatMessageById(messageId);
+      if (!target || target.rideId !== rideId) {
+        return res.status(404).json({ message: "Message not found" });
+      }
+
+      const updated = await storage.removeReaction(messageId, userId, emoji);
+      res.json({ success: true, reactions: updated?.reactions ?? {} });
+    } catch (error) {
+      console.error("Error removing reaction:", error);
+      res.status(500).json({ message: "Failed to remove reaction" });
     }
   });
 

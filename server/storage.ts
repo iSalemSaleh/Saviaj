@@ -618,7 +618,11 @@ export interface IStorage {
   // Chat operations
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   getChatMessagesByRide(rideId: number): Promise<ChatMessage[]>;
-  markMessagesAsRead(rideId: number, receiverId: string): Promise<void>;
+  markMessagesAsRead(rideId: number, receiverId: string): Promise<ChatMessage[]>;
+  markMessageDelivered(messageId: number): Promise<void>;
+  addReaction(messageId: number, userId: string, emoji: string): Promise<ChatMessage | undefined>;
+  removeReaction(messageId: number, userId: string, emoji: string): Promise<ChatMessage | undefined>;
+  getChatMessageById(messageId: number): Promise<ChatMessage | undefined>;
   getUnreadMessageCount(userId: string): Promise<number>;
   
   // Driver daily activity (for private driver limits)
@@ -2299,12 +2303,39 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Chat operations
+  // Atomically idempotent insert: relies on the unique index on
+  // (ride_id, sender_id, client_id). If the row already exists, ON CONFLICT DO NOTHING
+  // skips the insert, then we fall back to a select to return the canonical row.
+  // This is race-safe under concurrent retries (eg. reconnect + queue flush hitting twice).
   async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
-    const [chatMessage] = await db
+    // Cast: drizzle-zod inference is empty for some tables (same pattern as rides insert above).
+    const m = message as any;
+    const inserted = await db
       .insert(chatMessages)
-      .values(message as any)
+      .values(m)
+      .onConflictDoNothing({
+        target: [chatMessages.rideId, chatMessages.senderId, chatMessages.clientId],
+      })
       .returning();
-    return chatMessage;
+    if (inserted.length > 0) return inserted[0];
+
+    // If we got here, the unique index already had a row for (rideId, senderId, clientId).
+    if (m.clientId) {
+      const existing = await db
+        .select()
+        .from(chatMessages)
+        .where(
+          and(
+            eq(chatMessages.rideId, m.rideId),
+            eq(chatMessages.senderId, m.senderId),
+            eq(chatMessages.clientId, m.clientId)
+          )
+        )
+        .limit(1);
+      if (existing.length > 0) return existing[0];
+    }
+    // Should be unreachable, but be loud if it ever happens.
+    throw new Error('createChatMessage: insert returned no rows and no existing row found');
   }
 
   async getChatMessagesByRide(rideId: number): Promise<ChatMessage[]> {
@@ -2315,16 +2346,79 @@ export class DatabaseStorage implements IStorage {
       .orderBy(chatMessages.createdAt);
   }
 
-  async markMessagesAsRead(rideId: number, receiverId: string): Promise<void> {
-    await db
+  // Marks all unread messages for the receiver as read, returning the rows so callers
+  // (eg. websocket layer) can forward `read_receipt` events with specific message ids.
+  async markMessagesAsRead(rideId: number, receiverId: string): Promise<ChatMessage[]> {
+    const updated = await db
       .update(chatMessages)
-      .set({ read: true })
+      .set({ read: true, status: "read", readAt: new Date() })
       .where(
         and(
           eq(chatMessages.rideId, rideId),
-          eq(chatMessages.receiverId, receiverId)
+          eq(chatMessages.receiverId, receiverId),
+          eq(chatMessages.read, false)
         )
-      );
+      )
+      .returning();
+    return updated;
+  }
+
+  async markMessageDelivered(messageId: number): Promise<void> {
+    await db
+      .update(chatMessages)
+      .set({ status: "delivered", deliveredAt: new Date() })
+      .where(and(eq(chatMessages.id, messageId), eq(chatMessages.status, "sent")));
+  }
+
+  async getChatMessageById(messageId: number): Promise<ChatMessage | undefined> {
+    const [row] = await db.select().from(chatMessages).where(eq(chatMessages.id, messageId));
+    return row;
+  }
+
+  async addReaction(messageId: number, userId: string, emoji: string): Promise<ChatMessage | undefined> {
+    // Atomic JSONB merge: ensure emoji key exists as array, append userId only if not present.
+    const [row] = await db
+      .update(chatMessages)
+      .set({
+        reactions: sql`
+          jsonb_set(
+            COALESCE(${chatMessages.reactions}, '{}'::jsonb),
+            ARRAY[${emoji}],
+            CASE
+              WHEN COALESCE(${chatMessages.reactions} -> ${emoji}, '[]'::jsonb) @> to_jsonb(${userId}::text)
+                THEN COALESCE(${chatMessages.reactions} -> ${emoji}, '[]'::jsonb)
+              ELSE COALESCE(${chatMessages.reactions} -> ${emoji}, '[]'::jsonb) || to_jsonb(${userId}::text)
+            END,
+            true
+          )
+        `,
+      })
+      .where(eq(chatMessages.id, messageId))
+      .returning();
+    return row;
+  }
+
+  async removeReaction(messageId: number, userId: string, emoji: string): Promise<ChatMessage | undefined> {
+    // Pull userId out of the emoji array; if the array becomes empty, remove the key entirely.
+    const [row] = await db
+      .update(chatMessages)
+      .set({
+        reactions: sql`
+          CASE
+            WHEN jsonb_array_length(COALESCE(${chatMessages.reactions} -> ${emoji}, '[]'::jsonb) - ${userId}::text) = 0
+              THEN COALESCE(${chatMessages.reactions}, '{}'::jsonb) - ${emoji}
+            ELSE jsonb_set(
+              COALESCE(${chatMessages.reactions}, '{}'::jsonb),
+              ARRAY[${emoji}],
+              COALESCE(${chatMessages.reactions} -> ${emoji}, '[]'::jsonb) - ${userId}::text,
+              true
+            )
+          END
+        `,
+      })
+      .where(eq(chatMessages.id, messageId))
+      .returning();
+    return row;
   }
 
   async getUnreadMessageCount(userId: string): Promise<number> {
