@@ -1,0 +1,76 @@
+2026-05-08T10:51:01.3481259Z Error fetching user: error: column "preferred_language" does not exist
+2026-05-08T10:51:01.3481766Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-08T10:51:01.3481809Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-08T10:51:01.3481842Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-08T10:51:01.3481874Z     at async w1.getUser (/home/site/wwwroot/dist/index.cjs:72:35871)
+2026-05-08T10:51:01.3481906Z     at async /home/site/wwwroot/dist/index.cjs:334:21647 {
+2026-05-08T10:51:01.3481988Z   length: 120,
+2026-05-08T10:51:01.3482015Z   severity: 'ERROR',
+2026-05-08T10:51:01.3482041Z   code: '42703',
+2026-05-08T10:51:01.3482066Z   detail: undefined,
+2026-05-08T10:51:01.3482093Z   hint: undefined,
+2026-05-08T10:51:01.3482121Z   position: '2205',
+2026-05-08T10:51:01.3482147Z   internalPosition: undefined,
+2026-05-08T10:51:01.3482177Z   internalQuery: undefined,
+2026-05-08T10:51:01.3482207Z   where: undefined,
+2026-05-08T10:51:01.3482238Z   schema: undefined,
+2026-05-08T10:51:01.3482266Z   table: undefined,
+2026-05-08T10:51:01.3482304Z   column: undefined,
+2026-05-08T10:51:01.348233Z   dataType: undefined,
+2026-05-08T10:51:01.3482357Z   constraint: undefined,
+2026-05-08T10:51:01.3482383Z   file: 'parse_relation.c',
+2026-05-08T10:51:01.3482409Z   line: '3647',
+2026-05-08T10:51:01.3482436Z   routine: 'errorMissingColumn'
+2026-05-08T10:51:01.3482462Z }
+2026-05-08T10:51:01.3510397Z 10:51:01 AM [express] GET /api/auth/user 500 in 38ms :: {"message":"Failed to fetch user"}
+2026-05-08T10:51:01.4638042Z 10:51:01 AM [express] GET /api/auth/google/status 304 in 5ms
+2026-05-08T10:51:04.5451072Z Login error: error: column "preferred_language" does not exist
+2026-05-08T10:51:04.5451498Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-08T10:51:04.5451542Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-08T10:51:04.5451571Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-08T10:51:04.5451663Z     at async w1.getActiveUserByEmail (/home/site/wwwroot/dist/index.cjs:72:36111)
+2026-05-08T10:51:04.5451695Z     at async /home/site/wwwroot/dist/index.cjs:330:64186 {
+2026-05-08T10:51:04.5451722Z   length: 120,
+2026-05-08T10:51:04.5451748Z   severity: 'ERROR',
+2026-05-08T10:51:04.5451775Z   code: '42703',
+2026-05-08T10:51:04.5451801Z   detail: undefined,
+2026-05-08T10:51:04.5451827Z   hint: undefined,
+2026-05-08T10:51:04.5451854Z   position: '2205',
+2026-05-08T10:51:04.5451881Z   internalPosition: undefined,
+2026-05-08T10:51:04.5451909Z   internalQuery: undefined,
+2026-05-08T10:51:04.5451939Z   where: undefined,
+2026-05-08T10:51:04.5451968Z   schema: undefined,
+2026-05-08T10:51:04.545201Z   table: undefined,
+2026-05-08T10:51:04.5452038Z   column: undefined,
+2026-05-08T10:51:04.5452065Z   dataType: undefined,
+2026-05-08T10:51:04.5452093Z   constraint: undefined,
+2026-05-08T10:51:04.5452121Z   file: 'parse_relation.c',
+2026-05-08T10:51:04.5452151Z   line: '3647',
+2026-05-08T10:51:04.545218Z   routine: 'errorMissingColumn'
+2026-05-08T10:51:04.5452208Z }
+2026-05-08T10:51:04.5477672Z 10:51:04 AM [express] POST /api/auth/login 500 in 41ms :: {"message":"Login failed"}
+2026-05-08T10:51:08.3027021Z Login error: error: column "preferred_language" does not exist
+2026-05-08T10:51:08.3027461Z     at /home/site/wwwroot/dist/index.cjs:72:13356
+2026-05-08T10:51:08.3027503Z     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+2026-05-08T10:51:08.3027595Z     at async /home/site/wwwroot/dist/index.cjs:72:28730
+2026-05-08T10:51:08.3027625Z     at async w1.getActiveUserByEmail (/home/site/wwwroot/dist/index.cjs:72:36111)
+2026-05-08T10:51:08.3027651Z     at async /home/site/wwwroot/dist/index.cjs:330:64186 {
+2026-05-08T10:51:08.3027676Z   length: 120,
+2026-05-08T10:51:08.3027701Z   severity: 'ERROR',
+2026-05-08T10:51:08.3027728Z   code: '42703',
+2026-05-08T10:51:08.3027756Z   detail: undefined,
+2026-05-08T10:51:08.3027783Z   hint: undefined,
+2026-05-08T10:51:08.3027811Z   position: '2205',
+2026-05-08T10:51:08.3027839Z   internalPosition: undefined,
+2026-05-08T10:51:08.3027868Z   internalQuery: undefined,
+2026-05-08T10:51:08.3027912Z   where: undefined,
+2026-05-08T10:51:08.3027941Z   schema: undefined,
+2026-05-08T10:51:08.3027971Z   table: undefined,
+2026-05-08T10:51:08.3028001Z   column: undefined,
+2026-05-08T10:51:08.3028357Z   dataType: undefined,
+2026-05-08T10:51:08.3028393Z   constraint: undefined,
+2026-05-08T10:51:08.3028424Z   file: 'parse_relation.c',
+2026-05-08T10:51:08.3028453Z   line: '3647',
+2026-05-08T10:51:08.3028483Z   routine: 'errorMissingColumn'
+2026-05-08T10:51:08.3028509Z }
+2026-05-08T10:51:08.306155Z 10:51:08 AM [express] POST /api/auth/login 500 in 42ms :: {"message":"Login failed"}
