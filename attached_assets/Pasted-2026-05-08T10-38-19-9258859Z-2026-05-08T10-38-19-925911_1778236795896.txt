@@ -1,0 +1,100 @@
+2026-05-08T10:38:19.9258859Z    _____
+2026-05-08T10:38:19.9259119Z   /  _  \ __________ _________   ____
+2026-05-08T10:38:19.9259156Z  /  /_\  \\___   /  |  \_  __ \_/ __ \
+2026-05-08T10:38:19.9259184Z /    |    \/    /|  |  /|  | \/\  ___/
+2026-05-08T10:38:19.9259211Z \____|__  /_____ \____/ |__|    \___  >
+2026-05-08T10:38:19.9259237Z         \/      \/                  \/
+2026-05-08T10:38:19.9259263Z A P P   S E R V I C E   O N   L I N U X
+2026-05-08T10:38:19.9259287Z
+2026-05-08T10:38:19.9259314Z Documentation    : http://aka.ms/webapp-linux
+2026-05-08T10:38:19.925934Z NodeJS quickstart: https://aka.ms/node-qs
+2026-05-08T10:38:19.9259366Z NodeJS Version   : v24.13.0
+2026-05-08T10:38:19.9259403Z Instance Name    : pl0sdlwk001ENY
+2026-05-08T10:38:19.9259434Z Instance Id      : 9f2bc719b66d34457589cb00de51db78ee24d64fdc53bb239d3e78dd05eecf23
+2026-05-08T10:38:19.925946Z
+2026-05-08T10:38:19.925949Z Note: Any data outside '/home' is not persisted
+2026-05-08T10:38:21.0524796Z  * Starting OpenBSD Secure Shell server sshd
+2026-05-08T10:38:21.0634891Z    ...done.
+2026-05-08T10:38:21.0672711Z WEBSITES_INCLUDE_CLOUD_CERTS is not set to true.
+2026-05-08T10:38:21.0788474Z Updating certificates in /etc/ssl/certs...
+2026-05-08T10:38:25.3619786Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-ECC.pem
+2026-05-08T10:38:25.3620079Z rehash: warning: skipping duplicate certificate in SSLcom-TLS-Root-2022-RSA.pem
+2026-05-08T10:38:25.4181957Z rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
+2026-05-08T10:38:25.4269304Z 4 added, 0 removed; done.
+2026-05-08T10:38:25.4276467Z Running hooks in /etc/ca-certificates/update.d...
+2026-05-08T10:38:25.4293698Z done.
+2026-05-08T10:38:25.4348948Z CA certificates copied and updated successfully.
+2026-05-08T10:38:25.4693422Z  * Starting periodic command scheduler cron
+2026-05-08T10:38:25.4753303Z    ...done.
+2026-05-08T10:38:25.485393Z Found build manifest file at '/home/site/wwwroot/oryx-manifest.toml'. Deserializing it...
+2026-05-08T10:38:25.4861174Z Could not find operation ID in manifest. Generating an operation id...
+2026-05-08T10:38:25.4863151Z Build Operation ID: 257981f4-281e-459d-99c8-f11ea19f0e15
+2026-05-08T10:38:25.6754863Z Environment Variables for Application Insight's IPA Codeless Configuration exists..
+2026-05-08T10:38:25.6980195Z Writing output script to '/opt/startup/startup.sh'
+2026-05-08T10:38:25.7242768Z Running #!/bin/sh
+2026-05-08T10:38:25.7243155Z
+2026-05-08T10:38:25.7243194Z # Enter the source directory to make sure the script runs where the user expects
+2026-05-08T10:38:25.7243222Z cd "/home/site/wwwroot"
+2026-05-08T10:38:25.7243249Z
+2026-05-08T10:38:25.7253297Z export NODE_PATH=/usr/local/lib/node_modules:$NODE_PATH
+2026-05-08T10:38:25.7253483Z if [ -z "$PORT" ]; then
+2026-05-08T10:38:25.7253519Z 		export PORT=8080
+2026-05-08T10:38:25.7253574Z fi
+2026-05-08T10:38:25.7253707Z
+2026-05-08T10:38:25.7253741Z echo Found tar.gz based node_modules.
+2026-05-08T10:38:25.7253771Z extractionCommand="tar -xzf node_modules.tar.gz -C /node_modules"
+2026-05-08T10:38:25.7253801Z echo "Removing existing modules directory from root..."
+2026-05-08T10:38:25.725383Z rm -fr /node_modules
+2026-05-08T10:38:25.7253856Z mkdir -p /node_modules
+2026-05-08T10:38:25.7253882Z echo Extracting modules...
+2026-05-08T10:38:25.7253907Z $extractionCommand
+2026-05-08T10:38:25.7253934Z export NODE_PATH="/node_modules":$NODE_PATH
+2026-05-08T10:38:25.7253962Z export PATH=/node_modules/.bin:$PATH
+2026-05-08T10:38:25.7254001Z if [ -d node_modules ]; then
+2026-05-08T10:38:25.725403Z     mv -f node_modules _del_node_modules || true
+2026-05-08T10:38:25.7254057Z fi
+2026-05-08T10:38:25.7254083Z
+2026-05-08T10:38:25.7254111Z if [ -d /node_modules ]; then
+2026-05-08T10:38:25.7254138Z     ln -sfn /node_modules ./node_modules
+2026-05-08T10:38:25.7254163Z fi
+2026-05-08T10:38:25.7254187Z
+2026-05-08T10:38:25.7254212Z echo "Done."
+2026-05-08T10:38:25.725424Z npm start
+2026-05-08T10:38:25.7297508Z Found tar.gz based node_modules.
+2026-05-08T10:38:25.7303474Z Removing existing modules directory from root...
+2026-05-08T10:38:25.7366519Z Extracting modules...
+2026-05-08T10:38:33.0206299Z Done.
+2026-05-08T10:38:33.1306815Z npm info using npm@10.9.2
+2026-05-08T10:38:33.1312797Z npm info using node@v24.13.0
+2026-05-08T10:38:33.3925332Z
+2026-05-08T10:38:33.3925765Z > rest-express@1.0.0 start
+2026-05-08T10:38:33.3925804Z > NODE_ENV=production node dist/index.cjs
+2026-05-08T10:38:33.3925833Z
+2026-05-08T10:38:33.6706038Z node:internal/modules/cjs/loader:1424
+2026-05-08T10:38:33.6706429Z   throw err;
+2026-05-08T10:38:33.6706461Z   ^
+2026-05-08T10:38:33.6706488Z
+2026-05-08T10:38:33.6706572Z Error: Cannot find module '@azure/storage-blob'
+2026-05-08T10:38:33.6706599Z Require stack:
+2026-05-08T10:38:33.6706624Z - /home/site/wwwroot/dist/index.cjs
+2026-05-08T10:38:33.6706651Z     at Module._resolveFilename (node:internal/modules/cjs/loader:1421:15)
+2026-05-08T10:38:33.6706677Z     at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+2026-05-08T10:38:33.6706704Z     at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+2026-05-08T10:38:33.6706731Z     at Module._load (node:internal/modules/cjs/loader:1227:37)
+2026-05-08T10:38:33.6706757Z     at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+2026-05-08T10:38:33.6706787Z     at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+2026-05-08T10:38:33.671255Z     at Module.require (node:internal/modules/cjs/loader:1504:12)
+2026-05-08T10:38:33.6712587Z     at require (node:internal/modules/helpers:152:16)
+2026-05-08T10:38:33.6712632Z     at Object.<anonymous> (/home/site/wwwroot/dist/index.cjs:330:68627)
+2026-05-08T10:38:33.671266Z     at Module._compile (node:internal/modules/cjs/loader:1761:14) {
+2026-05-08T10:38:33.6712686Z   code: 'MODULE_NOT_FOUND',
+2026-05-08T10:38:33.6712714Z   requireStack: [ '/home/site/wwwroot/dist/index.cjs' ]
+2026-05-08T10:38:33.671274Z }
+2026-05-08T10:38:33.6712764Z
+2026-05-08T10:38:33.671279Z Node.js v24.13.0
+2026-05-08T10:38:33.6803313Z npm http fetch GET 200 https://registry.npmjs.org/npm 167ms
+2026-05-08T10:38:33.6830579Z npm notice
+2026-05-08T10:38:33.6830759Z npm notice New major version of npm available! 10.9.2 -> 11.14.0
+2026-05-08T10:38:33.6830823Z npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.0
+2026-05-08T10:38:33.6830861Z npm notice To update run: npm install -g npm@11.14.0
+2026-05-08T10:38:33.6830895Z npm notice

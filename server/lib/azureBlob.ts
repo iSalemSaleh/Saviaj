@@ -13,14 +13,15 @@
  *                                          and have `private` access; we serve via SAS GET)
  */
 
-import {
-  BlobServiceClient,
-  StorageSharedKeyCredential,
-  BlobSASPermissions,
-  generateBlobSASQueryParameters,
-  SASProtocol,
-} from "@azure/storage-blob";
+// NOTE: We deliberately avoid a top-level `import` of `@azure/storage-blob` so
+// the server can boot even when the package isn't installed yet (eg. an App
+// Service whose cached `node_modules.tar.gz` predates this dependency). The
+// SDK is loaded lazily inside `ensureClient()` and only when the env vars
+// indicate that someone actually wants to use it.
 import { randomUUID } from "crypto";
+
+type StorageSharedKeyCredentialT = import("@azure/storage-blob").StorageSharedKeyCredential;
+type BlobServiceClientT = import("@azure/storage-blob").BlobServiceClient;
 
 const ACCOUNT = process.env.AZURE_STORAGE_ACCOUNT;
 const KEY = process.env.AZURE_STORAGE_KEY;
@@ -43,18 +44,34 @@ const ALLOWED_MIME = new Set<string>([
 
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB per attachment.
 
-let sharedKey: StorageSharedKeyCredential | null = null;
-let serviceClient: BlobServiceClient | null = null;
+let sharedKey: StorageSharedKeyCredentialT | null = null;
+let serviceClient: BlobServiceClientT | null = null;
+let sdk: typeof import("@azure/storage-blob") | null = null;
 
-function ensureClient(): { sharedKey: StorageSharedKeyCredential; serviceClient: BlobServiceClient } {
+function loadSdk(): typeof import("@azure/storage-blob") {
+  if (sdk) return sdk;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    sdk = require("@azure/storage-blob");
+    return sdk!;
+  } catch (err: any) {
+    throw new Error(
+      `Azure Blob Storage SDK not installed on this server: ${err?.message || err}. ` +
+      `Run \`npm install @azure/storage-blob\` and redeploy.`,
+    );
+  }
+}
+
+function ensureClient(): { sharedKey: StorageSharedKeyCredentialT; serviceClient: BlobServiceClientT; sdk: typeof import("@azure/storage-blob") } {
   if (!ACCOUNT || !KEY) {
     throw new Error("Azure Blob Storage not configured (AZURE_STORAGE_ACCOUNT / AZURE_STORAGE_KEY missing)");
   }
-  if (!sharedKey) sharedKey = new StorageSharedKeyCredential(ACCOUNT, KEY);
+  const s = loadSdk();
+  if (!sharedKey) sharedKey = new s.StorageSharedKeyCredential(ACCOUNT, KEY);
   if (!serviceClient) {
-    serviceClient = new BlobServiceClient(`https://${ACCOUNT}.blob.core.windows.net`, sharedKey);
+    serviceClient = new s.BlobServiceClient(`https://${ACCOUNT}.blob.core.windows.net`, sharedKey);
   }
-  return { sharedKey, serviceClient };
+  return { sharedKey, serviceClient, sdk: s };
 }
 
 export interface SasUploadDescriptor {
@@ -77,7 +94,7 @@ export function createUploadSas(opts: {
   mimeType: string;
   fileName?: string;
 }): SasUploadDescriptor {
-  const { sharedKey, serviceClient } = ensureClient();
+  const { sharedKey, serviceClient, sdk: s } = ensureClient();
 
   if (!ALLOWED_MIME.has(opts.mimeType)) {
     throw new Error(`Unsupported media type: ${opts.mimeType}`);
@@ -93,23 +110,23 @@ export function createUploadSas(opts: {
   const uploadExpiry = new Date(now.getTime() + 10 * 60 * 1000);     // 10 minutes
   const readExpiry = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days
 
-  const uploadSas = generateBlobSASQueryParameters({
+  const uploadSas = s.generateBlobSASQueryParameters({
     containerName: CONTAINER,
     blobName,
-    permissions: BlobSASPermissions.parse("cw"), // create + write only
+    permissions: s.BlobSASPermissions.parse("cw"), // create + write only
     startsOn: new Date(now.getTime() - 60 * 1000), // skew tolerance
     expiresOn: uploadExpiry,
-    protocol: SASProtocol.Https,
+    protocol: s.SASProtocol.Https,
     contentType: opts.mimeType,
   }, sharedKey).toString();
 
-  const readSas = generateBlobSASQueryParameters({
+  const readSas = s.generateBlobSASQueryParameters({
     containerName: CONTAINER,
     blobName,
-    permissions: BlobSASPermissions.parse("r"),
+    permissions: s.BlobSASPermissions.parse("r"),
     startsOn: new Date(now.getTime() - 60 * 1000),
     expiresOn: readExpiry,
-    protocol: SASProtocol.Https,
+    protocol: s.SASProtocol.Https,
   }, sharedKey).toString();
 
   return {
