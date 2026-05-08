@@ -11,11 +11,11 @@ self.importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-app-comp
 self.importScripts('https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js');
 
 const FIREBASE_CONFIG = {
-  apiKey: 'REPLACE_AT_DEPLOY',
-  authDomain: 'REPLACE_AT_DEPLOY',
-  projectId: 'REPLACE_AT_DEPLOY',
-  messagingSenderId: 'REPLACE_AT_DEPLOY',
-  appId: 'REPLACE_AT_DEPLOY',
+  apiKey: 'AIzaSyCE8XVR8iS2ymizst6BhUE8PGSn00tIxj8',
+  authDomain: 'saviaj-ce538.firebaseapp.com',
+  projectId: 'saviaj-ce538',
+  messagingSenderId: '113438282917',
+  appId: '1:113438282917:web:e103502d6a7bf011c3694c',
 };
 
 try {
