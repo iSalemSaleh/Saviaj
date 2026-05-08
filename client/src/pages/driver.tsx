@@ -964,6 +964,19 @@ export default function DriverPage() {
     });
   };
 
+  const getTimeUntilDeparture = (dateString: string): string => {
+    const now = new Date();
+    const departure = new Date(dateString);
+    const diffMs = departure.getTime() - now.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+
+    if (diffMs < 0) return formatDate(dateString);
+    if (diffMins < 60) return `Leaving in ${diffMins} mins`;
+    if (diffHours < 24) return `Leaving in ${diffHours}h`;
+    return formatDate(dateString);
+  };
+
   const now = new Date();
   // Include all active ride statuses: pending_payment (waiting for rider to pay), scheduled (paid, ready to start), 
   // matched, en_route_pickup, arrived_pickup, and in_progress
@@ -1717,8 +1730,13 @@ export default function DriverPage() {
                         <Badge className="bg-primary text-white text-[10px] px-1" data-testid={`text-price-${offer.id}`}>{money.formatMajor(parseFloat(offer.offerPrice))}</Badge>
                       </div>
                       <p className="text-[10px] font-medium truncate">{offer.pickupLocation}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">→ {offer.dropoffLocation}</p>
-                      <p className="text-[10px] text-muted-foreground mb-1">{formatDate(offer.requestedTime)}</p>
+                      <p className="text-[10px] text-muted-foreground truncate mb-1">→ {offer.dropoffLocation}</p>
+                      <div className="mb-1">
+                        <Badge variant="outline" className="text-[10px]">
+                          <Clock className="h-2 w-2 mr-0.5" />
+                          {getTimeUntilDeparture(offer.requestedTime)}
+                        </Badge>
+                      </div>
                       <div className="flex gap-1">
                         <Button 
                           size="sm"
@@ -1981,11 +1999,16 @@ export default function DriverPage() {
                             </div>
                           </div>
                           <p className="text-[10px] font-medium truncate">{route.startLocation}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">→ {route.endLocation}</p>
-                          <p className="text-[10px] text-muted-foreground mb-1">{formatDate(route.departureTime)} {formatTime(route.departureTime)}</p>
-                          <div className="flex items-center justify-between text-[10px]">
-                            <span className="text-muted-foreground">Available:</span>
-                            <span className="font-medium">{route.availableSeats} seats</span>
+                          <p className="text-[10px] text-muted-foreground truncate mb-1">→ {route.endLocation}</p>
+                          <div className="flex items-center justify-between mb-1">
+                            <Badge variant="outline" className="text-[10px]">
+                              <Clock className="h-2 w-2 mr-0.5" />
+                              {getTimeUntilDeparture(route.departureTime)}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px]">
+                              <Users className="h-2 w-2 mr-0.5" />
+                              {route.availableSeats} seats
+                            </Badge>
                           </div>
                         </div>
                         
