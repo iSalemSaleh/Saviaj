@@ -15,7 +15,7 @@
     "@azure/storage-blob": "^12.31.0",
     "@capacitor/android": "^8.0.0",
     "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^7.4.4",
+    "@capacitor/cli": "^8.3.2",
     "@capacitor/core": "^8.0.0",
     "@capacitor/geolocation": "^8.0.0",
     "@capacitor/push-notifications": "^8.0.0",
