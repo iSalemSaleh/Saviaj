@@ -1240,11 +1240,11 @@ export default function DriverPage() {
                         <Settings className="h-3 w-3 text-muted-foreground" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-xs">
+                    <DialogContent className="max-w-xs max-h-[85vh] flex flex-col">
                       <DialogHeader>
                         <DialogTitle className="text-sm">Pro Driver Settings</DialogTitle>
                       </DialogHeader>
-                      <div className="space-y-3 pt-2">
+                      <div className="space-y-3 pt-2 overflow-y-auto flex-1 -mx-6 px-6">
                         {/* Rate mode toggle */}
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-medium">Tiered pricing</label>
