@@ -64,6 +64,7 @@ export async function ensureExpressAccountForDriver(args: {
     payoutsEnabled: !!account.payouts_enabled,
     onboarded: false,
     requirementsDue: account.requirements?.currently_due ?? [],
+    defaultCurrency: account.default_currency ?? null,
   });
 
   return account.id;
@@ -105,6 +106,7 @@ export async function syncAccountFromStripe(accountId: string): Promise<Stripe.A
       payoutsEnabled: !!account.payouts_enabled,
       onboarded: !!account.details_submitted,
       requirementsDue: account.requirements?.currently_due ?? [],
+      defaultCurrency: account.default_currency ?? null,
     });
   }
   return account;
@@ -180,6 +182,7 @@ export async function handleAccountUpdatedWebhook(account: Stripe.Account): Prom
     payoutsEnabled: !!account.payouts_enabled,
     onboarded: !!account.details_submitted,
     requirementsDue: account.requirements?.currently_due ?? [],
+    defaultCurrency: account.default_currency ?? null,
   });
   console.log(
     `[stripeConnect] synced ${userId}: charges=${account.charges_enabled} payouts=${account.payouts_enabled} onboarded=${account.details_submitted}`,

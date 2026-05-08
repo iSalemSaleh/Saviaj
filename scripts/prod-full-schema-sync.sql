@@ -478,6 +478,7 @@ ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "stripe_connect_charges_enabled" BO
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "stripe_connect_payouts_enabled" BOOLEAN DEFAULT false;
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "stripe_connect_requirements_due" JSONB;
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "stripe_connect_updated_at" TIMESTAMP;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "stripe_connect_default_currency" VARCHAR(3);
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "stripe_identity_session_id" VARCHAR;
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "stripe_identity_last_attempt_at" TIMESTAMP;
 ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "stripe_identity_failure_reason" VARCHAR(200);

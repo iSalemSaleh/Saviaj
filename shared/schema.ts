@@ -191,6 +191,13 @@ export const users = pgTable("users", {
   stripeConnectPayoutsEnabled: boolean("stripe_connect_payouts_enabled").default(false),
   stripeConnectRequirementsDue: jsonb("stripe_connect_requirements_due"),
   stripeConnectUpdatedAt: timestamp("stripe_connect_updated_at"),
+  // Cached from Stripe `account.default_currency` (ISO 4217, lowercase
+  // — e.g. "gbp"). Surfaced on the driver Payouts page so totals are
+  // formatted in the driver's payout currency rather than a hard-coded
+  // "£". Keeping it on the user row avoids hitting Stripe on every
+  // payouts list request; refreshed alongside the other Connect cache
+  // cols whenever account.updated fires or syncAccountFromStripe runs.
+  stripeConnectDefaultCurrency: varchar("stripe_connect_default_currency", { length: 3 }),
   // Stripe Identity - KYC. `kycStatus` / `kycProvider` already exist
   // above (provider-agnostic); these add Stripe-specific tracking so
   // we can resume / inspect a session and surface failure reasons.

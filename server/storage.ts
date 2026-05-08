@@ -423,6 +423,7 @@ export interface IStorage {
     payoutsEnabled: boolean;
     onboarded: boolean;
     requirementsDue: any;
+    defaultCurrency?: string | null;
   }): Promise<User>;
   updateUserStripeIdentity(id: string, fields: {
     sessionId?: string;
@@ -1013,18 +1014,27 @@ export class DatabaseStorage implements IStorage {
     payoutsEnabled: boolean;
     onboarded: boolean;
     requirementsDue: any;
+    defaultCurrency?: string | null;
   }): Promise<User> {
+    // `defaultCurrency` is optional so callers that don't have it
+    // (e.g. account creation, before Stripe has finalised currency)
+    // don't accidentally clobber a previously-cached value with NULL.
+    // Stripe returns lowercase ISO 4217 ("gbp"); we normalize defensively.
+    const set: Partial<typeof users.$inferInsert> = {
+      stripeConnectAccountId: fields.accountId,
+      stripeConnectChargesEnabled: fields.chargesEnabled,
+      stripeConnectPayoutsEnabled: fields.payoutsEnabled,
+      stripeConnectOnboarded: fields.onboarded,
+      stripeConnectRequirementsDue: fields.requirementsDue,
+      stripeConnectUpdatedAt: new Date(),
+      updatedAt: new Date(),
+    };
+    if (fields.defaultCurrency !== undefined && fields.defaultCurrency !== null) {
+      set.stripeConnectDefaultCurrency = String(fields.defaultCurrency).toLowerCase().slice(0, 3);
+    }
     const [user] = await db
       .update(users)
-      .set({
-        stripeConnectAccountId: fields.accountId,
-        stripeConnectChargesEnabled: fields.chargesEnabled,
-        stripeConnectPayoutsEnabled: fields.payoutsEnabled,
-        stripeConnectOnboarded: fields.onboarded,
-        stripeConnectRequirementsDue: fields.requirementsDue,
-        stripeConnectUpdatedAt: new Date(),
-        updatedAt: new Date(),
-      } as any)
+      .set(set)
       .where(eq(users.id, id))
       .returning();
     return user;

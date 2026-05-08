@@ -5816,12 +5816,20 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         storage.getDriverPayoutTotals(userId, { maxRetries: PAYOUT_RETRY_MAX_ATTEMPTS }),
         storage.getDriverPayoutsByPeriod(userId, { period: trendPeriod, periods: trendPoints }),
       ]);
-      // Response shape: { payouts, summary, trend }. Only consumer is
-      // the driver Payouts page (PayoutHistory in client/src/pages/settings.tsx).
+      // Response shape: { payouts, summary, trend, currency }. Only
+      // consumer is the driver Payouts page (PayoutHistory in
+      // client/src/pages/settings.tsx). `currency` is the driver's
+      // Stripe Connect `default_currency` (lowercase ISO 4217). It
+      // drives the symbol/decimals shown in the summary cards, the
+      // export-popover preview, and the trend chart so the entire
+      // page agrees with the currency Stripe will pay them in.
+      // Falls back to GBP for legacy rows that haven't synced yet.
+      const currency = (user.stripeConnectDefaultCurrency || 'gbp').toLowerCase();
       res.json({
         payouts,
         summary,
         trend: { period: trendPeriod, points: trendData },
+        currency,
       });
     } catch (err: any) {
       console.error('[payouts/list] error', err);
@@ -5991,8 +5999,12 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
 
       const summary = await storage.getTransferredPayoutExportSummaryForDriver(userId, { from, to });
+      // Echo the driver's payout currency back so the popover preview
+      // can render before /api/driver/payouts has resolved (avoids a
+      // brief "£" flash for non-GBP drivers when the popover opens).
+      const currency = (user.stripeConnectDefaultCurrency || 'gbp').toLowerCase();
       res.setHeader('Cache-Control', 'no-store');
-      res.json(summary);
+      res.json({ ...summary, currency });
     } catch (err: any) {
       console.error('[payouts/export-summary] error', err);
       res.status(500).json({ message: 'Failed to load export summary' });

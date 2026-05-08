@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Navbar from "@/components/layout/Navbar";
@@ -1402,7 +1402,44 @@ type PayoutsResponse = {
   payouts: PayoutRow[];
   summary: PayoutSummary;
   trend: PayoutTrend;
+  /** ISO 4217 currency the driver is paid in. Lowercase from server
+   *  (e.g. "gbp"). Drives the symbol/decimals on every money value
+   *  on this page so we never hard-code "£". */
+  currency: string;
 };
+
+// Build a stable per-currency money formatter. We reuse the same
+// instance across re-renders (and across the page) so the export
+// preview, summary cards, lifetime hero, payout rows, and the trend
+// chart all agree on symbol, separators, and decimal places — even
+// for currencies where the minor unit isn't 2 digits (e.g. JPY = 0).
+// `pence` here means "minor units" (the integer the API returns).
+function makeMoneyFormatter(currency: string) {
+  const safe = (currency || 'gbp').toUpperCase();
+  let nf: Intl.NumberFormat;
+  try {
+    nf = new Intl.NumberFormat(undefined, { style: 'currency', currency: safe });
+  } catch {
+    // Unknown currency code (shouldn't happen with Stripe values, but
+    // we guard so a bad cache can't crash the page) — fall back to GBP.
+    nf = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'GBP' });
+  }
+  // Resolve the actual minor-unit count for this currency so we
+  // divide by the right power of 10 (Stripe stores JPY in whole yen,
+  // GBP/USD/EUR in pence/cents, BHD in 1/1000 dinar, etc.).
+  const minorDigits = nf.resolvedOptions().maximumFractionDigits ?? 2;
+  const divisor = Math.pow(10, minorDigits);
+  return {
+    /** Format a minor-unit integer (e.g. pence) as currency. */
+    format: (minor: number) => nf.format((Number(minor) || 0) / divisor),
+    /** Format a number that's already in major units (e.g. for chart axes). */
+    formatMajor: (major: number) => nf.format(Number(major) || 0),
+    /** Convert minor units → major units (for chart values). */
+    toMajor: (minor: number) => (Number(minor) || 0) / divisor,
+    currency: safe,
+  };
+}
+type MoneyFormatter = ReturnType<typeof makeMoneyFormatter>;
 
 function SummaryCard({
   label,
@@ -1410,14 +1447,16 @@ function SummaryCard({
   testId,
   highlight,
   tone,
+  money,
 }: {
   label: string;
   valuePence: number;
   testId: string;
   highlight?: boolean;
   tone?: 'danger';
+  money: MoneyFormatter;
 }) {
-  const formatted = `£${(valuePence / 100).toFixed(2)}`;
+  const formatted = money.format(valuePence);
   const valueClass =
     tone === 'danger'
       ? 'text-red-600'
@@ -1449,11 +1488,13 @@ function EarningsTrendChart({
   period,
   onPeriodChange,
   isLoading,
+  money,
 }: {
   trend: PayoutTrend | undefined;
   period: 'week' | 'month';
   onPeriodChange: (p: 'week' | 'month') => void;
   isLoading: boolean;
+  money: MoneyFormatter;
 }) {
   const points = trend?.points ?? [];
   const totalPence = points.reduce((sum, p) => sum + (p.paidPence || 0), 0);
@@ -1471,7 +1512,7 @@ function EarningsTrendChart({
 
   const chartData = points.map((p) => ({
     label: formatBucketLabel(p.periodStart),
-    paidPounds: p.paidPence / 100,
+    paidMajor: money.toMajor(p.paidPence),
     paidPence: p.paidPence,
     periodStart: p.periodStart,
   }));
@@ -1528,16 +1569,16 @@ function EarningsTrendChart({
                 tickLine={false}
                 axisLine={false}
                 fontSize={11}
-                tickFormatter={(v: number) => `£${Math.round(v)}`}
-                width={48}
+                tickFormatter={(v: number) => money.formatMajor(Math.round(v))}
+                width={56}
               />
               <Tooltip
                 cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }}
-                formatter={(value: number | string) => [`£${Number(value).toFixed(2)}`, 'Paid out']}
+                formatter={(value: number | string) => [money.formatMajor(Number(value)), 'Paid out']}
                 labelFormatter={(label: string | number) => String(label)}
                 contentStyle={{ fontSize: 12 }}
               />
-              <Bar dataKey="paidPounds" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="paidMajor" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -1673,7 +1714,7 @@ function PayoutHistory() {
     return params.toString();
   })();
 
-  const { data: exportPreview, isFetching: isPreviewFetching, error: previewError } = useQuery<{ count: number; totalPence: number }>({
+  const { data: exportPreview, isFetching: isPreviewFetching, error: previewError } = useQuery<{ count: number; totalPence: number; currency?: string }>({
     queryKey: ['/api/driver/payouts/export-summary', { qs: previewQs }],
     queryFn: async () => {
       const res = await fetch(`/api/driver/payouts/export-summary${previewQs ? `?${previewQs}` : ''}`, {
@@ -1724,7 +1765,17 @@ function PayoutHistory() {
     }
   };
 
-  const formatAmount = (pence: number) => `£${(pence / 100).toFixed(2)}`;
+  // Single source of truth for money formatting on this page. Built
+  // from the driver's Stripe Connect default_currency (echoed by both
+  // /api/driver/payouts and /api/driver/payouts/export-summary). The
+  // payouts response is preferred — it's the always-on source that
+  // drives the summary cards too — and we only fall back to the
+  // export-summary's currency if the popover happens to open before
+  // the main payouts query resolves, so the preview never flashes "£"
+  // for a non-GBP driver.
+  const currency = data?.currency ?? exportPreview?.currency ?? 'gbp';
+  const money = useMemo(() => makeMoneyFormatter(currency), [currency]);
+  const formatAmount = (pence: number) => money.format(pence);
   const formatDate = (iso: string | null) => {
     if (!iso) return "";
     try { return new Date(iso).toLocaleString(); } catch { return ""; }
@@ -1862,7 +1913,7 @@ function PayoutHistory() {
                   </span>
                   {' · '}
                   <span className="font-medium" data-testid="text-export-preview-total">
-                    £{(exportPreview.totalPence / 100).toFixed(2)}
+                    {money.format(exportPreview.totalPence)}
                   </span>
                 </span>
               )}
@@ -1900,7 +1951,7 @@ function PayoutHistory() {
                 className="text-3xl font-bold tabular-nums text-accent mt-0.5"
                 data-testid="summary-paid-lifetime-value"
               >
-                £{(summary.paidLifetimePence / 100).toFixed(2)}
+                {money.format(summary.paidLifetimePence)}
               </p>
             </div>
             {/* Period split: this week / this month side by side */}
@@ -1909,11 +1960,13 @@ function PayoutHistory() {
                 label="Paid this week"
                 valuePence={summary.paidThisWeekPence}
                 testId="summary-paid-week"
+                money={money}
               />
               <SummaryCard
                 label="Paid this month"
                 valuePence={summary.paidThisMonthPence}
                 testId="summary-paid-month"
+                money={money}
               />
             </div>
             {/* Pending / failed only surface when there's something to know */}
@@ -1931,7 +1984,7 @@ function PayoutHistory() {
                         className="text-sm font-semibold tabular-nums"
                         data-testid="summary-pending-value"
                       >
-                        £{(summary.pendingPence / 100).toFixed(2)}
+                        {money.format(summary.pendingPence)}
                       </p>
                     </div>
                   </div>
@@ -1948,7 +2001,7 @@ function PayoutHistory() {
                         className="text-sm font-semibold tabular-nums text-red-700"
                         data-testid="summary-failed-stuck-value"
                       >
-                        £{(summary.failedStuckPence / 100).toFixed(2)}
+                        {money.format(summary.failedStuckPence)}
                       </p>
                     </div>
                   </div>
@@ -1962,6 +2015,7 @@ function PayoutHistory() {
           period={trendPeriod}
           onPeriodChange={setTrendPeriod}
           isLoading={isLoading}
+          money={money}
         />
         <div className="border-t pt-4 space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
