@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Star, Navigation, Car } from 'lucide-react';
 import carIconImage from '../../assets/car-icon.png';
+import { useUserMoneyFormatter } from '@/hooks/useUserMoney';
 
 // Convert vehicle color name to CSS hue-rotate value
 // The base car image has cyan/teal color (~180deg hue)
@@ -340,6 +341,10 @@ export function RiderLocationMap({
   fullScreen = false,
   centerTrigger = 0,
 }: RiderLocationMapProps) {
+  // Render driver fares in the signed-in user's payout currency so
+  // the map popovers match the rest of the app rather than always
+  // showing "£".
+  const money = useUserMoneyFormatter();
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
 
   const userIcon = useMemo(() => createUserLocationIcon(), []);
@@ -498,11 +503,11 @@ export function RiderLocationMap({
                           const t2 = parseFloat(driver.tier2RatePerMile || "0");
                           const t3 = parseFloat(driver.tier3RatePerMile || "0");
                           const lowest = t3 || t2 || parseFloat(driver.tier1RatePerMile);
-                          return `from £${lowest.toFixed(2)}/mile`;
+                          return `from ${money.formatMajor(lowest)}/mile`;
                         })()
-                      : `£${parseFloat(driver.ratePerMile!).toFixed(2)}/mile`}
+                      : `${money.formatMajor(parseFloat(driver.ratePerMile!))}/mile`}
                     {driver.baseMinimumFare && parseFloat(driver.baseMinimumFare) > 0 && (
-                      <span className="text-[10px] text-muted-foreground ml-1">(min £{parseFloat(driver.baseMinimumFare).toFixed(2)})</span>
+                      <span className="text-[10px] text-muted-foreground ml-1">(min {money.formatMajor(parseFloat(driver.baseMinimumFare))})</span>
                     )}
                   </div>
                 )}

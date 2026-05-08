@@ -127,9 +127,18 @@ export async function transferToDriver(args: {
   sourceCharge?: string;
 }): Promise<Stripe.Transfer> {
   const stripe = await getUncachableStripeClient();
+  // Pull the driver's cached Stripe Connect default_currency so the
+  // transfer settles in whatever Stripe expects for their account
+  // (USD for a US driver, EUR for FR, JPY for JP, …). Hard-coding
+  // "gbp" worked while we only had UK drivers but would fail for
+  // anyone else with `currency_mismatch`. Falls back to GBP for
+  // legacy rows that haven't synced yet — matches the symbol the
+  // settings page falls back to.
+  const driver = await storage.getUser(args.driverId);
+  const currency = (driver?.stripeConnectDefaultCurrency || 'gbp').toLowerCase();
   return stripe.transfers.create({
     amount: args.amountPence,
-    currency: "gbp",
+    currency,
     destination: args.destinationAccountId,
     transfer_group: `ride_${args.rideId}`,
     ...(args.sourceCharge ? { source_transaction: args.sourceCharge } : {}),

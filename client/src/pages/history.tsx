@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Clock, PoundSterling, Calendar, Users, Star, CheckCircle2, XCircle, AlertCircle, Trash2, Loader2 } from "lucide-react";
+import { MapPin, Clock, Calendar, Users, Star, CheckCircle2, XCircle, AlertCircle, Trash2, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserMoneyFormatter } from "@/hooks/useUserMoney";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -70,6 +71,11 @@ export default function HistoryPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  // Show every historical price in the signed-in user's payout
+  // currency so a driver browsing past rides sees the same symbol
+  // they've already received in their Stripe payout. Falls back to
+  // GBP for rider-only accounts.
+  const money = useUserMoneyFormatter();
 
   const { data: myOffers = [], isLoading: offersLoading } = useQuery<RiderOffer[]>({
     queryKey: ["/api/rider-offers/mine"],
@@ -260,9 +266,7 @@ export default function HistoryPage() {
                               <Calendar className="h-3 w-3" />
                               {format(new Date(ride.scheduledTime), "d MMM yyyy, HH:mm")}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <PoundSterling className="h-3 w-3" />
-                              £{ride.agreedPrice}
+                            <span className="flex items-center gap-1">{money.formatMajor(parseFloat(ride.agreedPrice))}
                             </span>
                             <Badge className="bg-green-500"><CheckCircle2 className="h-3 w-3 mr-1" /> Completed</Badge>
                           </div>
@@ -312,9 +316,7 @@ export default function HistoryPage() {
                               <Calendar className="h-3 w-3" />
                               {format(new Date(ride.scheduledTime), "d MMM yyyy, HH:mm")}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <PoundSterling className="h-3 w-3" />
-                              £{ride.agreedPrice}
+                            <span className="flex items-center gap-1">{money.formatMajor(parseFloat(ride.agreedPrice))}
                             </span>
                             {getStatusBadge(ride.status)}
                           </div>
@@ -364,9 +366,7 @@ export default function HistoryPage() {
                               <Calendar className="h-3 w-3" />
                               {format(new Date(ride.scheduledTime), "d MMM yyyy, HH:mm")}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <PoundSterling className="h-3 w-3" />
-                              £{ride.agreedPrice}
+                            <span className="flex items-center gap-1">{money.formatMajor(parseFloat(ride.agreedPrice))}
                             </span>
                             <Badge variant="outline" className="text-orange-600 border-orange-600">
                               <AlertCircle className="h-3 w-3 mr-1" /> Expired
@@ -418,9 +418,7 @@ export default function HistoryPage() {
                               <Calendar className="h-3 w-3" />
                               {format(new Date(offer.requestedTime), "d MMM yyyy, HH:mm")}
                             </span>
-                            <span className="flex items-center gap-1">
-                              <PoundSterling className="h-3 w-3" />
-                              £{offer.offerPrice}
+                            <span className="flex items-center gap-1">{money.formatMajor(parseFloat(offer.offerPrice))}
                             </span>
                           </div>
                         </div>
@@ -472,9 +470,7 @@ export default function HistoryPage() {
                                 {format(new Date(route.departureTime), "d MMM yyyy, HH:mm")}
                               </span>
                               {route.pricePerSeat && (
-                                <span className="flex items-center gap-1">
-                                  <PoundSterling className="h-3 w-3" />
-                                  £{route.pricePerSeat}/seat
+                                <span className="flex items-center gap-1">{money.formatMajor(parseFloat(route.pricePerSeat))}/seat
                                 </span>
                               )}
                               <span className="flex items-center gap-1">

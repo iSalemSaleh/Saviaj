@@ -5,6 +5,8 @@ import Navbar from "@/components/layout/Navbar";
 import { RideMap } from "@/components/map/RideMap";
 import { useLocationTracking } from "@/hooks/useLocationTracking";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserMoneyFormatter } from "@/hooks/useUserMoney";
+import { formatMoneyMajor } from "@shared/money";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +26,6 @@ import {
   Car, 
   CheckCircle,
   AlertCircle,
-  PoundSterling,
   CreditCard,
   Star,
   Loader2,
@@ -58,6 +59,9 @@ export default function RideTrackingPage() {
   const params = useParams<{ id: string }>();
   const rideId = parseInt(params.id || "0");
   const { user } = useAuth();
+  // Drives the symbol on the in-trip Pay button so a non-UK driver
+  // (or rider-also-driver) sees the amount in their currency.
+  const money = useUserMoneyFormatter();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [eta, setEta] = useState<number | null>(null);
@@ -483,8 +487,7 @@ export default function RideTrackingPage() {
               {isConnected && <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />}
             </div>
             <span className="text-base font-bold text-primary flex items-center" data-testid="text-fare">
-              <PoundSterling className="h-3.5 w-3.5" />
-              {ride.agreedPrice}
+              {money.formatMajor(parseFloat(ride.agreedPrice))}
             </span>
           </div>
           
@@ -648,7 +651,11 @@ export default function RideTrackingPage() {
           <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 p-2">
             <div className="flex items-center gap-2 mb-1.5">
               <CreditCard className="h-3.5 w-3.5 text-primary" />
-              <span className="text-xs font-medium">Pay £{ride.agreedPrice}</span>
+              {/* PaymentButton is currently GBP-locked end-to-end (see
+                  PaymentButton.tsx). Render the surrounding "Pay …" label
+                  in the same currency so the rider isn't shown one
+                  symbol here and another in the wallet sheet. */}
+              <span className="text-xs font-medium">Pay {formatMoneyMajor(parseFloat(ride.agreedPrice), 'gbp')}</span>
               <span className="text-[9px] text-muted-foreground ml-auto">Powered by Stripe</span>
             </div>
             <PaymentButton

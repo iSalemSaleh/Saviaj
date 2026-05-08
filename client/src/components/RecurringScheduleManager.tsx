@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarDays, Pause, Play, Trash2, Loader2, Repeat, Clock, MapPin, ChevronDown, ChevronUp } from "lucide-react";
+import { useUserMoneyFormatter } from "@/hooks/useUserMoney";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_NAMES_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -33,6 +34,7 @@ interface Schedule {
 }
 
 export function RecurringScheduleManager({ type }: { type: "rider" | "driver" }) {
+  const money = useUserMoneyFormatter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
@@ -191,12 +193,12 @@ export function RecurringScheduleManager({ type }: { type: "rider" | "driver" })
                           </div>
                           {entries[0]?.offerPrice && (
                             <div className="text-[10px] text-muted-foreground">
-                              £{parseFloat(entries[0].offerPrice).toFixed(2)} per trip
+                              {money.formatMajor(parseFloat(entries[0].offerPrice))} per trip
                             </div>
                           )}
                           {entries[0]?.pricePerSeat && (
                             <div className="text-[10px] text-muted-foreground">
-                              £{parseFloat(entries[0].pricePerSeat).toFixed(2)}/seat · {entries[0].availableSeats} seats
+                              {money.formatMajor(parseFloat(entries[0].pricePerSeat))}/seat · {entries[0].availableSeats} seats
                             </div>
                           )}
                         </div>

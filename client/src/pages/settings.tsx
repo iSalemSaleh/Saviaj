@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { COUNTRY_CODES, type CountryCode } from "@/lib/countryCodes";
 import { resolveTimezone, todayYmdInZone } from "@shared/timezone";
+import { makeMoneyFormatter, type MoneyFormatter } from "@shared/money";
 
 export default function SettingsPage() {
   const { user, isLoading: authLoading } = useAuth();
@@ -1408,38 +1409,10 @@ type PayoutsResponse = {
   currency: string;
 };
 
-// Build a stable per-currency money formatter. We reuse the same
-// instance across re-renders (and across the page) so the export
-// preview, summary cards, lifetime hero, payout rows, and the trend
-// chart all agree on symbol, separators, and decimal places — even
-// for currencies where the minor unit isn't 2 digits (e.g. JPY = 0).
-// `pence` here means "minor units" (the integer the API returns).
-function makeMoneyFormatter(currency: string) {
-  const safe = (currency || 'gbp').toUpperCase();
-  let nf: Intl.NumberFormat;
-  try {
-    nf = new Intl.NumberFormat(undefined, { style: 'currency', currency: safe });
-  } catch {
-    // Unknown currency code (shouldn't happen with Stripe values, but
-    // we guard so a bad cache can't crash the page) — fall back to GBP.
-    nf = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'GBP' });
-  }
-  // Resolve the actual minor-unit count for this currency so we
-  // divide by the right power of 10 (Stripe stores JPY in whole yen,
-  // GBP/USD/EUR in pence/cents, BHD in 1/1000 dinar, etc.).
-  const minorDigits = nf.resolvedOptions().maximumFractionDigits ?? 2;
-  const divisor = Math.pow(10, minorDigits);
-  return {
-    /** Format a minor-unit integer (e.g. pence) as currency. */
-    format: (minor: number) => nf.format((Number(minor) || 0) / divisor),
-    /** Format a number that's already in major units (e.g. for chart axes). */
-    formatMajor: (major: number) => nf.format(Number(major) || 0),
-    /** Convert minor units → major units (for chart values). */
-    toMajor: (minor: number) => (Number(minor) || 0) / divisor,
-    currency: safe,
-  };
-}
-type MoneyFormatter = ReturnType<typeof makeMoneyFormatter>;
+// Per-currency money formatter is now in `@shared/money` so the same
+// rules (symbol, decimals, minor-unit divisor) are reused by other
+// driver-facing screens, server-issued strings, and the settings
+// page below — see makeMoneyFormatter / MoneyFormatter imported above.
 
 function SummaryCard({
   label,

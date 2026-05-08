@@ -860,7 +860,7 @@ export default function BecomeDriverPage() {
                 <div>
                   <p className="font-medium text-amber-800 dark:text-amber-200">Private Driver Limits</p>
                   <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                    Without commercial verification, you're limited to 5 rides per day and £99.99 in daily earnings.
+                    Without commercial verification, you're limited to 5 rides per day and £99.99 GBP in daily earnings.
                     Complete this section to remove these limits.
                   </p>
                 </div>

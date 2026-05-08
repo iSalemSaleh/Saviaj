@@ -3,6 +3,7 @@ import { loadStripe, PaymentRequest } from "@stripe/stripe-js";
 import { Elements, PaymentRequestButtonElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
 import { Loader2, CreditCard, Wallet } from "lucide-react";
+import { formatMoneyMajor } from "@shared/money";
 
 interface PaymentButtonProps {
   amount: number;
@@ -10,6 +11,18 @@ interface PaymentButtonProps {
   onSuccess: () => void;
   onError: (error: string) => void;
 }
+
+// Payment is currently GBP-only end-to-end:
+//   server/stripeService.ts createPaymentIntent + checkout sessions
+//   both hardcode `currency: 'gbp'`.
+// Until those derive currency from the ride/driver, the wallet sheet
+// and the displayed "Pay …" amount must stay in GBP so the user
+// isn't shown one currency and charged in another. Switching the
+// client side without the server side is a correctness bug, so we
+// deliberately keep both halves in lockstep here. When the backend
+// becomes currency-aware, swap this back to `useUserMoneyFormatter`.
+const PAYMENT_CURRENCY = 'gbp';
+const PAYMENT_COUNTRY = 'GB';
 
 async function confirmPaymentWithBackend(rideId: number, paymentIntentId: string): Promise<{ success: boolean; error?: string }> {
   try {
@@ -42,8 +55,8 @@ function PaymentRequestButton({ amount, rideId, onSuccess, onError }: PaymentBut
     if (!stripe) return;
 
     const pr = stripe.paymentRequest({
-      country: "GB",
-      currency: "gbp",
+      country: PAYMENT_COUNTRY,
+      currency: PAYMENT_CURRENCY,
       total: {
         label: "AtlasRide - Ride Payment",
         amount: Math.round(amount * 100),
@@ -184,7 +197,7 @@ function PaymentRequestButton({ amount, rideId, onSuccess, onError }: PaymentBut
         ) : (
           <>
             <CreditCard className="mr-2 h-4 w-4" />
-            Pay £{amount.toFixed(2)} with Card
+            Pay {formatMoneyMajor(amount, PAYMENT_CURRENCY)} with Card
           </>
         )}
       </Button>

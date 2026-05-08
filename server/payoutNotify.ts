@@ -11,6 +11,7 @@
  * the entire route surface — which would create a circular import.
  */
 import { storage } from './storage';
+import { formatMoneyMinorWithCode } from '../shared/money';
 
 export async function notifyDriverPayoutFailed(args: {
   driverId: string;
@@ -19,12 +20,20 @@ export async function notifyDriverPayoutFailed(args: {
   reason: string;
 }): Promise<void> {
   try {
-    const pounds = (args.amountPence / 100).toFixed(2);
+    // Format the amount in the driver's Stripe Connect default
+    // currency so a US driver sees "$12.34" and a JP driver sees
+    // "¥1234" — never the wrong "£" baked in. Falls back to GBP for
+    // legacy rows that haven't synced from Stripe yet.
+    const driver = await storage.getUser(args.driverId);
+    const formatted = formatMoneyMinorWithCode(
+      args.amountPence,
+      driver?.stripeConnectDefaultCurrency,
+    );
     await storage.createNotification({
       userId: args.driverId,
       type: 'payout_failed',
       title: 'Payout failed',
-      message: `Your £${pounds} payout for ride #${args.rideId} couldn't be sent: ${args.reason}. Open Settings → Payouts to retry.`,
+      message: `Your ${formatted} payout for ride #${args.rideId} couldn't be sent: ${args.reason}. Open Settings → Payouts to retry.`,
       relatedRideId: args.rideId,
       read: false,
     });

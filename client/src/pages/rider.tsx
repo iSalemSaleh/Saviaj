@@ -14,10 +14,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, PoundSterling, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car, Radio, Crown, ChevronDown, ChevronUp, Crosshair, Route, Bell, CreditCard, Repeat } from "lucide-react";
+import { MapPin, Clock, Calendar, ArrowRight, Loader2, Navigation, CalendarDays, Users, Edit2, X, Star, Shield, Car, Radio, Crown, ChevronDown, ChevronUp, Crosshair, Route, Bell, CreditCard, Repeat } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserMoneyFormatter } from "@/hooks/useUserMoney";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import PostcodeSearch from "@/components/PostcodeSearch";
@@ -146,6 +147,12 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 export default function RiderPage() {
+  // Use the signed-in user's Stripe Connect default currency for
+  // every money render. A user who is also a driver will see all
+  // prices in their payout currency on the rider screens too — so
+  // the currency they decide on rider-side matches what they'd
+  // earn on driver-side. Falls back to GBP for non-driver riders.
+  const money = useUserMoneyFormatter();
   const { user, isLoading: authLoading } = useAuth();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -424,9 +431,9 @@ export default function RiderPage() {
       const tier2Rate = parseFloat(driver.tier2RatePerMile || "0");
       const tier3Rate = parseFloat(driver.tier3RatePerMile || "0");
       const lowestRate = tier3Rate || tier2Rate || tier1Rate;
-      return `from £${lowestRate.toFixed(2)}/mi`;
+      return `from ${money.formatMajor(lowestRate)}/mi`;
     }
-    return `£${parseFloat(driver.ratePerMile || "0").toFixed(2)}/mi`;
+    return `${money.formatMajor(parseFloat(driver.ratePerMile || "0"))}/mi`;
   };
 
   // Calculate estimated cost based on driver's rate and trip distance
@@ -642,7 +649,7 @@ export default function RiderPage() {
     if (isNaN(price) || price < 2) {
       toast({
         title: "Invalid Price",
-        description: "Minimum price is £2.00",
+        description: `Minimum price is ${money.formatMajor(2)}`,
         variant: "destructive",
       });
       return;
@@ -712,7 +719,7 @@ export default function RiderPage() {
     if (isNaN(price) || price < 2 || price > 500) {
       toast({
         title: "Invalid Price",
-        description: "Please enter a price between £2.00 and £500",
+        description: `Please enter a price between ${money.formatMajor(2)} and ${money.formatMajor(500)}`,
         variant: "destructive",
       });
       return;
@@ -901,7 +908,7 @@ export default function RiderPage() {
     if (isNaN(price) || price < 2 || price > 500) {
       toast({
         title: "Invalid Price",
-        description: "Please enter a price between £2.00 and £500",
+        description: `Please enter a price between ${money.formatMajor(2)} and ${money.formatMajor(500)}`,
         variant: "destructive",
       });
       return;
@@ -1090,7 +1097,7 @@ export default function RiderPage() {
                 </div>
               </div>
               <div className="relative w-20 shrink-0">
-                <PoundSterling className="absolute left-1.5 top-1.5 h-3 w-3 text-muted-foreground" />
+                <span className="absolute left-1.5 top-1 text-xs text-muted-foreground">{money.symbol}</span>
                 <Input 
                   type="number" 
                   placeholder="Offer"
@@ -1166,7 +1173,7 @@ export default function RiderPage() {
                         <p className="font-medium truncate text-slate-700 dark:text-slate-200">{ride.pickupLocation}</p>
                         <p className="text-slate-500 truncate text-[10px]">→ {ride.dropoffLocation}</p>
                       </div>
-                      <span className="text-primary font-bold text-xs shrink-0">£{ride.agreedPrice}</span>
+                      <span className="text-primary font-bold text-xs shrink-0">{money.formatMajor(parseFloat(ride.agreedPrice))}</span>
                     </div>
                     <div className="flex gap-1.5">
                       <Button
@@ -1269,7 +1276,7 @@ export default function RiderPage() {
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{getRateLabel(driver)} • {driver.distanceFromPickup.toFixed(1)} mi away</p>
                     </div>
-                    {estimatedCost && <Badge className="bg-primary text-white shrink-0">£{estimatedCost}</Badge>}
+                    {estimatedCost && <Badge className="bg-primary text-white shrink-0">{money.formatMajor(parseFloat(estimatedCost))}</Badge>}
                   </div>
                 );
               })()}
@@ -1322,7 +1329,7 @@ export default function RiderPage() {
                           <p className="text-[10px] text-muted-foreground truncate mb-1">{driver.distanceFromPickup.toFixed(1)} mi away</p>
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] text-muted-foreground">{getRateLabel(driver)}</span>
-                            {estimatedCost && <Badge className="bg-primary text-white text-[10px] px-1">£{estimatedCost}</Badge>}
+                            {estimatedCost && <Badge className="bg-primary text-white text-[10px] px-1">{money.formatMajor(parseFloat(estimatedCost))}</Badge>}
                           </div>
                           {driver.serviceCategories && driver.serviceCategories.length > 0 && (
                             <div className="flex flex-wrap gap-0.5 mt-1">
@@ -1398,7 +1405,7 @@ export default function RiderPage() {
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{route.startLocation} → {route.endLocation}</p>
                     </div>
-                    {route.pricePerSeat && <Badge className="bg-primary text-white shrink-0">£{route.pricePerSeat}</Badge>}
+                    {route.pricePerSeat && <Badge className="bg-primary text-white shrink-0">{money.formatMajor(parseFloat(route.pricePerSeat))}</Badge>}
                   </div>
                 );
               })()}
@@ -1439,7 +1446,7 @@ export default function RiderPage() {
                             <AvatarFallback className="text-[10px]">{route.driver?.firstName?.charAt(0) || 'D'}</AvatarFallback>
                           </Avatar>
                           <span className="text-xs font-medium truncate flex-1" data-testid={`text-driver-name-route-${route.id}`}>{route.driver?.firstName || 'Driver'}</span>
-                          {route.pricePerSeat && <Badge className="bg-primary text-white text-[10px] px-1">£{route.pricePerSeat}</Badge>}
+                          {route.pricePerSeat && <Badge className="bg-primary text-white text-[10px] px-1">{money.formatMajor(parseFloat(route.pricePerSeat))}</Badge>}
                         </div>
                         <div className="text-[10px] space-y-0.5 mb-1">
                           <p className="truncate"><span className="text-primary">●</span> {route.startLocation}</p>
@@ -1516,7 +1523,7 @@ export default function RiderPage() {
                       <p className="text-xs text-muted-foreground truncate">→ {offer.dropoffLocation}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <Badge className="bg-primary text-white">£{offer.offerPrice}</Badge>
+                      <Badge className="bg-primary text-white">{money.formatMajor(parseFloat(offer.offerPrice))}</Badge>
                       <p className="text-[10px] text-muted-foreground mt-1">{formatDate(offer.requestedTime)}</p>
                     </div>
                   </div>
@@ -1548,7 +1555,7 @@ export default function RiderPage() {
                           <p className="text-[10px] text-muted-foreground">to</p>
                           <p className="text-[10px] font-medium truncate">{offer.dropoffLocation}</p>
                         </div>
-                        <Badge className="bg-primary text-white text-[10px] shrink-0">£{offer.offerPrice}</Badge>
+                        <Badge className="bg-primary text-white text-[10px] shrink-0">{money.formatMajor(parseFloat(offer.offerPrice))}</Badge>
                       </div>
                       <p className="text-[10px] text-muted-foreground mb-1">{formatDate(offer.requestedTime)}</p>
                       <div className="flex flex-col gap-1">
@@ -1588,13 +1595,13 @@ export default function RiderPage() {
           <div className="space-y-4 pt-4">
             {selectedOffer && (
               <p className="text-sm text-muted-foreground">
-                Current price: <strong>£{selectedOffer.offerPrice}</strong>
+                Current price: <strong>{money.formatMajor(parseFloat(selectedOffer.offerPrice))}</strong>
               </p>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium">New Price (£)</label>
+              <label className="text-sm font-medium">New Price ({money.symbol})</label>
               <div className="relative">
-                <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <span className="absolute left-3 top-2 text-base text-muted-foreground">{money.symbol}</span>
                 <Input 
                   type="number"
                   placeholder="Enter new price"
@@ -1636,7 +1643,7 @@ export default function RiderPage() {
             <div className="text-sm text-muted-foreground mb-2 p-2 bg-muted/50 rounded-lg">
               <p className="truncate"><strong>From:</strong> {viewingBidsForOffer.pickupLocation}</p>
               <p className="truncate"><strong>To:</strong> {viewingBidsForOffer.dropoffLocation}</p>
-              <p><strong>Your offer:</strong> £{viewingBidsForOffer.offerPrice}</p>
+              <p><strong>Your offer:</strong> {money.formatMajor(parseFloat(viewingBidsForOffer.offerPrice))}</p>
             </div>
           )}
           <div className="flex-1 overflow-y-auto">
@@ -1670,7 +1677,7 @@ export default function RiderPage() {
                             </p>
                           </Link>
                           <Badge className="bg-green-600 text-white text-sm font-bold" data-testid={`bid-price-${bid.id}`}>
-                            £{bid.bidPrice}
+                            {money.formatMajor(parseFloat(bid.bidPrice))}
                           </Badge>
                         </div>
                         {bid.driver?.driverRating && (
@@ -1733,7 +1740,7 @@ export default function RiderPage() {
                 <p><strong>Route:</strong> {seatRequestRoute.startLocation} → {seatRequestRoute.endLocation}</p>
                 <p><strong>Departure:</strong> {new Date(seatRequestRoute.departureTime).toLocaleString()}</p>
                 <p><strong>Available seats:</strong> {seatRequestRoute.availableSeats}</p>
-                {seatRequestRoute.pricePerSeat && <p><strong>Price per seat:</strong> £{seatRequestRoute.pricePerSeat}</p>}
+                {seatRequestRoute.pricePerSeat && <p><strong>Price per seat:</strong> {money.formatMajor(parseFloat(seatRequestRoute.pricePerSeat))}</p>}
               </div>
               
               <div className="space-y-2">
@@ -1765,7 +1772,7 @@ export default function RiderPage() {
               
               {seatRequestRoute.pricePerSeat && (
                 <div className="p-3 bg-primary/10 rounded-lg">
-                  <p className="text-sm font-medium">Total: £{(parseFloat(seatRequestRoute.pricePerSeat) * seatCount).toFixed(2)}</p>
+                  <p className="text-sm font-medium">Total: {money.formatMajor(parseFloat(seatRequestRoute.pricePerSeat) * seatCount)}</p>
                 </div>
               )}
               
@@ -1791,7 +1798,7 @@ export default function RiderPage() {
         <SheetContent side="bottom" className="max-h-[70vh] overflow-y-auto rounded-t-xl">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <PoundSterling className="h-5 w-5 text-primary" />
+              <span className="text-base font-bold text-primary leading-none">{money.symbol}</span>
               Negotiate Price
             </SheetTitle>
             <SheetDescription>
@@ -1827,7 +1834,7 @@ export default function RiderPage() {
                   </Badge>
                   {negotiateRoute.pricePerSeat && (
                     <Badge className="bg-primary text-white text-xs">
-                      Driver asks £{negotiateRoute.pricePerSeat}
+                      Driver asks {money.formatMajor(parseFloat(negotiateRoute.pricePerSeat))}
                     </Badge>
                   )}
                 </div>
@@ -1884,7 +1891,7 @@ export default function RiderPage() {
             
             {/* Price offer */}
             <div className="space-y-2">
-              <Label htmlFor="negotiate-price">Your Offer (£)</Label>
+              <Label htmlFor="negotiate-price">Your Offer ({money.symbol})</Label>
               <Input
                 id="negotiate-price"
                 type="number"
@@ -1895,7 +1902,7 @@ export default function RiderPage() {
                 placeholder="Enter your price offer"
                 data-testid="input-negotiate-price"
               />
-              <p className="text-xs text-muted-foreground">Minimum £2.00</p>
+              <p className="text-xs text-muted-foreground">{`Minimum ${money.formatMajor(2)}`}</p>
             </div>
             
             {/* Optional message */}
@@ -1922,7 +1929,7 @@ export default function RiderPage() {
               {isNegotiating ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending Offer...</>
               ) : (
-                `Send Offer: £${negotiatePrice || '0.00'}`
+                `Send Offer: ${money.formatMajor(parseFloat(negotiatePrice || '0'))}`
               )}
             </Button>
           </SheetFooter>

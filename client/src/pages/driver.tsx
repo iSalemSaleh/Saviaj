@@ -10,8 +10,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, PoundSterling, Crosshair, Power, Radio, Bell, Check, X, ChevronDown, ChevronUp, Route, Users, Settings, Repeat } from "lucide-react";
+import { MapPin, Clock, Navigation, CheckCircle2, MessageSquare, Loader2, Crosshair, Power, Radio, Bell, Check, X, ChevronDown, ChevronUp, Route, Users, Settings, Repeat } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserMoneyFormatter } from "@/hooks/useUserMoney";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import PostcodeSearch from "@/components/PostcodeSearch";
@@ -107,6 +108,10 @@ export default function DriverPage() {
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  // Bound to the driver's Stripe Connect default currency so every
+  // money badge on this page shows the symbol/decimals they'll be
+  // paid in (£/$/¥/…) rather than the historical hard-coded "£".
+  const money = useUserMoneyFormatter();
   
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [centerTrigger, setCenterTrigger] = useState(0);
@@ -829,7 +834,7 @@ export default function DriverPage() {
       if (isNaN(price) || price < 2 || price > 100) {
         toast({
           title: "Invalid Price",
-          description: "Please enter a price between £2 and £100 per seat",
+          description: `Please enter a price between ${money.formatMajor(2)} and ${money.formatMajor(100)} per seat`,
           variant: "destructive",
         });
         return;
@@ -931,7 +936,7 @@ export default function DriverPage() {
     if (isNaN(price) || price < 2 || price > 500) {
       toast({
         title: "Invalid Price",
-        description: "Please enter a price between £2.00 and £500",
+        description: `Please enter a price between ${money.formatMajor(2)} and ${money.formatMajor(500)}`,
         variant: "destructive",
       });
       return;
@@ -1040,7 +1045,7 @@ export default function DriverPage() {
                         <p className="font-medium truncate text-slate-700 dark:text-slate-200">{request.pickupLocation}</p>
                         <p className="text-slate-500 truncate text-[10px]">→ {request.dropoffLocation}</p>
                       </div>
-                      <span className="text-primary font-bold text-xs shrink-0">£{request.agreedPrice}</span>
+                      <span className="text-primary font-bold text-xs shrink-0">{money.formatMajor(parseFloat(request.agreedPrice))}</span>
                     </div>
                     <div className="flex gap-1.5">
                       <Button
@@ -1102,7 +1107,7 @@ export default function DriverPage() {
               >
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">
-                    <PoundSterling className="h-3 w-3 text-white" />
+                    <span className="text-[11px] font-bold text-white leading-none">{money.symbol}</span>
                   </div>
                   <span className="text-xs font-semibold text-primary">Negotiations</span>
                   <Badge className="bg-primary/20 text-primary text-[10px]">{pendingNegotiations.length}</Badge>
@@ -1129,7 +1134,7 @@ export default function DriverPage() {
                             </>
                           )}
                         </div>
-                        <span className="text-primary font-bold text-xs shrink-0">£{negotiation.latestOffer?.amount || '0'}</span>
+                        <span className="text-primary font-bold text-xs shrink-0">{money.formatMajor(parseFloat(negotiation.latestOffer?.amount || '0'))}</span>
                       </div>
                       <div className="flex items-center gap-1 mb-1.5">
                         <Avatar className="h-4 w-4">
@@ -1178,7 +1183,7 @@ export default function DriverPage() {
               data-testid="button-expand-negotiation-banner"
             >
               <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center animate-pulse">
-                <PoundSterling className="h-2.5 w-2.5 text-white" />
+                <span className="text-[10px] font-bold text-white leading-none">{money.symbol}</span>
               </div>
               <span className="text-xs font-medium text-primary">{pendingNegotiations.length} offers</span>
               <ChevronDown className="h-3 w-3 text-primary" />
@@ -1243,7 +1248,7 @@ export default function DriverPage() {
 
                         {!useTieredRates ? (
                           <div className="space-y-1">
-                            <label className="text-xs font-medium">Flat rate per mile (£)</label>
+                            <label className="text-xs font-medium">Flat rate per mile ({money.symbol})</label>
                             <Input
                               type="number"
                               step="0.1"
@@ -1268,7 +1273,7 @@ export default function DriverPage() {
                                   <Input type="number" min="1" step="0.5" value={tier1MaxMiles} onChange={(e) => setTier1MaxMiles(e.target.value)} className="h-7 text-xs" placeholder="e.g. 5" data-testid="input-tier1-max-miles" />
                                 </div>
                                 <div>
-                                  <label className="text-[10px] text-muted-foreground">Rate (£/mi)</label>
+                                  <label className="text-[10px] text-muted-foreground">{`Rate (${money.symbol}/mi)`}</label>
                                   <Input type="number" min="0.5" step="0.1" value={tier1Rate} onChange={(e) => setTier1Rate(e.target.value)} className="h-7 text-xs" placeholder="e.g. 3.00" data-testid="input-tier1-rate" />
                                 </div>
                               </div>
@@ -1282,7 +1287,7 @@ export default function DriverPage() {
                                   <Input type="number" min="1" step="0.5" value={tier2MaxMiles} onChange={(e) => setTier2MaxMiles(e.target.value)} className="h-7 text-xs" placeholder="e.g. 15" data-testid="input-tier2-max-miles" />
                                 </div>
                                 <div>
-                                  <label className="text-[10px] text-muted-foreground">Rate (£/mi)</label>
+                                  <label className="text-[10px] text-muted-foreground">{`Rate (${money.symbol}/mi)`}</label>
                                   <Input type="number" min="0.5" step="0.1" value={tier2Rate} onChange={(e) => setTier2Rate(e.target.value)} className="h-7 text-xs" placeholder="e.g. 2.00" data-testid="input-tier2-rate" />
                                 </div>
                               </div>
@@ -1291,7 +1296,7 @@ export default function DriverPage() {
                             <div className="rounded border p-2 space-y-1.5 bg-muted/30">
                               <p className="text-[10px] font-semibold text-primary">Tier 3 — Long trips <span className="text-muted-foreground font-normal">(optional)</span></p>
                               <div>
-                                <label className="text-[10px] text-muted-foreground">Rate (£/mi) — beyond tier 2</label>
+                                <label className="text-[10px] text-muted-foreground">{`Rate (${money.symbol}/mi) — beyond tier 2`}</label>
                                 <Input type="number" min="0.5" step="0.1" value={tier3Rate} onChange={(e) => setTier3Rate(e.target.value)} className="h-7 text-xs" placeholder="e.g. 1.50" data-testid="input-tier3-rate" />
                               </div>
                             </div>
@@ -1300,7 +1305,7 @@ export default function DriverPage() {
 
                         {/* Base minimum fare */}
                         <div className="space-y-1">
-                          <label className="text-xs font-medium">Minimum fare (£) <span className="text-muted-foreground font-normal">— optional</span></label>
+                          <label className="text-xs font-medium">Minimum fare ({money.symbol}) <span className="text-muted-foreground font-normal">— optional</span></label>
                           <Input
                             type="number"
                             step="0.5"
@@ -1514,10 +1519,10 @@ export default function DriverPage() {
                     </SelectContent>
                   </Select>
                   <div className="relative">
-                    <PoundSterling className="absolute left-1.5 top-1.5 h-3 w-3 text-muted-foreground" />
+                    <span className="absolute left-1.5 top-1 text-xs text-muted-foreground">{money.symbol}</span>
                     <Input 
                       type="number" 
-                      placeholder="£/Seat"
+                      placeholder={`${money.symbol}/Seat`}
                       min="1"
                       max="100"
                       step="1"
@@ -1650,7 +1655,7 @@ export default function DriverPage() {
                   <p className="font-medium truncate">{displayOffers[0].pickupLocation}</p>
                   <p className="text-muted-foreground truncate">→ {displayOffers[0].dropoffLocation}</p>
                 </div>
-                <Badge className="bg-primary text-white">£{displayOffers[0].offerPrice}</Badge>
+                <Badge className="bg-primary text-white">{money.formatMajor(parseFloat(displayOffers[0].offerPrice))}</Badge>
               </div>
             </div>
           )}
@@ -1709,7 +1714,7 @@ export default function DriverPage() {
                             <span className="text-yellow-500">★</span> 4.8
                           </div>
                         </div>
-                        <Badge className="bg-primary text-white text-[10px] px-1" data-testid={`text-price-${offer.id}`}>£{offer.offerPrice}</Badge>
+                        <Badge className="bg-primary text-white text-[10px] px-1" data-testid={`text-price-${offer.id}`}>{money.formatMajor(parseFloat(offer.offerPrice))}</Badge>
                       </div>
                       <p className="text-[10px] font-medium truncate">{offer.pickupLocation}</p>
                       <p className="text-[10px] text-muted-foreground truncate">→ {offer.dropoffLocation}</p>
@@ -1739,12 +1744,12 @@ export default function DriverPage() {
                             </DialogHeader>
                             <div className="space-y-4 pt-4">
                               <p className="text-sm text-muted-foreground">
-                                The rider offered <strong>£{offer.offerPrice}</strong>. Enter your counter-offer:
+                                The rider offered <strong>{money.formatMajor(parseFloat(offer.offerPrice))}</strong>. Enter your counter-offer:
                               </p>
                               <div className="space-y-2">
-                                <label className="text-sm font-medium">Your Price (£)</label>
+                                <label className="text-sm font-medium">Your Price ({money.symbol})</label>
                                 <div className="relative">
-                                  <PoundSterling className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                  <span className="absolute left-3 top-2 text-base text-muted-foreground">{money.symbol}</span>
                                   <Input 
                                     type="number"
                                     placeholder="Enter your price"
@@ -1823,7 +1828,7 @@ export default function DriverPage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{activeRides[0].pickupLocation}</p>
                 </div>
-                <span className="font-bold text-primary">£{activeRides[0].agreedPrice}</span>
+                <span className="font-bold text-primary">{money.formatMajor(parseFloat(activeRides[0].agreedPrice))}</span>
               </div>
             </div>
           )}
@@ -1860,7 +1865,7 @@ export default function DriverPage() {
                            ride.status === 'arrived_pickup' ? 'At Pickup' :
                            'Ready'}
                         </Badge>
-                        <Badge className="bg-primary text-white text-[10px] px-1">£{ride.agreedPrice}</Badge>
+                        <Badge className="bg-primary text-white text-[10px] px-1">{money.formatMajor(parseFloat(ride.agreedPrice))}</Badge>
                       </div>
                       <p className="text-[10px] font-medium truncate">{ride.pickupLocation}</p>
                       <p className="text-[10px] text-muted-foreground truncate">→ {ride.dropoffLocation}</p>
@@ -1972,7 +1977,7 @@ export default function DriverPage() {
                                   {pendingReqs.length + pendingNegs.length}
                                 </Badge>
                               )}
-                              <Badge className="bg-primary text-white text-[10px] px-1">£{route.pricePerSeat}/seat</Badge>
+                              <Badge className="bg-primary text-white text-[10px] px-1">{money.formatMajor(parseFloat(route.pricePerSeat))}/seat</Badge>
                             </div>
                           </div>
                           <p className="text-[10px] font-medium truncate">{route.startLocation}</p>
@@ -2029,7 +2034,7 @@ export default function DriverPage() {
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="text-[10px] font-medium">Negotiation</span>
                                   <Badge className="bg-blue-500 text-white text-[10px]">
-                                    £{neg.latestOffer?.amount || '0'}
+                                    {money.formatMajor(parseFloat(neg.latestOffer?.amount || '0'))}
                                   </Badge>
                                 </div>
                                 <p className="text-[10px] text-muted-foreground mb-1">

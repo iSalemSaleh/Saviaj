@@ -219,14 +219,14 @@ async function checkPrivateDriverLimits(userId: string): Promise<{ allowed: bool
   if (activity.ridesCount >= PRIVATE_DRIVER_RIDE_LIMIT) {
     return { 
       allowed: false, 
-      message: "You've reached the private driver limit.\nPrivate drivers are limited to 5 rides and up to £100 in earnings.\nUpgrade to Commercial status to publish more rides and earn more."
+      message: `You've reached the private driver limit.\nPrivate drivers are limited to 5 rides and up to ${formatMoneyMajorWithCode(100, "gbp")} in earnings.\nUpgrade to Commercial status to publish more rides and earn more.`
     };
   }
   
   if (activity.totalEarnings >= PRIVATE_DRIVER_EARNINGS_LIMIT) {
     return { 
       allowed: false, 
-      message: "You've reached the private driver limit.\nPrivate drivers are limited to 5 rides and up to £100 in earnings.\nUpgrade to Commercial status to publish more rides and earn more."
+      message: `You've reached the private driver limit.\nPrivate drivers are limited to 5 rides and up to ${formatMoneyMajorWithCode(100, "gbp")} in earnings.\nUpgrade to Commercial status to publish more rides and earn more.`
     };
   }
   
@@ -351,6 +351,12 @@ const profileImageUpload = multer({
 import { notifyDriverPayoutFailed } from './payoutNotify';
 import { attemptPayoutRetry, PAYOUT_RETRY_MAX_ATTEMPTS } from './payoutRetry';
 import { resolveTimezone, parseYmdInZone } from '@shared/timezone';
+import { formatMoneyMajorWithCode } from '@shared/money';
+// All server-issued strings (notifications, emails, push payloads)
+// must include the explicit ISO currency code so the recipient can
+// tell USD from CAD/AUD when the symbol alone is ambiguous. The CSV
+// export below carries currency in its own column and computes the
+// numeric amount inline (so the file stays machine-parsable).
 
 export async function registerRoutes(app: Express, httpServer: Server): Promise<void> {
   // Auth middleware
@@ -2332,7 +2338,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const price = parseFloat(existingOffer.offerPrice || "0");
       if (await wouldExceedEarningsLimit(driverId, price)) {
         return res.status(403).json({ 
-          message: "You've reached the private driver limit.\nPrivate drivers are limited to 5 rides and up to £100 in earnings.\nUpgrade to Commercial status to publish more rides and earn more.",
+          message: `You've reached the private driver limit.\nPrivate drivers are limited to 5 rides and up to ${formatMoneyMajorWithCode(100, "gbp")} in earnings.\nUpgrade to Commercial status to publish more rides and earn more.`,
           limitReached: true 
         });
       }
@@ -2372,7 +2378,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const { offerPrice } = req.body;
       
       if (!offerPrice || offerPrice < 0.30 || offerPrice > 500) {
-        return res.status(400).json({ message: "Price must be between £0.30 and £500" });
+        return res.status(400).json({ message: `Price must be between ${formatMoneyMajorWithCode(0.30, "gbp")} and ${formatMoneyMajorWithCode(500, "gbp")}` });
       }
       
       const existingOffer = await storage.getRiderOfferById(id);
@@ -2838,7 +2844,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // Validate price
       const price = parseFloat(proposedPrice);
       if (isNaN(price) || price < 2) {
-        return res.status(400).json({ message: "Minimum price is £2.00" });
+        return res.status(400).json({ message: `Minimum price is ${formatMoneyMajorWithCode(2, "gbp")}` });
       }
       
       // Get the route
@@ -2888,11 +2894,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }, route.driverId);
       
       const rider = await storage.getUser(riderId);
+      const routeDriver = await storage.getUser(route.driverId);
+      const offeredFmt = formatMoneyMajorWithCode(price, routeDriver?.stripeConnectDefaultCurrency);
       await storage.createNotification({
         userId: route.driverId,
         type: 'negotiation_started',
         title: 'New Price Negotiation',
-        message: `${rider?.firstName || 'A rider'} wants to negotiate for ${seats} seat${seats > 1 ? 's' : ''} on your route. They offered £${price.toFixed(2)}.`,
+        message: `${rider?.firstName || 'A rider'} wants to negotiate for ${seats} seat${seats > 1 ? 's' : ''} on your route. They offered ${offeredFmt}.`,
         read: false,
       });
       
@@ -2994,7 +3002,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       const price = parseFloat(counterPrice);
       if (isNaN(price) || price < 2) {
-        return res.status(400).json({ message: "Minimum price is £2.00" });
+        return res.status(400).json({ message: `Minimum price is ${formatMoneyMajorWithCode(2, "gbp")}` });
       }
       
       const negotiation = await storage.getRouteNegotiationById(negotiationId);
@@ -3044,11 +3052,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }, otherUserId);
       
       const user = await storage.getUser(userId);
+      const recipient = await storage.getUser(otherUserId);
+      const counterFmt = formatMoneyMajorWithCode(price, recipient?.stripeConnectDefaultCurrency);
       await storage.createNotification({
         userId: otherUserId,
         type: 'negotiation_counter',
         title: 'Counter Offer Received',
-        message: `${user?.firstName || 'The other party'} countered with £${price.toFixed(2)}.`,
+        message: `${user?.firstName || 'The other party'} countered with ${counterFmt}.`,
         read: false,
       });
       
@@ -3194,11 +3204,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }, otherUserId);
       
       const user = await storage.getUser(userId);
+      const recipient = await storage.getUser(otherUserId);
+      const acceptedFmt = formatMoneyMajorWithCode(agreedPrice, recipient?.stripeConnectDefaultCurrency);
       await storage.createNotification({
         userId: otherUserId,
         type: 'negotiation_accepted',
         title: 'Offer Accepted!',
-        message: `${user?.firstName || 'The other party'} accepted the offer of £${agreedPrice.toFixed(2)}. ${userId === negotiation.driverId ? 'Please proceed to payment.' : 'Waiting for payment.'}`,
+        message: `${user?.firstName || 'The other party'} accepted the offer of ${acceptedFmt}. ${userId === negotiation.driverId ? 'Please proceed to payment.' : 'Waiting for payment.'}`,
         relatedRideId: ride.id,
         read: false,
       });
@@ -3270,7 +3282,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       const price = parseFloat(proposedPrice);
       if (isNaN(price) || price < 2) {
-        return res.status(400).json({ message: "Minimum price is £2.00" });
+        return res.status(400).json({ message: `Minimum price is ${formatMoneyMajorWithCode(2, "gbp")}` });
       }
       
       // Verify driver is a Pro driver and online
@@ -3323,11 +3335,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }, driverId);
       
       const rider = await storage.getUser(riderId);
+      const targetDriver = await storage.getUser(driverId);
+      const proOfferedFmt = formatMoneyMajorWithCode(price, targetDriver?.stripeConnectDefaultCurrency);
       await storage.createNotification({
         userId: driverId,
         type: 'pro_negotiation_started',
         title: 'New Ride Negotiation',
-        message: `${rider?.firstName || 'A rider'} wants to negotiate a ride from ${pickupLocation} to ${dropoffLocation}. They offered £${price.toFixed(2)}.`,
+        message: `${rider?.firstName || 'A rider'} wants to negotiate a ride from ${pickupLocation} to ${dropoffLocation}. They offered ${proOfferedFmt}.`,
         read: false,
       });
       
@@ -3420,7 +3434,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       
       const price = parseFloat(counterPrice);
       if (isNaN(price) || price < 2) {
-        return res.status(400).json({ message: "Minimum price is £2.00" });
+        return res.status(400).json({ message: `Minimum price is ${formatMoneyMajorWithCode(2, "gbp")}` });
       }
       
       const negotiation = await storage.getProHireNegotiationById(negotiationId);
@@ -3465,11 +3479,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }, otherUserId);
       
       const user = await storage.getUser(userId);
+      const recipient = await storage.getUser(otherUserId);
+      const proCounterFmt = formatMoneyMajorWithCode(price, recipient?.stripeConnectDefaultCurrency);
       await storage.createNotification({
         userId: otherUserId,
         type: 'pro_negotiation_counter',
         title: 'Counter Offer Received',
-        message: `${user?.firstName || 'The other party'} countered with £${price.toFixed(2)}.`,
+        message: `${user?.firstName || 'The other party'} countered with ${proCounterFmt}.`,
         read: false,
       });
       
@@ -3582,11 +3598,13 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }, otherUserId);
       
       const user = await storage.getUser(userId);
+      const recipient = await storage.getUser(otherUserId);
+      const proAcceptedFmt = formatMoneyMajorWithCode(agreedPrice, recipient?.stripeConnectDefaultCurrency);
       await storage.createNotification({
         userId: otherUserId,
         type: 'pro_negotiation_accepted',
         title: 'Offer Accepted!',
-        message: `${user?.firstName || 'The other party'} accepted the offer of £${agreedPrice.toFixed(2)}. ${userId === negotiation.driverId ? 'Please proceed to payment.' : 'Waiting for payment.'}`,
+        message: `${user?.firstName || 'The other party'} accepted the offer of ${proAcceptedFmt}. ${userId === negotiation.driverId ? 'Please proceed to payment.' : 'Waiting for payment.'}`,
         relatedRideId: ride.id,
         read: false,
       });
@@ -4135,13 +4153,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         message: 'Payment confirmed - ready to start'
       }, ride.driverId);
 
-      // Create persistent notification for driver
+      // Create persistent notification for driver. Format the price in
+      // the driver's payout currency (cached on their user row) so it
+      // matches what they'll actually see land in their Stripe payout.
       const rider = await storage.getUser(ride.riderId);
+      const driverUser = ride.driverId ? await storage.getUser(ride.driverId) : null;
+      const priceMsg = formatMoneyMajorWithCode(ride.agreedPrice, driverUser?.stripeConnectDefaultCurrency);
       await storage.createNotification({
         userId: ride.driverId,
         type: 'payment_confirmed',
         title: 'Payment Received!',
-        message: `${rider?.firstName || 'Rider'} has paid £${ride.agreedPrice} for the ride from ${ride.pickupLocation} to ${ride.dropoffLocation}. You can now start the trip!`,
+        message: `${rider?.firstName || 'Rider'} has paid ${priceMsg} for the ride from ${ride.pickupLocation} to ${ride.dropoffLocation}. You can now start the trip!`,
         relatedRideId: rideId,
         read: false,
       });
@@ -4191,7 +4213,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           .text(`To: ${route.endLocation}`)
           .text(`Coordinates: (${route.startLat}, ${route.startLng}) → (${route.endLat}, ${route.endLng})`)
           .text(`Departure: ${new Date(route.departureTime).toLocaleString('en-GB')}`)
-          .text(`Price per Seat: £${route.pricePerSeat || 'Negotiable'}`)
+          .text(`Price per Seat: ${route.pricePerSeat ? formatMoneyMajorWithCode(route.pricePerSeat, 'gbp') : 'Negotiable'}`)
           .text(`Available Seats: ${route.availableSeats}`)
           .text(`Max Detour: ${route.maxDetourMiles} miles`);
         doc.moveDown(1);
@@ -4213,7 +4235,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
           .text(`Dropoff: ${offer.dropoffLocation}`)
           .text(`Coordinates: (${offer.pickupLat}, ${offer.pickupLng}) → (${offer.dropoffLat}, ${offer.dropoffLng})`)
           .text(`Requested Time: ${new Date(offer.requestedTime).toLocaleString('en-GB')}`)
-          .text(`Offer Price: £${offer.offerPrice}`)
+          .text(`Offer Price: ${formatMoneyMajorWithCode(offer.offerPrice, 'gbp')}`)
           .text(`Status: ${offer.status}`);
         doc.moveDown(1);
       }
@@ -4507,13 +4529,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         scheduledTime,
       }, driverId);
       
-      // Also create a persistent notification in the database
+      // Also create a persistent notification in the database. Show
+      // the rider's offer in the driver's payout currency so the
+      // accept/decline decision is made in the unit they're paid in.
       const rider = await storage.getUser(riderId);
+      const reqDriver = await storage.getUser(driverId);
+      const reqPriceFmt = formatMoneyMajorWithCode(estimatedPrice, reqDriver?.stripeConnectDefaultCurrency);
       await storage.createNotification({
         userId: driverId,
         type: 'ride_request',
         title: 'New Ride Request',
-        message: `${rider?.firstName || 'A rider'} is requesting a ride from ${pickupLocation} to ${dropoffLocation} for £${estimatedPrice}.`,
+        message: `${rider?.firstName || 'A rider'} is requesting a ride from ${pickupLocation} to ${dropoffLocation} for ${reqPriceFmt}.`,
         relatedRideId: ride.id,
         read: false,
       });
@@ -5906,7 +5932,26 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         }
         return `"${s.replace(/"/g, '""')}"`;
       };
-      const header = ['ride_id', 'completed_at', 'paid_at', 'pickup', 'dropoff', 'amount_gbp', 'status', 'stripe_transfer_id'];
+      // Header amount column reflects the driver's payout currency
+      // (e.g. `amount_usd`, `amount_jpy`) so the CSV doesn't lie about
+      // the unit. We also include a separate `currency` column so a
+      // spreadsheet pivoting across multiple drivers' exports stays
+      // unambiguous. Falls back to GBP for drivers whose Connect
+      // currency hasn't synced yet — matches the on-page fallback.
+      const csvCurrency = (user.stripeConnectDefaultCurrency || 'gbp').toLowerCase();
+      // Resolve minor-unit precision via Intl so JPY (0 decimals) and
+      // BHD (3 decimals) export with the right number of digits, not
+      // a hard-coded `÷100` that would silently misreport non-2dp.
+      let amountDivisor = 100;
+      let amountDp = 2;
+      try {
+        const nf = new Intl.NumberFormat('en', { style: 'currency', currency: csvCurrency.toUpperCase() });
+        amountDp = nf.resolvedOptions().maximumFractionDigits ?? 2;
+        amountDivisor = Math.pow(10, amountDp);
+      } catch {
+        // Unknown currency — keep GBP-equivalent defaults.
+      }
+      const header = ['ride_id', 'completed_at', 'paid_at', 'pickup', 'dropoff', `amount_${csvCurrency}`, 'currency', 'status', 'stripe_transfer_id'];
       const lines: string[] = [header.map(escape).join(',')];
       for (const r of rows as Array<{
         rideId: number;
@@ -5919,14 +5964,15 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }>) {
         const completed = r.rideCompletedAt ? new Date(r.rideCompletedAt).toISOString() : '';
         const paid = r.paidAt ? new Date(r.paidAt).toISOString() : '';
-        const amountGbp = (Number(r.amountPence || 0) / 100).toFixed(2);
+        const amount = (Number(r.amountPence || 0) / amountDivisor).toFixed(amountDp);
         lines.push([
           r.rideId,
           completed,
           paid,
           r.pickupLocation ?? '',
           r.dropoffLocation ?? '',
-          amountGbp,
+          amount,
+          csvCurrency,
           'transferred',
           r.stripeTransferId ?? '',
         ].map(escape).join(','));
