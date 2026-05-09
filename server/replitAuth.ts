@@ -27,6 +27,10 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+  // In production (Azure App Service behind TLS) we need SameSite=None; Secure
+  // so the session cookie survives requests from the Capacitor Android WebView
+  // and any future cross-site embedding. In dev keep Lax+insecure for localhost.
+  const isProd = process.env.NODE_ENV === 'production';
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -35,9 +39,9 @@ export function getSession() {
     proxy: true,
     cookie: {
       httpOnly: true,
-      secure: false,
+      secure: isProd,
       maxAge: sessionTtl,
-      sameSite: 'lax',
+      sameSite: isProd ? 'none' : 'lax',
     },
   });
 }
