@@ -13,7 +13,9 @@
   },
   "dependencies": {
     "@azure/storage-blob": "^12.31.0",
+    "@capacitor-community/background-geolocation": "^1.2.26",
     "@capacitor/android": "^8.0.0",
+    "@capacitor/app": "^8.1.0",
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.3.2",
     "@capacitor/core": "^8.0.0",

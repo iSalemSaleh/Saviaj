@@ -102,6 +102,28 @@ hides the corresponding controls (queried via `GET /api/chat/integrations`).
 - Client uses the Firebase JS SDK + `client/public/firebase-messaging-sw.js` service worker
   to obtain a Web Push token.
 
+## Android (Capacitor)
+- **App identity**: `com.saviaj.app` (permanent — used by Play Console).
+- **Build outputs**: `android/app/build/outputs/bundle/release/app-release.aab` after `./gradlew bundleRelease`.
+- **Signing**: Generate the upload keystore once with `bash scripts/generate-android-keystore.sh`, then set
+  `SAVIAJ_KEYSTORE_PATH`, `SAVIAJ_KEYSTORE_PASSWORD`, `SAVIAJ_KEY_ALIAS`, `SAVIAJ_KEY_PASSWORD`. The
+  release `signingConfig` is only applied when `SAVIAJ_KEYSTORE_PATH` is set, so unsigned debug builds
+  still work without the keystore.
+- **Deep links / App Links**: `https://savia.sibranet.com/*` opens in the app via the verified
+  intent-filter in `AndroidManifest.xml`. The server hosts `/.well-known/assetlinks.json` — set
+  `ANDROID_APP_SIGNING_FINGERPRINTS` (comma-separated SHA256s for upload + Play App Signing keys)
+  in the Azure App Service so Google can verify ownership.
+- **Background location**: Driver foreground tracking uses `@capacitor-community/background-geolocation`
+  via `client/src/lib/nativeBackgroundLocation.ts`. Android shows a persistent "Trip in progress"
+  notification while active (required by Android 10+).
+- **Push**: Same Firebase project as web (sender 113438282917). Drop `google-services.json` into
+  `android/app/` before building; the Gradle plugin auto-detects it.
+- **Workflow**:
+  1. `npm run build` — compiles web app to `dist/public`
+  2. `npx cap sync android` — copies into `android/app/src/main/assets/public`
+  3. `cd android && ./gradlew bundleRelease` — produces signed AAB
+  4. Upload AAB to Play Console → Internal Testing track (instant, no review)
+
 ## External Dependencies
 - **Stripe**: Payment processing.
 - **Azure Maps**: Geocoding and routing.

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">AtlasRide</string>
-    <string name="title_activity_main">AtlasRide</string>
-    <string name="package_name">com.atlasride.app</string>
-    <string name="custom_url_scheme">com.atlasride.app</string>
+    <string name="app_name">Saviaj</string>
+    <string name="title_activity_main">Saviaj</string>
+    <string name="package_name">com.saviaj.app</string>
+    <string name="custom_url_scheme">com.saviaj.app</string>
 </resources>

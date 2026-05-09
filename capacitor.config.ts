@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.atlasride.app',
-  appName: 'AtlasRide',
+  appId: 'com.saviaj.app',
+  appName: 'Saviaj',
   webDir: 'dist/public',
   server: {
     androidScheme: 'https'
@@ -20,6 +20,9 @@ const config: CapacitorConfig = {
       androidSpinnerStyle: 'small',
       splashFullScreen: true,
       splashImmersive: true
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert']
     }
   }
 };

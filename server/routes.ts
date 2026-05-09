@@ -491,6 +491,26 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
   // SECURITY: Only serve profile images statically. License files require authentication.
   app.use('/uploads/profiles', express.default.static(profilesDir));
 
+  // Android App Links verification — Google fetches this to confirm domain ownership
+  // SHA256 fingerprint must match the upload + signing keys used for the AAB.
+  // Replace the placeholder fingerprint after generating the keystore.
+  app.get('/.well-known/assetlinks.json', (_req, res) => {
+    const fingerprints = (process.env.ANDROID_APP_SIGNING_FINGERPRINTS || '')
+      .split(',')
+      .map(f => f.trim())
+      .filter(Boolean);
+    res.json([
+      {
+        relation: ['delegate_permission/common.handle_all_urls'],
+        target: {
+          namespace: 'android_app',
+          package_name: 'com.saviaj.app',
+          sha256_cert_fingerprints: fingerprints.length > 0 ? fingerprints : ['REPLACE_AFTER_KEYSTORE_GENERATION'],
+        },
+      },
+    ]);
+  });
+
   // Phone OTP verification endpoints (unauthenticated - for pre-registration)
   app.post('/api/auth/otp/request', async (req, res) => {
     try {
