@@ -1,4 +1,4 @@
-package com.atlasride.app;
+package com.saviaj.app;
 
 import com.getcapacitor.BridgeActivity;
 
