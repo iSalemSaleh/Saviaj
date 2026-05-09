@@ -800,19 +800,19 @@ export default function DriverPage() {
     }
 
     const detour = parseFloat(maxDetour);
-    if (isNaN(detour) || detour <= 0) {
+    if (isNaN(detour) || detour < 0) {
       toast({
         title: "Invalid Detour",
-        description: "Please enter a valid max detour distance",
+        description: "Please enter a valid max detour distance (0 or more)",
         variant: "destructive",
       });
       return;
     }
     const detourInMiles = detour * UNIT_TO_MILES[detourUnit];
-    if (detourInMiles < 0.01 || detourInMiles > 100) {
+    if (detourInMiles > 100) {
       toast({
         title: "Invalid Detour",
-        description: "Max detour is too small or too large",
+        description: "Max detour is too large",
         variant: "destructive",
       });
       return;
@@ -1500,8 +1500,7 @@ export default function DriverPage() {
                         value={departureTime}
                         onChange={setDepartureTime}
                         testId="input-departure-time"
-                        buttonClassName="h-5 text-[8px] bg-transparent border-none shadow-none px-0 min-w-0 whitespace-nowrap"
-                        compact
+                        buttonClassName="h-9 text-sm bg-white dark:bg-slate-900 border border-slate-200 px-3 min-w-0 whitespace-nowrap"
                       />
                     </div>
                     {isRecurring && (

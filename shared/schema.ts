@@ -639,7 +639,7 @@ export const insertRecurringScheduleEntrySchema = createInsertSchema(recurringSc
   startLng: z.coerce.number().optional().nullable(),
   endLat: z.coerce.number().optional().nullable(),
   endLng: z.coerce.number().optional().nullable(),
-  maxDetourMiles: z.coerce.number().min(0.01).max(100).optional().nullable(),
+  maxDetourMiles: z.coerce.number().min(0).max(100).optional().nullable(),
   availableSeats: z.coerce.number().min(1).max(7).optional().nullable(),
   totalSeats: z.coerce.number().min(1).max(7).optional().nullable(),
   pricePerSeat: z.coerce.number().min(2).max(100).optional().nullable(),
@@ -732,7 +732,7 @@ export const driverRoutesRelations = relations(driverRoutes, ({ one }) => ({
 }));
 
 export const insertDriverRouteSchema = createInsertSchema(driverRoutes, {
-  maxDetourMiles: z.coerce.number().min(0.01).max(100),
+  maxDetourMiles: z.coerce.number().min(0).max(100),
   availableSeats: z.coerce.number().min(1).max(7),
   totalSeats: z.coerce.number().min(1).max(7).optional(),
   pricePerSeat: z.coerce.number().min(2).max(100).optional().nullable(),

@@ -174,7 +174,7 @@ export function DateTimePicker({
   };
 
   const getDisplayValue = () => {
-    if (!value) return "Select time";
+    if (!value) return "Time";
     
     const date = new Date(value);
     if (isToday(date)) {

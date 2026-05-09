@@ -1079,8 +1079,7 @@ export default function RiderPage() {
                       value={requestedTime}
                       onChange={setRequestedTime}
                       testId="input-time"
-                      buttonClassName="h-5 text-[8px] bg-transparent border-none shadow-none px-0 min-w-0 whitespace-nowrap"
-                      compact
+                      buttonClassName="h-9 text-sm bg-white dark:bg-slate-900 border border-slate-200 px-3 min-w-0 whitespace-nowrap"
                     />
                   </div>
                 </div>
