@@ -81,6 +81,17 @@ jobs:
             keytool -list -keystore "$SAVIAJ_KEYSTORE_PATH" -storepass "$SAVIAJ_KEYSTORE_PASSWORD" 2>&1 | grep -i alias
             exit 1
           fi
+          echo "--- Trying to access PRIVATE KEY with key password ---"
+          # Use -certreq which actually unlocks the private key (proves keypass is correct).
+          if keytool -certreq -keystore "$SAVIAJ_KEYSTORE_PATH" -storepass "$SAVIAJ_KEYSTORE_PASSWORD" -alias "$SAVIAJ_KEY_ALIAS" -keypass "$SAVIAJ_KEY_PASSWORD" > /dev/null 2>&1; then
+            echo "OK: SAVIAJ_KEY_PASSWORD is correct — APK signing should succeed."
+          else
+            echo "FAIL: SAVIAJ_KEY_PASSWORD is WRONG for alias '$SAVIAJ_KEY_ALIAS'."
+            echo "      (This is why APK signing fails with 'Keystore was tampered'.)"
+            echo "      Fix: in GitHub repo Settings → Secrets, set SAVIAJ_KEY_PASSWORD to the password"
+            echo "      you used when generating the keystore (often the SAME value as the store password)."
+            exit 1
+          fi
 
       - name: Pin Gradle to JDK 21
         run: |
