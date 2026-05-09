@@ -53,6 +53,12 @@ jobs:
             echo "SAVIAJ_KEYSTORE_PATH=$RUNNER_TEMP/saviaj-upload.keystore" >> $GITHUB_ENV
           fi
 
+      - name: Pin Gradle to JDK 21
+        run: |
+          echo "org.gradle.java.home=$JAVA_HOME" >> android/gradle.properties
+          echo "Pinned Gradle to: $JAVA_HOME"
+          $JAVA_HOME/bin/javac -version
+
       - name: Build release AAB
         env:
           SAVIAJ_KEYSTORE_PASSWORD: ${{ secrets.SAVIAJ_KEYSTORE_PASSWORD }}
