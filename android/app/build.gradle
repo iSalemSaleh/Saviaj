@@ -18,15 +18,15 @@ android {
     }
     signingConfigs {
         release {
-            def keystorePath = System.getenv("SAVIAJ_KEYSTORE_PATH") ?: project.findProperty("SAVIAJ_KEYSTORE_PATH")
-            def keystorePassword = System.getenv("SAVIAJ_KEYSTORE_PASSWORD") ?: project.findProperty("SAVIAJ_KEYSTORE_PASSWORD")
-            def keyAlias = System.getenv("SAVIAJ_KEY_ALIAS") ?: project.findProperty("SAVIAJ_KEY_ALIAS")
-            def keyPassword = System.getenv("SAVIAJ_KEY_PASSWORD") ?: project.findProperty("SAVIAJ_KEY_PASSWORD")
-            if (keystorePath) {
-                storeFile file(keystorePath)
-                storePassword keystorePassword
-                keyAlias keyAlias
-                keyPassword keyPassword
+            def ksPath = System.getenv("SAVIAJ_KEYSTORE_PATH") ?: project.findProperty("SAVIAJ_KEYSTORE_PATH")
+            def ksPassword = System.getenv("SAVIAJ_KEYSTORE_PASSWORD") ?: project.findProperty("SAVIAJ_KEYSTORE_PASSWORD")
+            def kAlias = System.getenv("SAVIAJ_KEY_ALIAS") ?: project.findProperty("SAVIAJ_KEY_ALIAS")
+            def kPassword = System.getenv("SAVIAJ_KEY_PASSWORD") ?: project.findProperty("SAVIAJ_KEY_PASSWORD")
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword ksPassword
+                keyAlias kAlias
+                keyPassword kPassword
             }
         }
     }
