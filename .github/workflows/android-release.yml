@@ -56,6 +56,32 @@ jobs:
             echo "SAVIAJ_KEYSTORE_PATH=$RUNNER_TEMP/saviaj-upload.keystore" >> $GITHUB_ENV
           fi
 
+      - name: Verify keystore credentials
+        if: ${{ env.SAVIAJ_KEYSTORE_PATH != '' }}
+        env:
+          SAVIAJ_KEYSTORE_PASSWORD: ${{ secrets.SAVIAJ_KEYSTORE_PASSWORD }}
+          SAVIAJ_KEY_ALIAS: ${{ secrets.SAVIAJ_KEY_ALIAS }}
+          SAVIAJ_KEY_PASSWORD: ${{ secrets.SAVIAJ_KEY_PASSWORD }}
+        run: |
+          echo "Keystore file size: $(stat -c%s $SAVIAJ_KEYSTORE_PATH) bytes"
+          echo "--- Trying store password ---"
+          if keytool -list -keystore "$SAVIAJ_KEYSTORE_PATH" -storepass "$SAVIAJ_KEYSTORE_PASSWORD" > /tmp/ks.txt 2>&1; then
+            echo "OK: store password works. Aliases:"
+            grep -i "alias name" /tmp/ks.txt || cat /tmp/ks.txt
+          else
+            echo "FAIL: SAVIAJ_KEYSTORE_PASSWORD is wrong (or keystore is corrupt)."
+            cat /tmp/ks.txt
+            exit 1
+          fi
+          echo "--- Trying alias + key password ---"
+          if keytool -list -v -keystore "$SAVIAJ_KEYSTORE_PATH" -storepass "$SAVIAJ_KEYSTORE_PASSWORD" -alias "$SAVIAJ_KEY_ALIAS" > /dev/null 2>&1; then
+            echo "OK: alias '$SAVIAJ_KEY_ALIAS' exists."
+          else
+            echo "FAIL: SAVIAJ_KEY_ALIAS '$SAVIAJ_KEY_ALIAS' not found in keystore."
+            keytool -list -keystore "$SAVIAJ_KEYSTORE_PATH" -storepass "$SAVIAJ_KEYSTORE_PASSWORD" 2>&1 | grep -i alias
+            exit 1
+          fi
+
       - name: Pin Gradle to JDK 21
         run: |
           echo "org.gradle.java.home=$JAVA_HOME" >> android/gradle.properties
