@@ -5,7 +5,9 @@ const config: CapacitorConfig = {
   appName: 'Saviaj',
   webDir: 'dist/public',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    url: 'https://saviaj-eag6c8epg9hzaze6.canadacentral-01.azurewebsites.net',
+    cleartext: false
   },
   android: {
     allowMixedContent: false,
