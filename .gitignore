@@ -4,3 +4,9 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+# Never commit the keystore
+saviaj-upload.keystore
+*.keystore
+*.b64
+attached_assets/Pasted*keystore*
+attached_assets/Pasted*u3*
