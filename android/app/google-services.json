@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "113438282917",
+    "project_id": "saviaj-ce538",
+    "storage_bucket": "saviaj-ce538.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:113438282917:android:412ce2c08e342e18c3694c",
+        "android_client_info": {
+          "package_name": "com.saviaj.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBV2D5TalroiBQfFwABg2IvChsBBdrZdsk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
