@@ -108,6 +108,10 @@ jobs:
         run: ./gradlew bundleRelease --no-daemon --stacktrace
 
       - name: Build APK (sideloadable, for testers without Play Store)
+        env:
+          SAVIAJ_KEYSTORE_PASSWORD: ${{ secrets.SAVIAJ_KEYSTORE_PASSWORD }}
+          SAVIAJ_KEY_ALIAS: ${{ secrets.SAVIAJ_KEY_ALIAS }}
+          SAVIAJ_KEY_PASSWORD: ${{ secrets.SAVIAJ_KEY_PASSWORD }}
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
