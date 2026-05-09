@@ -1629,14 +1629,14 @@ export default function DriverPage() {
 
       <div className="fixed bottom-0 left-0 right-0 z-40 px-2 pb-2 overflow-y-auto" style={{ maxHeight: '45vh' }}>
         <div className="space-y-1.5">
-        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
+        <div className={`backdrop-blur-sm bg-background/40 rounded-xl shadow-lg border border-white/20 overflow-hidden transition-all duration-300 ${offersCardOpen ? 'max-h-[50vh]' : ''}`}>
           <div
-            className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
+            className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-white/10 transition-colors"
             onClick={() => handleCardToggle('offers')}
           >
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold">Rider Offers</span>
+              <span className="text-sm font-medium">Rider Offers</span>
               <Badge variant={!showFutureDates ? "default" : "outline"} className="text-[10px]">
                 {showFutureDates ? 'All' : '24h'}
               </Badge>
@@ -1653,7 +1653,7 @@ export default function DriverPage() {
                 />
                 <label htmlFor="future-dates-driver" className="text-[10px] text-muted-foreground cursor-pointer">Future</label>
               </div>
-              {offersCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
+              {offersCardOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
             </div>
           </div>
 
@@ -1814,18 +1814,19 @@ export default function DriverPage() {
           )}
         </div>
 
-        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
-          <div
-            className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
+        <div className={`backdrop-blur-sm bg-background/40 rounded-xl shadow-lg border border-white/20 overflow-hidden transition-all duration-300 ${activeRidesCardOpen ? 'max-h-[50vh]' : ''}`}>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/10 transition-colors"
             onClick={() => handleCardToggle('active')}
           >
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-semibold">Active Rides</span>
+              <span className="text-sm font-medium">Active Rides</span>
               {activeRides.length > 0 && <Badge className="bg-green-600 text-white text-xs">{activeRides.length}</Badge>}
             </div>
-            {activeRidesCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-          </div>
+            {activeRidesCardOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
 
           {!activeRidesCardOpen && activeRides.length > 0 && (
             <div className="px-2 pb-2">
@@ -1907,14 +1908,15 @@ export default function DriverPage() {
         <RecurringScheduleManager type="driver" />
 
         {/* My Offers Card - Driver's posted routes with rider requests */}
-        <div className="backdrop-blur-sm bg-background/40 rounded-lg shadow-lg border border-white/20 overflow-hidden">
-          <div
-            className="flex items-center justify-between px-2 py-1.5 cursor-pointer"
+        <div className={`backdrop-blur-sm bg-background/40 rounded-xl shadow-lg border border-white/20 overflow-hidden transition-all duration-300 ${myOffersCardOpen ? 'max-h-[50vh]' : ''}`}>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/10 transition-colors"
             onClick={() => handleCardToggle('myOffers')}
           >
             <div className="flex items-center gap-2">
               <Route className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold">My Offers</span>
+              <span className="text-sm font-medium">My Offers</span>
               {activePostedRoutes.length > 0 && (
                 <Badge className="bg-primary text-white text-xs">
                   {activePostedRoutes.length}
@@ -1926,8 +1928,8 @@ export default function DriverPage() {
                 </Badge>
               )}
             </div>
-            {myOffersCardOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronUp className="h-4 w-4 text-muted-foreground" />}
-          </div>
+            {myOffersCardOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
 
           {!myOffersCardOpen && activePostedRoutes.length > 0 && (
             <div className="px-2 pb-2">
