@@ -6,6 +6,9 @@ on:
     tags:
       - 'android-v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -67,20 +70,27 @@ jobs:
         working-directory: android
         run: ./gradlew bundleRelease --no-daemon --stacktrace
 
-      - name: Upload AAB artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: saviaj-app-release-aab
-          path: android/app/build/outputs/bundle/release/app-release.aab
-          if-no-files-found: error
-
       - name: Build APK (sideloadable, for testers without Play Store)
         working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+      - name: Stage release files
+        run: |
+          mkdir -p release-out
+          cp android/app/build/outputs/bundle/release/app-release.aab release-out/saviaj-${{ github.run_number }}.aab
+          cp android/app/build/outputs/apk/release/app-release*.apk release-out/ 2>/dev/null || true
+          ls -lah release-out
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: saviaj-app-release-apk
-          path: android/app/build/outputs/apk/release/app-release*.apk
-          if-no-files-found: warn
+          tag_name: android-build-${{ github.run_number }}
+          name: Saviaj Android build ${{ github.run_number }}
+          body: |
+            Automated Android build #${{ github.run_number }} from commit ${{ github.sha }}.
+
+            - `saviaj-${{ github.run_number }}.aab` — upload to Google Play Console
+            - `app-release.apk` — sideload directly on a device for testing
+          files: release-out/*
+          draft: false
+          prerelease: true
