@@ -37,7 +37,25 @@ export function GoogleSignInButton({
         type="button"
         variant="outline"
         className={className ?? "w-full h-12"}
-        onClick={() => {
+        onClick={async () => {
+          // Google blocks OAuth in embedded WebViews ("disallowed_useragent").
+          // On Capacitor (Android/iOS) we open the OAuth flow in the system /
+          // in-app browser; the server's callback redirects to the app via the
+          // verified https://savia.sibranet.com deep link.
+          try {
+            const { Capacitor } = await import("@capacitor/core");
+            if (Capacitor.isNativePlatform()) {
+              const { Browser } = await import("@capacitor/browser");
+              // Use the same origin the WebView is bound to (set in
+              // capacitor.config.ts -> server.url). This keeps dev / staging /
+              // prod builds talking to the same backend they already use.
+              const origin = window.location.origin;
+              await Browser.open({ url: `${origin}/api/auth/google` });
+              return;
+            }
+          } catch (err) {
+            console.warn("[google-signin] in-app browser unavailable, falling back:", err);
+          }
           window.location.href = "/api/auth/google";
         }}
         data-testid="button-google-signin"
