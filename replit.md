@@ -102,6 +102,14 @@ hides the corresponding controls (queried via `GET /api/chat/integrations`).
 - Client uses the Firebase JS SDK + `client/public/firebase-messaging-sw.js` service worker
   to obtain a Web Push token.
 
+## Public Account Deletion (Play Store compliance)
+- Public URL: `https://savia.sibranet.com/delete-account` (also `/account/delete`).
+- No login required — visitors submit email + optional reason.
+- Submissions land in `account_deletion_requests` (status `pending`). Admin reviews
+  and processes via the existing `softDeleteUser` flow.
+- Rate-limited: 3 requests per email per hour.
+- Logged-in users can still self-delete instantly via Settings → Delete account.
+
 ## App Store / Play Store Review Accounts
 Reviewers (Google / Apple) cannot receive UK SMS or read a real inbox, so we
 ship a **review-mode bypass** keyed on env vars. Both bypasses are no-ops when

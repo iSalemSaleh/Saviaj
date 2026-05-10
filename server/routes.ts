@@ -13,7 +13,7 @@ import { translateText, getStatus as translatorStatus } from "./lib/translator";
 import { getStatus as pushStatus } from "./lib/pushNotifications";
 import { insertRiderOfferSchema, insertDriverRouteSchema, insertBidSchema, users, insertPushTokenSchema } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, and, gte } from "drizzle-orm";
 import { stripeService } from "./stripeService";
 
 // UK-specific validation functions
@@ -5732,6 +5732,57 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     } catch (error) {
       console.error("Error deleting account:", error);
       res.status(500).json({ message: "Failed to delete account" });
+    }
+  });
+
+  // ── Public account-deletion request (Play Store compliance) ──────────
+  // Anonymous endpoint — anyone can request deletion of an account they
+  // claim to own. Admin reviews + processes via the existing softDeleteUser
+  // flow. We do basic rate-limiting (3 requests per email per hour) so the
+  // endpoint can't be abused to spam the admin queue.
+  app.post('/api/public/account-deletion-request', async (req, res) => {
+    try {
+      const { email, reason } = req.body || {};
+      if (!email || typeof email !== 'string') {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        return res.status(400).json({ message: "Please enter a valid email address" });
+      }
+      const normalizedEmail = email.toLowerCase().trim();
+      const { accountDeletionRequests } = await import("@shared/schema");
+
+      // Rate limit: 3 pending requests per email per hour.
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const recent = await db
+        .select({ id: accountDeletionRequests.id })
+        .from(accountDeletionRequests)
+        .where(
+          and(
+            eq(accountDeletionRequests.email, normalizedEmail),
+            gte(accountDeletionRequests.createdAt, oneHourAgo),
+          ),
+        );
+      if (recent.length >= 3) {
+        return res.status(429).json({
+          message: "We've already received your request. Our team will be in touch within 30 days.",
+        });
+      }
+
+      const ipAddress = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || '').split(',')[0].trim().slice(0, 64) || null;
+
+      await db.insert(accountDeletionRequests).values({
+        email: normalizedEmail,
+        reason: typeof reason === 'string' && reason.trim() ? reason.trim().slice(0, 2000) : null,
+        ipAddress,
+      });
+
+      console.log(`[Account Deletion] New public request for ${normalizedEmail.slice(0,3)}***`);
+      res.json({ success: true, message: "Request received" });
+    } catch (error) {
+      console.error("Account deletion request error:", error);
+      res.status(500).json({ message: "Failed to submit request. Please try again." });
     }
   });
 

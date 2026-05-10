@@ -26,6 +26,7 @@ import HistoryPage from "@/pages/history";
 import SettingsPage from "@/pages/settings";
 import LegalPage from "@/pages/legal-page";
 import LegalIndexPage from "@/pages/legal-index";
+import DeleteAccountPage from "@/pages/delete-account";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -194,6 +195,8 @@ function Router() {
         <LegalPage doc="cancellation-policy" />
       </Route>
       <Route path="/legal/:doc" component={LegalPage} />
+      <Route path="/delete-account" component={DeleteAccountPage} />
+      <Route path="/account/delete" component={DeleteAccountPage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -1042,6 +1042,36 @@ export const insertPushTokenSchema = createInsertSchema(pushTokens).omit({
 export type InsertPushToken = z.infer<typeof insertPushTokenSchema>;
 export type PushToken = typeof pushTokens.$inferSelect;
 
+// Public account-deletion requests (Play Store compliance).
+// Any visitor can submit one without logging in. Admin reviews and processes
+// via the existing softDeleteUser flow. We keep status + handledAt for audit.
+export const accountDeletionRequests = pgTable("account_deletion_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  email: varchar("email", { length: 255 }).notNull(),
+  reason: text("reason"),
+  // 'pending' | 'completed' | 'rejected' | 'duplicate'
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  handledByUserId: varchar("handled_by_user_id").references(() => users.id),
+  handledAt: timestamp("handled_at"),
+  notes: text("notes"),
+  ipAddress: varchar("ip_address", { length: 64 }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  emailIdx: index("account_deletion_requests_email_idx").on(table.email),
+  statusIdx: index("account_deletion_requests_status_idx").on(table.status),
+}));
+
+export const insertAccountDeletionRequestSchema = createInsertSchema(accountDeletionRequests).omit({
+  id: true,
+  status: true,
+  handledByUserId: true,
+  handledAt: true,
+  notes: true,
+  createdAt: true,
+});
+export type InsertAccountDeletionRequest = z.infer<typeof insertAccountDeletionRequestSchema>;
+export type AccountDeletionRequest = typeof accountDeletionRequests.$inferSelect;
+
 // Daily driver activity tracking for private driver limits
 export const driverDailyActivity = pgTable("driver_daily_activity", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),

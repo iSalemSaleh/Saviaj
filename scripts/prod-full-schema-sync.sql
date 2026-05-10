@@ -566,4 +566,19 @@ CREATE TABLE IF NOT EXISTS "push_tokens" (
 );
 CREATE INDEX IF NOT EXISTS push_tokens_user_idx ON public.push_tokens USING btree (user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS push_tokens_token_uniq ON public.push_tokens USING btree (token);
+
+-- Public account-deletion requests (Play Store compliance).
+CREATE TABLE IF NOT EXISTS "account_deletion_requests" (
+  id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  email VARCHAR(255) NOT NULL,
+  reason TEXT,
+  status VARCHAR(20) DEFAULT 'pending' NOT NULL,
+  handled_by_user_id VARCHAR REFERENCES public.users(id),
+  handled_at TIMESTAMP,
+  notes TEXT,
+  ip_address VARCHAR(64),
+  created_at TIMESTAMP DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS account_deletion_requests_email_idx ON public.account_deletion_requests USING btree (email);
+CREATE INDEX IF NOT EXISTS account_deletion_requests_status_idx ON public.account_deletion_requests USING btree (status);
 COMMIT;
