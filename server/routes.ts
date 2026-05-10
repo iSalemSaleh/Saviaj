@@ -548,8 +548,20 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         }
       }
       
-      // Generate 6-digit OTP
-      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      // ── Play Store / Apple App review bypass ──────────────────────────
+      // For phone numbers listed in REVIEW_TEST_PHONES (csv) we skip the
+      // Twilio send and seed the verification record with a fixed OTP from
+      // REVIEW_OTP_CODE (default 000000). Reviewers cannot receive UK SMS,
+      // so without this they cannot complete signup/login.
+      const reviewPhones = (process.env.REVIEW_TEST_PHONES || "")
+        .split(",").map(s => s.trim()).filter(Boolean);
+      const isReviewPhone = reviewPhones.includes(normalizedPhone);
+      const reviewOtpCode = process.env.REVIEW_OTP_CODE || "000000";
+
+      // Generate 6-digit OTP (fixed code for review phones)
+      const otpCode = isReviewPhone
+        ? reviewOtpCode
+        : Math.floor(100000 + Math.random() * 900000).toString();
       
       // Hash the OTP code for secure storage
       const bcrypt = await import("bcrypt");
@@ -570,6 +582,15 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         attempts: 0,
         expiresAt,
       });
+
+      if (isReviewPhone) {
+        console.log(`[Auth] Review phone ${normalizedPhone.slice(0,4)}*** — Twilio skipped, fixed OTP issued.`);
+        return res.json({
+          success: true,
+          message: "Verification code sent to your phone",
+          reviewMode: true,
+        });
+      }
       
       // Try to send via Twilio
       try {
@@ -740,6 +761,45 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         }
       }
       
+      // ── Play Store / Apple App review bypass ──────────────────────────
+      // For emails listed in REVIEW_TEST_EMAILS (csv) we skip Entra entirely
+      // and seed an Entra-style placeholder verification with a fixed OTP
+      // from REVIEW_OTP_CODE (default 000000). Reviewers cannot retrieve
+      // codes from a real inbox, so this lets them complete signup/login.
+      const reviewEmails = (process.env.REVIEW_TEST_EMAILS || "")
+        .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+      if (reviewEmails.includes(normalizedEmail)) {
+        const reviewOtpCode = process.env.REVIEW_OTP_CODE || "000000";
+        const bcryptMod = await import("bcrypt");
+        const hashedOtp = await bcryptMod.default.hash(reviewOtpCode, 10);
+        const crypto = await import("crypto");
+        const continuationToken = crypto.randomBytes(32).toString("hex");
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+        await db.update(emailVerifications)
+          .set({ status: "expired" })
+          .where(eq(emailVerifications.email, normalizedEmail));
+
+        await db.insert(emailVerifications).values({
+          email: normalizedEmail,
+          otpCode: hashedOtp,
+          verificationToken: continuationToken,
+          flowType: 'signup',
+          status: "pending",
+          attempts: 0,
+          expiresAt,
+        });
+
+        console.log(`[Auth] Review email ${normalizedEmail.slice(0,3)}*** — Entra skipped, fixed OTP issued.`);
+        return res.json({
+          success: true,
+          message: `Verification code sent to ${normalizedEmail}`,
+          codeLength: reviewOtpCode.length,
+          continuationToken,
+          reviewMode: true,
+        });
+      }
+
       // Try to use Entra External ID for email OTP
       try {
         const { initiateEmailOtpSignUp, initiateEmailOtpSignIn } = await import("./entraEmailOtp");
@@ -899,6 +959,34 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // than silently falling through to a placeholder bcrypt comparison.
       if (!tokenForEntra) {
         return res.status(400).json({ message: "Verification record is invalid. Please request a new code." });
+      }
+
+      // ── Play Store / Apple App review bypass ──────────────────────────
+      // Review emails verify locally via bcrypt comparison (no Entra call).
+      const reviewEmailsVerify = (process.env.REVIEW_TEST_EMAILS || "")
+        .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+      if (reviewEmailsVerify.includes(normalizedEmail)) {
+        const isValid = await bcrypt.default.compare(code, verification.otpCode);
+        if (!isValid) {
+          await db.update(emailVerifications)
+            .set({ attempts: (verification.attempts || 0) + 1 })
+            .where(eq(emailVerifications.id, verification.id));
+          return res.status(400).json({ message: "Invalid code. Please try again." });
+        }
+        const crypto = await import("crypto");
+        const newVerificationToken = crypto.randomBytes(32).toString("hex");
+        await db.update(emailVerifications)
+          .set({
+            status: "verified",
+            verificationToken: newVerificationToken,
+            verifiedAt: new Date(),
+          })
+          .where(eq(emailVerifications.id, verification.id));
+        return res.json({
+          success: true,
+          verificationToken: newVerificationToken,
+          email: normalizedEmail,
+        });
       }
 
       // Verify with Entra. Use the same flow (signup vs signin) that was

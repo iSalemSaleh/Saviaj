@@ -102,6 +102,27 @@ hides the corresponding controls (queried via `GET /api/chat/integrations`).
 - Client uses the Firebase JS SDK + `client/public/firebase-messaging-sw.js` service worker
   to obtain a Web Push token.
 
+## App Store / Play Store Review Accounts
+Reviewers (Google / Apple) cannot receive UK SMS or read a real inbox, so we
+ship a **review-mode bypass** keyed on env vars. Both bypasses are no-ops when
+the env vars are unset, so production users are unaffected.
+
+| Env var               | Purpose                                                  |
+|-----------------------|----------------------------------------------------------|
+| `REVIEW_TEST_EMAILS`  | Comma-separated emails that skip Entra OTP send/verify   |
+| `REVIEW_TEST_PHONES`  | Comma-separated E.164 phones that skip Twilio SMS        |
+| `REVIEW_OTP_CODE`     | Fixed OTP for the above (default `000000`)               |
+
+Seed the two reviewer accounts (rider + driver, with KYC pre-approved and a
+vehicle for the driver):
+```
+REVIEW_RIDER_EMAIL=... REVIEW_RIDER_PHONE=... REVIEW_RIDER_PASSWORD=... \
+REVIEW_DRIVER_EMAIL=... REVIEW_DRIVER_PHONE=... REVIEW_DRIVER_PASSWORD=... \
+npx tsx scripts/seed-play-review.ts
+```
+The script is idempotent. Run it once on dev and once on prod (via the App
+Service SSH console) before submitting builds for review.
+
 ## Android (Capacitor)
 - **App identity**: `com.saviaj.app` (permanent — used by Play Console).
 - **Build outputs**: `android/app/build/outputs/bundle/release/app-release.aab` after `./gradlew bundleRelease`.
