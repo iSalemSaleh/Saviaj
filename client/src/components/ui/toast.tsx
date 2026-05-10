@@ -15,6 +15,9 @@ const ToastViewport = React.forwardRef<
     ref={ref}
     className={cn(
       "fixed top-0 z-[9999] flex max-h-screen w-full flex-col p-4 right-0 md:max-w-[420px] mt-16",
+      "pt-[max(1rem,env(safe-area-inset-top))]",
+      "pr-[max(1rem,env(safe-area-inset-right))]",
+      "pl-[max(1rem,env(safe-area-inset-left))]",
       className
     )}
     {...props}

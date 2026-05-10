@@ -210,7 +210,17 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <SonnerToaster position="top-right" richColors closeButton />
+        <SonnerToaster
+          position="top-right"
+          richColors
+          closeButton
+          offset="calc(env(safe-area-inset-top, 0px) + 16px)"
+          style={{
+            ['--toast-padding' as any]: '0px',
+            paddingRight: 'env(safe-area-inset-right, 0px)',
+            paddingLeft: 'env(safe-area-inset-left, 0px)',
+          }}
+        />
         <PushBootstrap />
         <Router />
       </TooltipProvider>
