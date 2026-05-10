@@ -1063,8 +1063,8 @@ export default function RiderPage() {
               compact
             />
             <div className="flex items-center gap-2">
-              <div className="flex items-center h-7 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0">
-                <div className="flex items-center px-1.5 min-w-0 overflow-hidden">
+              <div className="flex items-center h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex-1 min-w-0">
+                <div className="flex items-center px-1.5 min-w-0 overflow-hidden flex-1 justify-center">
                   {isRecurring && (
                     <input
                       type="time"
