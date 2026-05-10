@@ -63,7 +63,7 @@ Preferred communication style: Simple, everyday language.
 - **Commercial Driver Licensing**: Integration with UK Local Licensing Authorities for commercial driver verification.
 - **Driver Compliance Stack**: Comprehensive compliance for UK rideshare drivers covering self-employment tax, DBS checks, DVLA licence checks, Hire & Reward insurance, KYC, and Sanctions/AML screening.
 - **Platform Fees**: Centralized management of platform fees with per-ride accounting and specific logic for casual route allocation.
-- **Stripe Connect Express**: Separate charges and transfers model for driver payouts, with onboarding, status synchronization, and payout triggers.
+- **Stripe Connect Express**: Separate charges and transfers model for driver payouts, with onboarding, status synchronization, and payout triggers. On Capacitor (Android/iOS), the onboarding URL is opened via `@capacitor/browser` so users return to the app via the deep-linked `return_url`; status auto-refreshes when the in-app browser closes. Web continues to use a same-tab redirect.
 - **Stripe Identity**: Hosted document and selfie verification for KYC, integrating with existing `kyc_status` fields.
 - **Signup Flow**: Step 1 requires email + phone verification (both mandatory, SMS OTP via Twilio). Address lookup via Azure Maps postcode search with dropdown + manual entry fallback. Login accepts email, phone, or username.
 - **Auth Lifecycle Rules**: Strict rules for active user lookups, account deletion, re-signup after deletion, OTP flow tracking, and password reset hardening.

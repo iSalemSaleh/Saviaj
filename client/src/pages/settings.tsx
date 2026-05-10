@@ -1242,12 +1242,35 @@ function PayoutsSection() {
       const res = await apiRequest("POST", "/api/driver/connect/onboard", {});
       return res.json();
     },
-    onSuccess: (resp: any) => {
-      if (resp?.url) {
-        window.location.href = resp.url;
-      } else {
+    onSuccess: async (resp: any) => {
+      if (!resp?.url) {
         toast({ title: "Couldn't start onboarding", description: "No link returned by Stripe", variant: "destructive" });
+        return;
       }
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (Capacitor.isNativePlatform()) {
+          // Open Stripe Connect onboarding in the in-app browser so the user
+          // returns to the app via the configured return_url deep link instead
+          // of getting stranded in the system browser.
+          const { Browser } = await import("@capacitor/browser");
+          await Browser.open({
+            url: resp.url,
+            presentationStyle: "popover",
+            windowName: "_self",
+          });
+          // When the user closes the in-app browser (or Stripe redirects to
+          // the return_url which deep-links back to the app), refresh status.
+          const sub = await Browser.addListener("browserFinished", () => {
+            queryClient.invalidateQueries({ queryKey: ["/api/driver/connect/status"] });
+            sub.remove();
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn("[stripe-connect] in-app browser unavailable, falling back to redirect:", err);
+      }
+      window.location.href = resp.url;
     },
     onError: (err: any) => {
       toast({ title: "Onboarding failed", description: err?.message || "Try again later", variant: "destructive" });
