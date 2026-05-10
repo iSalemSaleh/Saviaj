@@ -103,7 +103,7 @@ hides the corresponding controls (queried via `GET /api/chat/integrations`).
   to obtain a Web Push token.
 
 ## Public Account Deletion (Play Store compliance)
-- Public URL: `https://savia.sibranet.com/delete-account` (also `/account/delete`).
+- Public URL: `https://saviaj.sibranet.com/delete-account` (also `/account/delete`).
 - No login required — visitors submit email + optional reason.
 - Submissions land in `account_deletion_requests` (status `pending`). Admin reviews
   and processes via the existing `softDeleteUser` flow.
@@ -138,7 +138,7 @@ Service SSH console) before submitting builds for review.
   `SAVIAJ_KEYSTORE_PATH`, `SAVIAJ_KEYSTORE_PASSWORD`, `SAVIAJ_KEY_ALIAS`, `SAVIAJ_KEY_PASSWORD`. The
   release `signingConfig` is only applied when `SAVIAJ_KEYSTORE_PATH` is set, so unsigned debug builds
   still work without the keystore.
-- **Deep links / App Links**: `https://savia.sibranet.com/*` opens in the app via the verified
+- **Deep links / App Links**: `https://saviaj.sibranet.com/*` opens in the app via the verified
   intent-filter in `AndroidManifest.xml`. The server hosts `/.well-known/assetlinks.json` — set
   `ANDROID_APP_SIGNING_FINGERPRINTS` (comma-separated SHA256s for upload + Play App Signing keys)
   in the Azure App Service so Google can verify ownership.

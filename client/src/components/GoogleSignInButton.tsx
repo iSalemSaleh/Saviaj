@@ -41,7 +41,7 @@ export function GoogleSignInButton({
           // Google blocks OAuth in embedded WebViews ("disallowed_useragent").
           // On Capacitor (Android/iOS) we open the OAuth flow in the system /
           // in-app browser; the server's callback redirects to the app via the
-          // verified https://savia.sibranet.com deep link.
+          // verified https://saviaj.sibranet.com deep link.
           try {
             const { Capacitor } = await import("@capacitor/core");
             if (Capacitor.isNativePlatform()) {
