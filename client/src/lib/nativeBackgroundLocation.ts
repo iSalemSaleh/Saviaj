@@ -40,15 +40,23 @@ export function isNative(): boolean {
  * notification while this is active (required by Android 10+ for background location).
  */
 export async function startBackgroundTracking(
-  onLocation: (loc: { lat: number; lng: number; accuracy: number; speed: number | null }) => void
+  onLocation: (loc: { lat: number; lng: number; accuracy: number; speed: number | null }) => void,
+  context?: { riderName?: string; tripLabel?: string }
 ): Promise<void> {
   if (!isNative()) return;
   if (activeWatcherId) return;
 
+  const who = context?.riderName?.trim();
+  const trip = context?.tripLabel?.trim();
+  const title = trip ? `Saviaj — ${trip}` : 'Saviaj — Trip in progress';
+  const message = who
+    ? `Sharing your live location with ${who}. Tap to return to the trip.`
+    : 'Sharing your live location with your rider. Tap to return to the trip.';
+
   activeWatcherId = await BackgroundGeolocation.addWatcher(
     {
-      backgroundMessage: 'Saviaj is sharing your location with riders',
-      backgroundTitle: 'Trip in progress',
+      backgroundMessage: message,
+      backgroundTitle: title,
       requestPermissions: true,
       stale: false,
       distanceFilter: 10,
