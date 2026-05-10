@@ -127,7 +127,7 @@ export function RecurringScheduleManager({ type }: { type: "rider" | "driver" })
                     <div className="flex items-center justify-between">
                       <Badge
                         variant={schedule.status === "active" ? "default" : "secondary"}
-                        className="text-[10px] h-4"
+                        className="text-xs h-5"
                       >
                         {schedule.status}
                       </Badge>
@@ -136,31 +136,31 @@ export function RecurringScheduleManager({ type }: { type: "rider" | "driver" })
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-9 w-9"
                             onClick={() => statusMutation.mutate({ id: schedule.id, status: "paused" })}
                             data-testid={`button-pause-schedule-${schedule.id}`}
                           >
-                            <Pause className="h-3 w-3 text-amber-500" />
+                            <Pause className="h-4 w-4 text-amber-500" />
                           </Button>
                         ) : schedule.status === "paused" ? (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6"
+                            className="h-9 w-9"
                             onClick={() => statusMutation.mutate({ id: schedule.id, status: "active" })}
                             data-testid={`button-resume-schedule-${schedule.id}`}
                           >
-                            <Play className="h-3 w-3 text-green-500" />
+                            <Play className="h-4 w-4 text-green-500" />
                           </Button>
                         ) : null}
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6"
+                          className="h-9 w-9"
                           onClick={() => setConfirmDelete(schedule.id)}
                           data-testid={`button-delete-schedule-${schedule.id}`}
                         >
-                          <Trash2 className="h-3 w-3 text-red-500" />
+                          <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
                       </div>
                     </div>
@@ -169,12 +169,12 @@ export function RecurringScheduleManager({ type }: { type: "rider" | "driver" })
                       const [start, end] = key.split("|");
                       const sortedEntries = [...entries].sort((a, b) => a.dayOfWeek - b.dayOfWeek);
                       return (
-                        <div key={key} className="space-y-0.5">
-                          <div className="flex items-center gap-1 text-[11px]">
-                            <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
+                        <div key={key} className="space-y-1">
+                          <div className="flex items-center gap-1 text-xs">
+                            <MapPin className="h-3.5 w-3.5 text-blue-500 shrink-0" />
                             <span className="truncate">{start}</span>
                             <span className="text-muted-foreground mx-0.5">→</span>
-                            <MapPin className="h-3 w-3 text-red-500 shrink-0" />
+                            <MapPin className="h-3.5 w-3.5 text-red-500 shrink-0" />
                             <span className="truncate">{end}</span>
                           </div>
                           <div className="flex flex-wrap gap-1">
@@ -182,22 +182,22 @@ export function RecurringScheduleManager({ type }: { type: "rider" | "driver" })
                               <Badge
                                 key={entry.id}
                                 variant="outline"
-                                className="text-[10px] h-5 gap-0.5"
+                                className="text-xs h-6 gap-1"
                               >
-                                <CalendarDays className="h-2.5 w-2.5" />
+                                <CalendarDays className="h-3 w-3" />
                                 {DAY_NAMES[entry.dayOfWeek]}
-                                <Clock className="h-2.5 w-2.5 ml-0.5" />
+                                <Clock className="h-3 w-3 ml-0.5" />
                                 {entry.departureTime}
                               </Badge>
                             ))}
                           </div>
                           {entries[0]?.offerPrice && (
-                            <div className="text-[10px] text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               {money.formatMajor(parseFloat(entries[0].offerPrice))} per trip
                             </div>
                           )}
                           {entries[0]?.pricePerSeat && (
-                            <div className="text-[10px] text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               {money.formatMajor(parseFloat(entries[0].pricePerSeat))}/seat · {entries[0].availableSeats} seats
                             </div>
                           )}
@@ -287,11 +287,11 @@ export function DriverDayEntryPicker({ entries, onUpdateEntry, onAddEntry, onRem
   return (
     <div className="space-y-2">
       {entries.map((entry, index) => (
-        <div key={index} className="flex items-center gap-1.5 bg-white/60 dark:bg-slate-700/60 rounded-lg p-1.5" data-testid={`driver-entry-${index}`}>
+        <div key={index} className="flex items-center gap-2 bg-white/60 dark:bg-slate-700/60 rounded-lg p-2" data-testid={`driver-entry-${index}`}>
           <select
             value={entry.dayOfWeek}
             onChange={(e) => onUpdateEntry(index, "dayOfWeek", parseInt(e.target.value))}
-            className="h-7 text-[11px] bg-transparent border border-gray-200 dark:border-slate-600 rounded px-1 w-16"
+            className="h-11 text-sm bg-transparent border border-gray-200 dark:border-slate-600 rounded px-2 w-20"
             data-testid={`entry-day-select-${index}`}
           >
             {DAY_NAMES_FULL.map((name, i) => (
@@ -302,20 +302,21 @@ export function DriverDayEntryPicker({ entries, onUpdateEntry, onAddEntry, onRem
             type="time"
             value={entry.departureTime}
             onChange={(e) => onUpdateEntry(index, "departureTime", e.target.value)}
-            className="h-7 text-[11px] bg-transparent border border-gray-200 dark:border-slate-600 rounded px-1 w-20"
+            className="h-11 text-sm bg-transparent border border-gray-200 dark:border-slate-600 rounded px-2 w-24"
             data-testid={`entry-time-input-${index}`}
           />
-          <div className="flex-1 text-[10px] text-muted-foreground truncate">
+          <div className="flex-1 text-xs text-muted-foreground truncate">
             {entry.startLocation ? `${entry.startLocation.split(',')[0]} → ${entry.endLocation.split(',')[0]}` : "Uses form locations"}
           </div>
           {entries.length > 1 && (
             <button
               type="button"
               onClick={() => onRemoveEntry(index)}
-              className="h-5 w-5 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center"
+              className="h-9 w-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center touch-manipulation"
               data-testid={`button-remove-entry-${index}`}
+              aria-label="Remove entry"
             >
-              <span className="text-red-500 text-xs">×</span>
+              <span className="text-red-500 text-base leading-none">×</span>
             </button>
           )}
         </div>
@@ -325,7 +326,7 @@ export function DriverDayEntryPicker({ entries, onUpdateEntry, onAddEntry, onRem
           type="button"
           variant="outline"
           size="sm"
-          className="w-full h-7 text-[11px]"
+          className="w-full h-10 text-sm"
           onClick={onAddEntry}
           data-testid="button-add-day-entry"
         >

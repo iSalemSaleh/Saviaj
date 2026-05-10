@@ -742,6 +742,8 @@ export default function RiderPage() {
     
     let filtered = driverRoutes.filter(route => {
       if (hiddenRoutes.has(route.id)) return false;
+      // Self-dealing prevention: don't show rider their own published routes
+      if (route.driverId === user?.id) return false;
       const departureTime = new Date(route.departureTime);
       if (departureTime < now) return false;
       if (!showFutureDates && departureTime > twentyFourHoursLater) return false;
@@ -771,7 +773,7 @@ export default function RiderPage() {
     });
     
     return filtered;
-  }, [driverRoutes, userLocation, showFutureDates, currentTime, hiddenRoutes]);
+  }, [driverRoutes, userLocation, showFutureDates, currentTime, hiddenRoutes, user?.id]);
 
   const visibleNearbyDrivers = useMemo(() => {
     return nearbyDrivers.filter(driver => !hiddenDrivers.has(driver.id));
@@ -786,7 +788,9 @@ export default function RiderPage() {
       const routeStartLng = parseFloat(route.startLng);
       const routeEndLat = parseFloat(route.endLat);
       const routeEndLng = parseFloat(route.endLng);
-      const maxDetour = parseFloat(route.maxDetourMiles) || 5;
+      const maxDetour = route.maxDetourMiles != null && route.maxDetourMiles !== ""
+        ? parseFloat(route.maxDetourMiles)
+        : 0.31; // ~500m default; respects explicit 0 ("no detour")
       const distanceToStart = calculateDistance(pickupCoords.lat, pickupCoords.lon, routeStartLat, routeStartLng);
       const distanceToEnd = calculateDistance(dropoffCoords.lat, dropoffCoords.lon, routeEndLat, routeEndLng);
       return distanceToStart <= maxDetour && distanceToEnd <= maxDetour;

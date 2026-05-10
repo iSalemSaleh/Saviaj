@@ -437,12 +437,14 @@ export default function DriverPage() {
     
     return riderOffers.filter(offer => {
       if (hiddenOffers.has(offer.id)) return false;
+      // Self-dealing prevention: don't show driver their own ride requests
+      if (offer.riderId === user?.id) return false;
       const requestedTime = new Date(offer.requestedTime);
       if (requestedTime < now) return false;
       if (!showFutureDates && requestedTime > twentyFourHoursLater) return false;
       return offer.status === "pending";
     });
-  }, [riderOffers, showFutureDates, currentTime, hiddenOffers]);
+  }, [riderOffers, showFutureDates, currentTime, hiddenOffers, user?.id]);
 
   const detourDistanceInMiles = useMemo(() => {
     const value = parseFloat(maxDetour) || 2;
