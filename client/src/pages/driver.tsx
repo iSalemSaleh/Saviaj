@@ -1576,31 +1576,33 @@ export default function DriverPage() {
               )}
 
               <div className="grid grid-cols-2 gap-1.5">
-                <Select
-                  value={maxDetour ? `${maxDetour}|${detourUnit}` : ""}
-                  onValueChange={(combined) => {
-                    const [val, unit] = combined.split("|");
-                    setMaxDetour(val);
-                    setDetourUnit(unit as DetourUnit);
-                  }}
-                >
-                  <SelectTrigger className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-max-detour">
-                    <SelectValue placeholder="Max detour" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0|miles">No detour</SelectItem>
-                    <SelectItem value="0.5|miles">0.5 miles</SelectItem>
-                    <SelectItem value="1|miles">1 mile</SelectItem>
-                    <SelectItem value="2|miles">2 miles</SelectItem>
-                    <SelectItem value="5|miles">5 miles</SelectItem>
-                    <SelectItem value="10|miles">10 miles</SelectItem>
-                    <SelectItem value="20|miles">20 miles</SelectItem>
-                    <SelectItem value="1|km">1 km</SelectItem>
-                    <SelectItem value="5|km">5 km</SelectItem>
-                    <SelectItem value="10|km">10 km</SelectItem>
-                    <SelectItem value="20|km">20 km</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center h-7 rounded-md border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-700 overflow-hidden focus-within:ring-2 focus-within:ring-ring">
+                  <Input
+                    type="number"
+                    placeholder="Detour"
+                    min="0"
+                    step="any"
+                    className="h-full border-0 shadow-none text-xs px-2 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
+                    value={maxDetour}
+                    onChange={(e) => setMaxDetour(e.target.value)}
+                    aria-label="Maximum detour distance"
+                    data-testid="input-max-detour"
+                  />
+                  <div className="w-px h-4 bg-slate-200 dark:bg-slate-700 shrink-0" />
+                  <Select value={detourUnit} onValueChange={(v) => setDetourUnit(v as DetourUnit)}>
+                    <SelectTrigger
+                      className="h-full w-auto border-0 shadow-none text-xs px-2 gap-1 focus:ring-0 focus:ring-offset-0 bg-transparent"
+                      data-testid="select-detour-unit"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(UNIT_LABELS) as DetourUnit[]).map((unit) => (
+                        <SelectItem key={unit} value={unit}>{UNIT_LABELS[unit]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button 
                   type="submit"
                   className="h-7 px-2 text-xs font-semibold"
