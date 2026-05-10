@@ -229,14 +229,15 @@ const createDestinationIcon = () => {
       display: flex;
       flex-direction: column;
       align-items: center;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
     ">
-      <svg width="24" height="36" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 0C5.372 0 0 5.372 0 12c0 9 12 24 12 24s12-15 12-24c0-6.628-5.372-12-12-12z" fill="#ef4444"/>
+      <svg width="32" height="44" viewBox="0 0 24 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 0C5.372 0 0 5.372 0 12c0 9 12 24 12 24s12-15 12-24c0-6.628-5.372-12-12-12z" fill="#ef4444" stroke="white" stroke-width="1.5"/>
         <circle cx="12" cy="12" r="5" fill="white"/>
       </svg>
     </div>`,
-    iconSize: [24, 36],
-    iconAnchor: [12, 36],
+    iconSize: [32, 44],
+    iconAnchor: [16, 44],
   });
 };
 
@@ -256,21 +257,21 @@ const pulsingCircleStyles = `
     }
   }
   .pulsing-circle {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     background-color: #3b82f6;
     border-radius: 50%;
-    border: 3px solid white;
-    box-shadow: 0 0 0 rgba(59, 130, 246, 0.5);
+    border: 4px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     position: relative;
   }
   .pulsing-circle::before {
     content: '';
     position: absolute;
-    top: -6px;
-    left: -6px;
-    width: 28px;
-    height: 28px;
+    top: -8px;
+    left: -8px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background-color: rgba(59, 130, 246, 0.3);
     animation: pulse 2s ease-in-out infinite;
@@ -284,8 +285,8 @@ const createUserLocationIcon = () => {
       <style>${pulsingCircleStyles}</style>
       <div class="pulsing-circle"></div>
     `,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
   });
 };
 

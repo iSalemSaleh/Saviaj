@@ -151,56 +151,56 @@ interface RideMapProps {
  */
 function createStaticIcon(type: 'rider' | 'pickup' | 'dropoff'): L.DivIcon {
   if (type === 'pickup') {
-    // Blue dot for pickup location
+    // Blue dot for pickup location — sized for mobile visibility (Material guideline ~24dp+)
     return L.divIcon({
       className: 'custom-marker',
       html: `<div style="
-        width: 16px;
-        height: 16px;
+        width: 22px;
+        height: 22px;
         background-color: #0ea5e9;
         border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        border: 4px solid white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.35);
       "></div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
     });
   }
   
   if (type === 'dropoff') {
-    // Red location pin for dropoff
+    // Red location pin for dropoff — bumped up for mobile readability
     return L.divIcon({
       className: 'custom-marker',
       html: `<div style="
-        width: 32px;
-        height: 40px;
+        width: 40px;
+        height: 52px;
         display: flex;
         flex-direction: column;
         align-items: center;
       ">
         <div style="
-          width: 24px;
-          height: 24px;
+          width: 32px;
+          height: 32px;
           background: linear-gradient(135deg, #ef4444, #dc2626);
           border-radius: 50% 50% 50% 0;
           transform: rotate(-45deg);
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 2px solid white;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+          border: 3px solid white;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.4);
         ">
           <div style="
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             background: white;
             border-radius: 50%;
             transform: rotate(45deg);
           "></div>
         </div>
       </div>`,
-      iconSize: [32, 40],
-      iconAnchor: [16, 40],
+      iconSize: [40, 52],
+      iconAnchor: [20, 52],
     });
   }
   
@@ -208,19 +208,19 @@ function createStaticIcon(type: 'rider' | 'pickup' | 'dropoff'): L.DivIcon {
   return L.divIcon({
     className: 'custom-marker',
     html: `<div style="
-      width: 32px;
-      height: 32px;
+      width: 40px;
+      height: 40px;
       background-color: #0891b2;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 16px;
-      border: 2px solid white;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      font-size: 20px;
+      border: 3px solid white;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.35);
     ">👤</div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
   });
 }
 
