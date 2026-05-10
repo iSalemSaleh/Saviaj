@@ -50,7 +50,7 @@ export default function PostcodeSearch({
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
         setIsEditing(false);
@@ -58,7 +58,11 @@ export default function PostcodeSearch({
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const searchSuggestions = async (searchQuery: string) => {
@@ -156,18 +160,18 @@ export default function PostcodeSearch({
         )}
         
         {showSuggestions && suggestions.length > 0 && (
-          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto">
+          <div className="absolute z-[1000] w-full mt-1 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-64 overflow-y-auto overscroll-contain">
             {suggestions.map((suggestion, index) => (
               <button
                 key={suggestion.id}
                 type="button"
-                className={`w-full ${compact ? 'px-3 py-2' : 'px-4 py-3'} text-left hover:bg-gray-100 dark:hover:bg-gray-800 flex items-start gap-2 border-b border-gray-100 dark:border-gray-800 last:border-b-0 transition-colors`}
+                className="w-full min-h-[44px] px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700 flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 last:border-b-0 transition-colors touch-manipulation"
                 onClick={() => handleSuggestionClick(suggestion)}
                 data-testid={`${testId}-suggestion-${index}`}
               >
-                <Search className={`${compact ? 'h-3 w-3' : 'h-4 w-4'} mt-0.5 text-muted-foreground flex-shrink-0`} />
+                <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className={`font-medium ${compact ? 'text-xs' : 'text-sm'} text-gray-900 dark:text-gray-100 truncate`}>
+                  <p className="font-medium text-sm text-gray-900 dark:text-gray-100 line-clamp-2">
                     {suggestion.address}
                   </p>
                 </div>
