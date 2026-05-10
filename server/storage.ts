@@ -1641,7 +1641,10 @@ export class DatabaseStorage implements IStorage {
         const routeStartLng = parseFloat(r.route.startLng?.toString() || "0");
         const routeEndLat = parseFloat(r.route.endLat?.toString() || "0");
         const routeEndLng = parseFloat(r.route.endLng?.toString() || "0");
-        const maxDetour = parseFloat(r.route.maxDetourMiles?.toString() || "5"); // Default 5 miles if not set
+        // Use ?? not || so an explicit 0 ("no detour") is preserved instead of falling back to 5.
+        const maxDetour = r.route.maxDetourMiles != null
+          ? parseFloat(r.route.maxDetourMiles.toString())
+          : 5;
         
         // Skip distance calculation if route has invalid coordinates
         if (routeStartLat === 0 && routeStartLng === 0) {
@@ -1673,7 +1676,9 @@ export class DatabaseStorage implements IStorage {
       const filteredRoutes = routesWithDistance.filter(route => {
         // Include routes without valid coordinates (let frontend decide)
         if (route.distanceToRider === undefined) return true;
-        const maxDetour = parseFloat(route.maxDetourMiles?.toString() || "5");
+        const maxDetour = route.maxDetourMiles != null
+          ? parseFloat(route.maxDetourMiles.toString())
+          : 5;
         return route.distanceToRider <= maxDetour;
       });
       
