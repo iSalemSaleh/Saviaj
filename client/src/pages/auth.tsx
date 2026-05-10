@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Car, Users, Shield, UserPlus, Mail } from "lucide-react";
 import atlasRideLogo from "@assets/AtlasRideLogo_1767134626458.png";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { Link } from "wouter";
 
 export default function AuthPage() {
   const [rememberMe, setRememberMe] = useState(true);
@@ -107,7 +108,23 @@ export default function AuthPage() {
 
           <div className="pt-4 border-t">
             <p className="text-xs text-center text-muted-foreground">
-              By continuing, you agree to our Terms of Service and Privacy Policy.
+              By continuing, you agree to our{" "}
+              <Link
+                href="/terms"
+                className="underline hover:text-foreground"
+                data-testid="link-terms"
+              >
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy"
+                className="underline hover:text-foreground"
+                data-testid="link-privacy"
+              >
+                Privacy Policy
+              </Link>
+              .
             </p>
           </div>
         </CardContent>
