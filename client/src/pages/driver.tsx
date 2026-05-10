@@ -1474,7 +1474,7 @@ export default function DriverPage() {
                 onChange={handleStartChange}
                 placeholder="Starting point"
                 iconColor="text-primary"
-                inputClassName="bg-white dark:bg-slate-900 border-slate-200 h-10 text-sm"
+                inputClassName="bg-white dark:bg-slate-900 border-slate-200 h-7 text-xs"
                 textClassName="text-muted-foreground"
                 testId="input-start-location"
                 isCurrentLocation={!!userLocation && startCoords?.lat === userLocation.lat && startCoords?.lon === userLocation.lng}
@@ -1486,42 +1486,43 @@ export default function DriverPage() {
                 onChange={handleEndChange}
                 placeholder="Destination"
                 iconColor="text-primary"
-                inputClassName="bg-white dark:bg-slate-900 border-slate-200 h-10 text-sm"
+                inputClassName="bg-white dark:bg-slate-900 border-slate-200 h-7 text-xs"
                 textClassName="text-muted-foreground"
                 testId="input-end-location"
                 compact
               />
 
               <div className="flex items-center gap-1.5">
-                <div className="flex items-center h-11 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0">
+                <div className="flex items-center h-7 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0">
                   <div className="flex items-center px-1.5 min-w-0 overflow-hidden">
                     <div className={isRecurring ? 'hidden' : ''}>
                       <DateTimePicker
                         value={departureTime}
                         onChange={setDepartureTime}
                         testId="input-departure-time"
-                        buttonClassName="h-9 text-sm bg-white dark:bg-slate-900 border border-slate-200 px-3 min-w-0 whitespace-nowrap"
+                        buttonClassName="h-5 text-[8px] bg-transparent border-none shadow-none px-0 min-w-0 whitespace-nowrap"
+                        compact
                       />
                     </div>
                     {isRecurring && (
-                      <span className="text-xs text-muted-foreground px-1">Per-day times below</span>
+                      <span className="text-[9px] text-muted-foreground px-1">Per-day times below</span>
                     )}
                   </div>
-                  <div className="w-px h-5 bg-slate-300 dark:bg-slate-500 shrink-0" />
-                  <div className="flex items-center gap-1 px-2 text-xs font-medium shrink-0">
-                    <Repeat className={`h-3.5 w-3.5 ${isRecurring ? 'text-primary animate-pulse' : 'text-slate-400'}`} />
+                  <div className="w-px h-4 bg-slate-300 dark:bg-slate-500 shrink-0" />
+                  <div className="flex items-center gap-1 px-1.5 text-[10px] font-medium shrink-0">
+                    <Repeat className={`h-2.5 w-2.5 ${isRecurring ? 'text-primary animate-pulse' : 'text-slate-400'}`} />
                     <span className={isRecurring ? 'text-primary' : 'text-slate-500'}>Recurring</span>
                     <Switch
                       checked={isRecurring}
                       onCheckedChange={setIsRecurring}
-                      className="scale-75 ml-0.5"
+                      className="scale-50 ml-0.5"
                       data-testid="switch-recurring"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-1 flex-1">
                   <Select value={availableSeats} onValueChange={setAvailableSeats}>
-                    <SelectTrigger className="h-10 text-sm bg-white dark:bg-slate-900 border-slate-200" data-testid="select-seats">
+                    <SelectTrigger className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-seats">
                       <SelectValue placeholder="Seats" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1531,14 +1532,14 @@ export default function DriverPage() {
                     </SelectContent>
                   </Select>
                   <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{money.symbol}</span>
+                    <span className="absolute left-1.5 top-1 text-xs text-muted-foreground">{money.symbol}</span>
                     <Input 
                       type="number" 
                       placeholder={`${money.symbol}/Seat`}
                       min="1"
                       max="100"
                       step="1"
-                      className="pl-6 h-10 text-sm bg-white dark:bg-slate-900 border-slate-200"
+                      className="pl-5 h-7 text-xs bg-white dark:bg-slate-900 border-slate-200"
                       value={pricePerSeat}
                       onChange={(e) => setPricePerSeat(e.target.value)}
                       aria-label="Price per Seat in pounds"
@@ -1574,38 +1575,42 @@ export default function DriverPage() {
                 />
               )}
 
-              <div className="grid grid-cols-3 gap-1.5">
-                <Input 
-                  type="number" 
-                  placeholder="Detour"
-                  min="0"
-                  step="any"
-                  className="h-10 text-sm bg-white dark:bg-slate-900 border-slate-200"
-                  value={maxDetour}
-                  onChange={(e) => setMaxDetour(e.target.value)}
-                  aria-label="Maximum detour distance"
-                  data-testid="input-max-detour"
-                />
-                <Select value={detourUnit} onValueChange={(v) => setDetourUnit(v as DetourUnit)}>
-                  <SelectTrigger className="h-10 text-sm bg-white dark:bg-slate-900 border-slate-200" data-testid="select-detour-unit">
-                    <SelectValue />
+              <div className="grid grid-cols-2 gap-1.5">
+                <Select
+                  value={maxDetour ? `${maxDetour}|${detourUnit}` : ""}
+                  onValueChange={(combined) => {
+                    const [val, unit] = combined.split("|");
+                    setMaxDetour(val);
+                    setDetourUnit(unit as DetourUnit);
+                  }}
+                >
+                  <SelectTrigger className="h-7 text-xs bg-white dark:bg-slate-900 border-slate-200" data-testid="select-max-detour">
+                    <SelectValue placeholder="Max detour" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(UNIT_LABELS) as DetourUnit[]).map((unit) => (
-                      <SelectItem key={unit} value={unit}>{UNIT_LABELS[unit]}</SelectItem>
-                    ))}
+                    <SelectItem value="0|miles">No detour</SelectItem>
+                    <SelectItem value="0.5|miles">0.5 miles</SelectItem>
+                    <SelectItem value="1|miles">1 mile</SelectItem>
+                    <SelectItem value="2|miles">2 miles</SelectItem>
+                    <SelectItem value="5|miles">5 miles</SelectItem>
+                    <SelectItem value="10|miles">10 miles</SelectItem>
+                    <SelectItem value="20|miles">20 miles</SelectItem>
+                    <SelectItem value="1|km">1 km</SelectItem>
+                    <SelectItem value="5|km">5 km</SelectItem>
+                    <SelectItem value="10|km">10 km</SelectItem>
+                    <SelectItem value="20|km">20 km</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button 
                   type="submit"
-                  className="h-10 px-2 text-sm font-semibold"
+                  className="h-7 px-2 text-xs font-semibold"
                   disabled={createRouteMutation.isPending || createRecurringMutation.isPending}
                   data-testid="button-publish-route"
                 >
                   {(createRouteMutation.isPending || createRecurringMutation.isPending) ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3 w-3 animate-spin" />
                   ) : isRecurring ? (
-                    <><Repeat className="h-4 w-4 mr-1" /> Post</>
+                    <><Repeat className="h-3 w-3 mr-0.5" /> Post</>
                   ) : (
                     "Publish"
                   )}

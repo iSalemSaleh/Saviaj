@@ -1063,14 +1063,14 @@ export default function RiderPage() {
               compact
             />
             <div className="flex items-center gap-2">
-              <div className="flex items-center h-11 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0">
+              <div className="flex items-center h-7 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0">
                 <div className="flex items-center px-1.5 min-w-0 overflow-hidden">
                   {isRecurring && (
                     <input
                       type="time"
                       value={recurringTime}
                       onChange={(e) => setRecurringTime(e.target.value)}
-                      className="h-9 text-sm bg-transparent border-none outline-none w-[80px] shrink-0"
+                      className="h-5 text-[9px] bg-transparent border-none outline-none w-[58px] shrink-0"
                       data-testid="input-recurring-time"
                     />
                   )}
@@ -1079,31 +1079,32 @@ export default function RiderPage() {
                       value={requestedTime}
                       onChange={setRequestedTime}
                       testId="input-time"
-                      buttonClassName="h-9 text-sm bg-white dark:bg-slate-900 border border-slate-200 px-3 min-w-0 whitespace-nowrap"
+                      buttonClassName="h-5 text-[8px] bg-transparent border-none shadow-none px-0 min-w-0 whitespace-nowrap"
+                      compact
                     />
                   </div>
                 </div>
-                <div className="w-px h-5 bg-slate-300 dark:bg-slate-500 shrink-0" />
-                <div className="flex items-center gap-1 px-2 text-xs font-medium shrink-0">
-                  <Repeat className={`h-3.5 w-3.5 ${isRecurring ? 'text-primary animate-pulse' : 'text-slate-400'}`} />
+                <div className="w-px h-4 bg-slate-300 dark:bg-slate-500 shrink-0" />
+                <div className="flex items-center gap-1 px-1.5 text-[10px] font-medium shrink-0">
+                  <Repeat className={`h-2.5 w-2.5 ${isRecurring ? 'text-primary animate-pulse' : 'text-slate-400'}`} />
                   <span className={isRecurring ? 'text-primary' : 'text-slate-500'}>Recurring</span>
                   <Switch
                     checked={isRecurring}
                     onCheckedChange={setIsRecurring}
-                    className="scale-75 ml-0.5"
+                    className="scale-50 ml-0.5"
                     data-testid="switch-recurring"
                   />
                 </div>
               </div>
-              <div className="relative w-24 shrink-0">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">{money.symbol}</span>
+              <div className="relative w-20 shrink-0">
+                <span className="absolute left-1.5 top-1 text-xs text-muted-foreground">{money.symbol}</span>
                 <Input 
                   type="number" 
                   placeholder="Offer"
                   min="2"
                   max="500"
                   step="0.01"
-                  className="pl-6 h-10 text-sm bg-white dark:bg-slate-900 border-gray-200"
+                  className="pl-5 h-7 text-[11px] bg-white dark:bg-slate-900 border-gray-200"
                   value={offerPrice}
                   onChange={(e) => setOfferPrice(e.target.value)}
                   data-testid="input-price"
@@ -1111,14 +1112,14 @@ export default function RiderPage() {
               </div>
               <Button 
                 type="submit" 
-                className="h-10 px-3 text-sm font-semibold shrink-0"
+                className="h-7 px-3 text-xs font-semibold shrink-0"
                 disabled={createOfferMutation.isPending || createRecurringMutation.isPending}
                 data-testid="button-post-request"
               >
                 {(createOfferMutation.isPending || createRecurringMutation.isPending) ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : isRecurring ? (
-                  <><Repeat className="h-4 w-4 mr-1" /> Post</>
+                  <><Repeat className="h-3 w-3 mr-0.5" /> Post</>
                 ) : (
                   "Post"
                 )}
