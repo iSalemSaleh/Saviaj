@@ -18,6 +18,7 @@ import {
   users,
   userProfiles,
   driverProfiles,
+  driverCommercial,
   vehicles,
 } from "../shared/schema";
 import { eq } from "drizzle-orm";
@@ -31,6 +32,7 @@ interface SeedSpec {
   firstName: string;
   lastName: string;
   isDriver: boolean;
+  isCommercial?: boolean;
   vehicle?: { make: string; model: string; year: string; color: string; reg: string };
 }
 
@@ -53,6 +55,17 @@ async function upsertReviewUser(spec: SeedSpec) {
       authProvider: "local",
       isDriver: spec.isDriver,
       driverVerified: spec.isDriver,
+      isCommercialDriver: !!spec.isCommercial,
+      commercialStatusVerified: !!spec.isCommercial,
+      phvLicenseNumber: spec.isCommercial ? "PHV-PLAY-REVIEW" : null,
+      phvLicenseExpiry: spec.isCommercial ? "2099-12-31" : null,
+      commercialInsuranceExpiry: spec.isCommercial ? "2099-12-31" : null,
+      vehicleInspectionExpiry: spec.isCommercial ? "2099-12-31" : null,
+      ratePerMile: spec.isCommercial ? "2.00" : null,
+      baseMinimumFare: spec.isCommercial ? "5.00" : null,
+      driverTagline: spec.isCommercial ? "Reliable Saviaj test driver — Play review" : null,
+      serviceCategories: spec.isCommercial ? ["standard", "premium"] : null,
+      isOnlineForHire: !!spec.isCommercial,
       kycStatus: spec.isDriver ? "approved" : "pending",
       kycVerifiedAt: spec.isDriver ? now : null,
       kycProvider: spec.isDriver ? "play_review" : null,
@@ -113,6 +126,29 @@ async function upsertReviewUser(spec: SeedSpec) {
         set: { isDriver: true, driverVerified: true, backgroundCheckStatus: "approved" },
       });
 
+    if (spec.isCommercial) {
+      await db
+        .insert(driverCommercial)
+        .values({
+          userId: spec.id,
+          isCommercialDriver: true,
+          commercialStatusVerified: true,
+          ratePerMile: "2.00",
+          baseMinimumFare: "5.00",
+          driverTagline: "Reliable Saviaj test driver — Play review",
+          serviceCategories: ["standard", "premium"],
+        })
+        .onConflictDoUpdate({
+          target: driverCommercial.userId,
+          set: {
+            isCommercialDriver: true,
+            commercialStatusVerified: true,
+            ratePerMile: "2.00",
+            baseMinimumFare: "5.00",
+          },
+        });
+    }
+
     if (spec.vehicle) {
       const existing = await db
         .select({ id: vehicles.id })
@@ -166,6 +202,7 @@ async function main() {
     firstName: "Drive",
     lastName: "Reviewer",
     isDriver: true,
+    isCommercial: true,
     vehicle: {
       make: "Toyota",
       model: "Prius",
