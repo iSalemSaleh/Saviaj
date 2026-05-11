@@ -1067,7 +1067,7 @@ export default function RiderPage() {
               compact
             />
             <div className="flex items-center gap-2">
-              <div className="flex items-center h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex-1 min-w-0">
+              <div className="flex items-center h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex-[2] min-w-0">
                 <div className="flex items-center px-1.5 min-w-0 overflow-hidden flex-1 justify-center">
                   {isRecurring && (
                     <input
@@ -1100,7 +1100,7 @@ export default function RiderPage() {
                   />
                 </div>
               </div>
-              <div className="relative w-20 shrink-0">
+              <div className="relative flex-1 min-w-0">
                 <span className="absolute left-1.5 top-1 text-xs text-muted-foreground">{money.symbol}</span>
                 <Input 
                   type="number" 
@@ -1108,7 +1108,7 @@ export default function RiderPage() {
                   min="2"
                   max="500"
                   step="0.01"
-                  className="pl-5 h-7 text-[11px] bg-white dark:bg-slate-900 border-gray-200"
+                  className="pl-5 h-7 text-[11px] bg-white dark:bg-slate-900 border-gray-200 w-full"
                   value={offerPrice}
                   onChange={(e) => setOfferPrice(e.target.value)}
                   data-testid="input-price"
@@ -1116,7 +1116,7 @@ export default function RiderPage() {
               </div>
               <Button 
                 type="submit" 
-                className="h-7 px-3 text-xs font-semibold shrink-0"
+                className="h-7 flex-1 min-w-0 px-2 text-xs font-semibold"
                 disabled={createOfferMutation.isPending || createRecurringMutation.isPending}
                 data-testid="button-post-request"
               >
@@ -1125,7 +1125,7 @@ export default function RiderPage() {
                 ) : isRecurring ? (
                   <><Repeat className="h-3 w-3 mr-0.5" /> Post</>
                 ) : (
-                  "Post"
+                  "Post Ride"
                 )}
               </Button>
             </div>
