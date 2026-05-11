@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
 import SosButton from "@/components/SosButton";
+import CountdownChip from "@/components/CountdownChip";
+import CancelRouteDialog from "@/components/CancelRouteDialog";
 import { getCurrentPosition, isNativePlatform, requestPermissions } from "@/lib/nativeGeolocation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -706,24 +708,34 @@ export default function DriverPage() {
 
   const cancelRouteMutation = useMutation({
     mutationFn: async (routeId: number) => {
-      const response = await apiRequest("PATCH", `/api/driver-routes/${routeId}/close`);
+      // Phase 1/2 — uses the new endpoint that refunds bookings + queues
+      // the £2/booking integrity fee. The legacy /close just hid the row.
+      const response = await apiRequest("PATCH", `/api/driver-routes/${routeId}/cancel-route`);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      const refunded = data?.refundedBookings ?? data?.bookingsRefunded ?? 0;
       toast({
-        title: "Route Cancelled",
-        description: "Your posted route has been removed.",
+        title: "Route cancelled",
+        description: refunded > 0
+          ? `Refunded ${refunded} booking${refunded > 1 ? 's' : ''}. Your riders have been notified.`
+          : "Your posted route has been removed.",
       });
+      setCancelRouteTarget(null);
       queryClient.invalidateQueries({ queryKey: ["/api/driver-routes/mine"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rides"] });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to cancel route",
+        title: "Couldn't cancel route",
+        description: error.message || "Please try again.",
         variant: "destructive",
       });
     },
   });
+  
+  // Cancel-route confirmation dialog state (Phase 2 T03)
+  const [cancelRouteTarget, setCancelRouteTarget] = useState<DriverRoute | null>(null);
 
   // Handle negotiation responses
   const handleNegotiationResponse = async (negotiation: any, action: 'accept' | 'decline', isProNegotiation: boolean) => {
@@ -1996,7 +2008,7 @@ export default function DriverPage() {
                         data-testid={`card-my-route-${route.id}`}
                       >
                         <button
-                          onClick={(e) => { e.stopPropagation(); cancelRouteMutation.mutate(route.id); }}
+                          onClick={(e) => { e.stopPropagation(); setCancelRouteTarget(route); }}
                           className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/30 hover:bg-red-500/80 flex items-center justify-center transition-colors z-10"
                           data-testid={`button-cancel-route-${route.id}`}
                         >
@@ -2115,6 +2127,40 @@ export default function DriverPage() {
         </div>
         </div>
       </div>
+
+      {/* Phase 2 — T01: floating active-bids strip with live countdowns */}
+      {myPendingBids.length > 0 && (
+        <div className="fixed bottom-3 left-3 z-50 max-w-[60vw] space-y-1" data-testid="strip-my-active-bids">
+          {myPendingBids.slice(0, 3).map((bid: any) => (
+            <div
+              key={bid.id}
+              className="backdrop-blur-md bg-background/80 border border-white/20 rounded-lg px-2 py-1 flex items-center gap-2 text-xs shadow-lg"
+              data-testid={`my-bid-${bid.id}`}
+            >
+              <Badge className="bg-green-600 text-white text-[10px] px-1.5">
+                £{parseFloat(bid.bidPrice).toFixed(2)}
+              </Badge>
+              <span className="truncate max-w-[140px] text-muted-foreground">
+                {bid.offer?.pickupLocation || 'Bid'}
+              </span>
+              <CountdownChip expiresAt={bid.expiresAt} testId={`my-bid-countdown-${bid.id}`} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <CancelRouteDialog
+        open={!!cancelRouteTarget}
+        onOpenChange={(open) => { if (!open) setCancelRouteTarget(null); }}
+        routeLabel={cancelRouteTarget ? `${cancelRouteTarget.startLocation} → ${cancelRouteTarget.endLocation}` : undefined}
+        bookings={cancelRouteTarget
+          ? (seatRequestsByRoute.get(cancelRouteTarget.id) || [])
+              .filter((r: any) => r.status !== 'cancelled' && r.status !== 'completed')
+              .map((r: any) => ({ id: r.id, riderName: r.riderName ?? null, agreedPrice: r.agreedPrice ?? r.offerPrice ?? 0 }))
+          : []}
+        onConfirm={() => cancelRouteTarget && cancelRouteMutation.mutate(cancelRouteTarget.id)}
+        isSubmitting={cancelRouteMutation.isPending}
+      />
     </div>
   );
 }

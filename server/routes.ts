@@ -2821,10 +2821,41 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       });
 
       const bid = await storage.createBid(validatedData);
+      // Phase 2 — push notify the rider that a new bid arrived.
+      try {
+        const { dispatchSimplePush } = await import('./lib/pushNotifications');
+        const driverName = (driverForBid as any)?.firstName || 'A driver';
+        await dispatchSimplePush({
+          receiverId: offer.riderId,
+          title: 'New bid on your ride',
+          body: `${driverName} bid £${parseFloat(bid.bidPrice).toFixed(2)} — accept within 5 minutes.`,
+          data: { type: 'bid_placed', bidId: String(bid.id), riderOfferId: String(offer.id) },
+          url: `/rider`,
+          tag: `offer-${offer.id}`,
+        });
+      } catch (pushErr) {
+        console.error('[push] bid_placed failed:', pushErr);
+      }
       res.status(201).json(bid);
     } catch (error: any) {
       console.error("Error creating bid:", error);
       res.status(400).json({ message: error.message || "Failed to create bid" });
+    }
+  });
+  
+  // ==========================================================================
+  // Phase 2 — T04: rider's currently-active ride (used by the banner).
+  // Returns the in-flight ride or null.
+  // ==========================================================================
+  app.get('/api/rides/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const ride = await storage.getActiveRideForRider(userId);
+      res.json(ride ?? null);
+    } catch (error: any) {
+      console.error('Error fetching active ride:', error);
+      res.status(500).json({ message: 'Failed to fetch active ride' });
     }
   });
 
@@ -2987,6 +3018,22 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       // Note: Driver daily activity is tracked at ride COMPLETION, not acceptance
       // This prevents cancelled rides from counting towards limits
       
+      // Phase 2 — push notify the driver that their bid was accepted.
+      try {
+        const { dispatchSimplePush } = await import('./lib/pushNotifications');
+        const rider = await storage.getUser(offer.riderId);
+        const riderName = rider?.firstName || 'The rider';
+        await dispatchSimplePush({
+          receiverId: existingBid.driverId,
+          title: 'Bid accepted!',
+          body: `${riderName} accepted your £${parseFloat(existingBid.bidPrice).toFixed(2)} bid. Get ready for the trip.`,
+          data: { type: 'bid_accepted', bidId: String(existingBid.id), rideId: String(result.ride.id) },
+          url: `/ride/${result.ride.id}`,
+          tag: `ride-${result.ride.id}`,
+        });
+      } catch (pushErr) {
+        console.error('[push] bid_accepted failed:', pushErr);
+      }
       // Return the ride with client secret for payment
       res.json({
         bid: result.bid,

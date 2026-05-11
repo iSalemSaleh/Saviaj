@@ -1,8 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
 import SosButton from "@/components/SosButton";
+import CountdownChip from "@/components/CountdownChip";
+import ActiveRideBanner from "@/components/ActiveRideBanner";
 import { getCurrentPosition, isNativePlatform, requestPermissions } from "@/lib/nativeGeolocation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +84,7 @@ interface Bid {
   message: string | null;
   status: string;
   createdAt: string;
+  expiresAt: string | null;
   driver?: {
     id: string;
     firstName: string | null;
@@ -359,6 +362,30 @@ export default function RiderPage() {
   const pendingPaymentRides = useMemo(() => {
     return myRides.filter(ride => ride.status === 'pending_payment' && ride.riderId === user?.id);
   }, [myRides, user]);
+
+  // Phase 2 — T07: poll my commercial ride requests so we can toast when a
+  // hail expires (60s timeout) without needing a websocket subscription.
+  const { data: myCommercialRequests = [] } = useQuery<any[]>({
+    queryKey: ["/api/commercial-ride-requests/mine"],
+    enabled: !!user,
+    refetchInterval: 5000,
+  });
+  const prevHailStatuses = useRef<Map<number, string>>(new Map());
+  useEffect(() => {
+    const next = new Map<number, string>();
+    for (const req of myCommercialRequests) {
+      const prev = prevHailStatuses.current.get(req.id);
+      next.set(req.id, req.status);
+      if (prev === 'pending' && req.status === 'expired') {
+        toast({
+          title: "Driver didn't respond",
+          description: "The driver didn't respond within 60 seconds. Please try another driver.",
+          variant: "destructive",
+        });
+      }
+    }
+    prevHailStatuses.current = next;
+  }, [myCommercialRequests, toast]);
 
   // Query for bids on a specific offer - refreshes every 0.2 seconds when dialog is open
   const { data: offerBids = [], isLoading: bidsLoading, refetch: refetchBids } = useQuery<Bid[]>({
@@ -1054,6 +1081,8 @@ export default function RiderPage() {
       {/* OVERLAY: Fixed Navbar */}
       <div className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-background/60 border-b border-white/10">
         <Navbar />
+        {/* Phase 2 — T04: deep-link banner when an active ride exists */}
+        <ActiveRideBanner />
       </div>
       
       {/* OVERLAY: Collapsible Request Form */}
@@ -1702,9 +1731,16 @@ export default function RiderPage() {
                               {bid.driver?.firstName || 'Driver'}
                             </p>
                           </Link>
-                          <Badge className="bg-green-600 text-white text-sm font-bold" data-testid={`bid-price-${bid.id}`}>
-                            {money.formatMajor(parseFloat(bid.bidPrice))}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <CountdownChip
+                              expiresAt={bid.expiresAt}
+                              testId={`bid-countdown-${bid.id}`}
+                              onExpire={() => refetchBids()}
+                            />
+                            <Badge className="bg-green-600 text-white text-sm font-bold" data-testid={`bid-price-${bid.id}`}>
+                              {money.formatMajor(parseFloat(bid.bidPrice))}
+                            </Badge>
+                          </div>
                         </div>
                         {bid.driver?.driverRating && (
                           <div className="flex items-center text-xs text-muted-foreground mt-0.5">

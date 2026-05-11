@@ -181,6 +181,7 @@ export async function expireStaleBids(): Promise<void> {
     if (expired.length === 0) return;
     console.log(`[Bid Expiry] Expired ${expired.length} stale bids`);
     const { broadcast } = await import('./websocket');
+    const { dispatchSimplePush } = await import('./lib/pushNotifications');
     for (const bid of expired) {
       try {
         broadcast({ type: 'BID_EXPIRED', bidId: bid.id, riderOfferId: bid.riderOfferId }, bid.driverId);
@@ -190,6 +191,15 @@ export async function expireStaleBids(): Promise<void> {
           title: 'Bid expired',
           message: 'Your bid expired before the rider confirmed. You can place a new one.',
           read: false,
+        });
+        // Phase 2 — push the driver too so they don't have to be in-app.
+        await dispatchSimplePush({
+          receiverId: bid.driverId,
+          title: 'Bid expired',
+          body: 'The rider didn\'t confirm in time. You can place a new bid.',
+          data: { type: 'bid_expired', bidId: String(bid.id), riderOfferId: String(bid.riderOfferId) },
+          url: '/driver',
+          tag: `bid-${bid.id}`,
         });
       } catch (e) {
         console.error(`[Bid Expiry] notify failed for bid ${bid.id}:`, e);
@@ -209,6 +219,7 @@ export async function expireStaleCommercialRideRequests(): Promise<void> {
     if (expired.length === 0) return;
     console.log(`[Hail Expiry] Expired ${expired.length} commercial ride requests`);
     const { broadcast } = await import('./websocket');
+    const { dispatchSimplePush } = await import('./lib/pushNotifications');
     for (const req of expired) {
       try {
         broadcast({ type: 'COMMERCIAL_REQUEST_EXPIRED', requestId: req.id }, req.riderId);
@@ -218,6 +229,15 @@ export async function expireStaleCommercialRideRequests(): Promise<void> {
           title: 'Driver did not respond',
           message: 'The driver did not respond within 60 seconds. Please try another driver.',
           read: false,
+        });
+        // Phase 2 — also push the rider so they know to try someone else.
+        await dispatchSimplePush({
+          receiverId: req.riderId,
+          title: 'Driver didn\'t respond',
+          body: 'Try another driver — the request timed out after 60 seconds.',
+          data: { type: 'commercial_request_expired', requestId: String(req.id) },
+          url: '/rider',
+          tag: `hail-${req.id}`,
         });
       } catch (e) {
         console.error(`[Hail Expiry] notify failed for request ${req.id}:`, e);

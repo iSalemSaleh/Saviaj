@@ -190,6 +190,37 @@ cd /home/site/wwwroot && node scripts/run-prod-schema-sync.cjs
 ```
 The Phase-1 batch is wrapped in its own `BEGIN/COMMIT` after the existing transaction in `scripts/prod-full-schema-sync.sql`. Every statement is `IF NOT EXISTS` / idempotent.
 
+## Phase 2 Ride-Flow UX (May 2026)
+UX hardening + real-time push wired on top of Phase 1.
+
+### New endpoint
+- `GET /api/rides/active` → returns the current rider's in-flight ride or `null`. Used by the sticky `ActiveRideBanner` so any rider with a live ride sees a deep-link banner on every page.
+
+### Push notifications
+- New helper `dispatchSimplePush()` in `server/lib/pushNotifications.ts`. Silent no-op if Firebase env vars are missing; prunes dead tokens via `storage.deletePushTokens`.
+- Wired events:
+  - `POST /api/bids` → push to rider ("New bid: £X from {driverName} — accept within 5 minutes").
+  - `PATCH /api/bids/:id/accept` → push to driver ("Bid accepted!").
+  - `expireStaleBids` cron → push to driver ("Bid expired").
+  - `expireStaleCommercialRideRequests` cron → push to rider ("Driver didn't respond").
+
+### Frontend components (all in `client/src/components/`)
+- `CountdownChip.tsx` → live `mm:ss` chip; amber → red <60s → grey "expired".
+- `GeofenceConfirmDialog.tsx` → reason picker shown when `PATCH /api/rides/:id/complete` returns `400 GEOFENCE_VIOLATION`. Resubmits with `{confirm:true, reason}`.
+- `CancelRouteDialog.tsx` → destructive confirm; shows refund total + £2/booking integrity-fee preview; requires typing `CANCEL`.
+- `ActiveRideBanner.tsx` → sticky top bar that deep-links to `/ride/:id`.
+
+### Page wiring
+- `client/src/pages/rider.tsx` — CountdownChip on each pending bid card; `ActiveRideBanner` mounted under the navbar; polling-based hail-expired toast (detects `pending → expired` transition on `/api/commercial-ride-requests/mine`).
+- `client/src/pages/driver.tsx` — switched cancel from legacy `PATCH /close` to new `PATCH /cancel-route`; floating active-bids strip with countdown; cancel-route confirm dialog mounted.
+- `client/src/pages/ride-tracking.tsx` — `completeTripMutation` parses 400 responses, opens `GeofenceConfirmDialog` on `GEOFENCE_VIOLATION`, retries with override.
+
+### Deferred
+- `T05` driver £2 integrity fee — billing **deferred** by user; the Phase 1 `/cancel-route` endpoint still records the obligation. Re-open before charging real money.
+
+### Production sync
+No new schema. Re-run the existing `scripts/run-prod-schema-sync.cjs` only if a future phase modifies `shared/schema.ts`.
+
 ## External Dependencies
 - **Stripe**: Payment processing.
 - **Azure Maps**: Geocoding and routing.

@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import PaymentButton from "@/components/PaymentButton";
 import Chat from "@/components/Chat";
 import { apiRequest } from "@/lib/queryClient";
+import GeofenceConfirmDialog from "@/components/GeofenceConfirmDialog";
 import { 
   MapPin, 
   Clock, 
@@ -220,17 +221,43 @@ export default function RideTrackingPage() {
     },
   });
 
+  // Phase 2 — T02: geofence override dialog state
+  const [geofenceDialogOpen, setGeofenceDialogOpen] = useState(false);
+  const [geofenceDistance, setGeofenceDistance] = useState<number | null>(null);
+
   const completeTripMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("PATCH", `/api/rides/${rideId}/complete`, {});
+    mutationFn: async (override?: { confirm: boolean; reason: string }) => {
+      const response = await apiRequest(
+        "PATCH",
+        `/api/rides/${rideId}/complete`,
+        override ?? {},
+      );
+      if (!response.ok) {
+        // Try to extract structured error so we can detect the geofence case.
+        const text = await response.text();
+        let parsed: any = {};
+        try { parsed = JSON.parse(text); } catch { /* ignore */ }
+        const err: any = new Error(parsed.message || text || 'Failed to complete trip');
+        err.code = parsed.code;
+        err.distanceMeters = parsed.distanceMeters;
+        err.status = response.status;
+        throw err;
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/rides/${rideId}`] });
       toast({ title: "Trip Complete!", description: "Thank you for riding with AtlasRide." });
+      setGeofenceDialogOpen(false);
       setShowRating(true);
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      if (error?.code === 'GEOFENCE_VIOLATION') {
+        // Stash the server-reported distance and open the reason picker.
+        setGeofenceDistance(typeof error.distanceMeters === 'number' ? error.distanceMeters : null);
+        setGeofenceDialogOpen(true);
+        return;
+      }
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
@@ -573,7 +600,7 @@ export default function RideTrackingPage() {
               if (ride.status === 'scheduled' || ride.status === 'matched') startPickupMutation.mutate();
               else if (ride.status === 'en_route_pickup') arrivedPickupMutation.mutate();
               else if (ride.status === 'arrived_pickup') startTripMutation.mutate();
-              else if (ride.status === 'in_progress') completeTripMutation.mutate();
+              else if (ride.status === 'in_progress') completeTripMutation.mutate(undefined);
             }}
             disabled={startPickupMutation.isPending || arrivedPickupMutation.isPending || startTripMutation.isPending || completeTripMutation.isPending}
             data-testid="button-action"
@@ -686,6 +713,14 @@ export default function RideTrackingPage() {
           </div>
         )}
       </div>
+
+      <GeofenceConfirmDialog
+        open={geofenceDialogOpen}
+        onOpenChange={setGeofenceDialogOpen}
+        distanceMeters={geofenceDistance}
+        onConfirm={(reason) => completeTripMutation.mutate({ confirm: true, reason })}
+        isSubmitting={completeTripMutation.isPending}
+      />
     </div>
   );
 }

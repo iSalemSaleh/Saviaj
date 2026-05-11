@@ -142,3 +142,70 @@ export async function getStatus(): Promise<{ ready: boolean }> {
   const app = await ensureAdmin();
   return { ready: !!app };
 }
+
+// ============================================================================
+// Phase 2 — generic push for ride-flow events (bid placed/accepted/expired,
+// hail expired, etc). Fire-and-forget; silent no-op if Firebase isn't set up.
+// ============================================================================
+export interface SimplePushPayload {
+  receiverId: string;
+  title: string;
+  body: string;
+  data?: Record<string, string>;
+  /** Optional deep-link URL appended to webpush data so the SW can route on click. */
+  url?: string;
+  /** Optional tag so updates collapse onto a single notification. */
+  tag?: string;
+}
+
+export async function dispatchSimplePush(payload: SimplePushPayload): Promise<void> {
+  const app = await ensureAdmin();
+  if (!app) return;
+  const tokens = await storage.getPushTokensForUser(payload.receiverId).catch(() => []);
+  if (tokens.length === 0) return;
+  try {
+    const admin = await import("firebase-admin");
+    const messaging = admin.messaging(app);
+    const tag = payload.tag || `event-${Date.now()}`;
+    const message = {
+      notification: { title: payload.title, body: payload.body },
+      data: payload.data ?? {},
+      android: {
+        priority: "high" as const,
+        notification: { channelId: "rides", sound: "default", tag },
+      },
+      apns: {
+        payload: { aps: { sound: "default", "thread-id": tag } },
+      },
+      webpush: {
+        notification: {
+          icon: "/icon-192.png",
+          badge: "/icon-192.png",
+          tag,
+          renotify: true,
+          data: payload.url ? { url: payload.url } : undefined,
+        },
+      },
+      tokens: tokens.map((t) => t.token),
+    };
+    const res = await messaging.sendEachForMulticast(message);
+    if (res.failureCount > 0) {
+      const dead: string[] = [];
+      res.responses.forEach((r, i) => {
+        if (!r.success && r.error) {
+          const code = (r.error as any).errorInfo?.code || (r.error as any).code;
+          if (code === "messaging/registration-token-not-registered" ||
+              code === "messaging/invalid-argument" ||
+              code === "messaging/invalid-registration-token") {
+            dead.push(tokens[i].token);
+          }
+        }
+      });
+      if (dead.length > 0) {
+        await storage.deletePushTokens(dead).catch(() => { /* ignore */ });
+      }
+    }
+  } catch (err) {
+    console.error("[push] simple dispatch failed:", err);
+  }
+}
