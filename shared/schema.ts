@@ -665,6 +665,8 @@ export const riderOffers = pgTable("rider_offers", {
   status: varchar("status", { length: 50 }).default("pending"),
   acceptedDriverId: varchar("accepted_driver_id").references(() => users.id),
   scheduleId: integer("schedule_id").references(() => recurringSchedules.id),
+  acceptanceLockedAt: timestamp("acceptance_locked_at"),
+  expiredAt: timestamp("expired_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -790,6 +792,20 @@ export const rides = pgTable("rides", {
   driverPayoutPence: integer("driver_payout_pence"),
   feeCalculationVersion: varchar("fee_calculation_version", { length: 20 }),
   feeBasis: varchar("fee_basis", { length: 40 }),
+  // Cancellation fees (Phase 1 — A7/A8/B7). Charged to the rider when
+  // they cancel after a driver has been matched. Amounts in pence.
+  cancellationFeePence: integer("cancellation_fee_pence"),
+  cancellationFeeChargedAt: timestamp("cancellation_fee_charged_at"),
+  cancellationFeePaymentIntentId: varchar("cancellation_fee_payment_intent_id", { length: 255 }),
+  cancellationReason: varchar("cancellation_reason", { length: 100 }),
+  // Geofence override (Phase 1 — F1). When the driver completes the ride
+  // more than 200m from the dropoff coordinates, they must supply a reason.
+  geofenceOverrideReason: text("geofence_override_reason"),
+  geofenceCompleteDistanceMeters: integer("geofence_complete_distance_meters"),
+  // Stripe capture retry tracking (Phase 1 — G4).
+  captureAttempts: integer("capture_attempts").default(0),
+  captureLastAttemptAt: timestamp("capture_last_attempt_at"),
+  captureLastError: text("capture_last_error"),
 });
 
 export const ridesRelations = relations(rides, ({ one }) => ({
@@ -832,7 +848,11 @@ export const bids = pgTable("bids", {
   driverId: varchar("driver_id").notNull().references(() => users.id),
   bidPrice: decimal("bid_price", { precision: 10, scale: 2 }).notNull(),
   message: text("message"),
-  status: varchar("status", { length: 50 }).default("pending"), // pending, accepted, rejected
+  status: varchar("status", { length: 50 }).default("pending"), // pending, accepted, rejected, expired, withdrawn
+  // Phase 1 — C3 confirmation countdown. Bid auto-expires if the rider
+  // doesn't confirm within 5 minutes of placement.
+  expiresAt: timestamp("expires_at"),
+  expiredAt: timestamp("expired_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1502,3 +1522,82 @@ export const orgDocuments = pgTable("org_documents", {
   index("idx_orgdoc_org").on(table.orgId),
   index("idx_orgdoc_type").on(table.documentType),
 ]);
+
+// ============================================================================
+// Phase 1 — C5/C6/C7: Commercial driver hail requests
+// Tracks each "tap to hail an online Pro driver" attempt with a 60-second
+// expiry. Enforces single-active-request per driver and per rider.
+// ============================================================================
+export const commercialRideRequests = pgTable("commercial_ride_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  riderId: varchar("rider_id").notNull().references(() => users.id),
+  driverId: varchar("driver_id").notNull().references(() => users.id),
+  pickupLocation: text("pickup_location").notNull(),
+  dropoffLocation: text("dropoff_location").notNull(),
+  pickupLat: decimal("pickup_lat", { precision: 10, scale: 7 }),
+  pickupLng: decimal("pickup_lng", { precision: 10, scale: 7 }),
+  dropoffLat: decimal("dropoff_lat", { precision: 10, scale: 7 }),
+  dropoffLng: decimal("dropoff_lng", { precision: 10, scale: 7 }),
+  estimatedDistance: decimal("estimated_distance", { precision: 7, scale: 2 }),
+  proposedPricePence: integer("proposed_price_pence").notNull(),
+  status: varchar("status", { length: 30 }).notNull().default("pending"),
+  // pending, accepted, rejected, expired, cancelled_by_rider, cancelled_driver_offline
+  expiresAt: timestamp("expires_at").notNull(),
+  resolvedAt: timestamp("resolved_at"),
+  rideId: integer("ride_id").references(() => rides.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_crr_driver_status").on(table.driverId, table.status),
+  index("idx_crr_rider_status").on(table.riderId, table.status),
+  index("idx_crr_expires").on(table.expiresAt),
+]);
+
+export const insertCommercialRideRequestSchema = createInsertSchema(commercialRideRequests).omit({
+  id: true,
+  createdAt: true,
+  resolvedAt: true,
+  rideId: true,
+});
+export type InsertCommercialRideRequest = z.infer<typeof insertCommercialRideRequestSchema>;
+export type CommercialRideRequest = typeof commercialRideRequests.$inferSelect;
+
+// ============================================================================
+// Phase 1 — E3: SOS alerts (internal-only, with hooks for 999 escalation)
+// ============================================================================
+export const sosAlerts = pgTable("sos_alerts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  rideId: integer("ride_id").references(() => rides.id),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  userRole: varchar("user_role", { length: 10 }).notNull(), // 'rider' | 'driver'
+  lat: decimal("lat", { precision: 10, scale: 7 }),
+  lon: decimal("lon", { precision: 10, scale: 7 }),
+  accuracyMeters: integer("accuracy_meters"),
+  message: text("message"),
+  status: varchar("status", { length: 30 }).notNull().default("triggered"),
+  // triggered, acknowledged, resolved, escalated_999, false_alarm
+  escalatedTo999At: timestamp("escalated_to_999_at"),
+  acknowledgedAt: timestamp("acknowledged_at"),
+  acknowledgedByUserId: varchar("acknowledged_by_user_id").references(() => users.id),
+  resolvedAt: timestamp("resolved_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_sos_status").on(table.status, table.createdAt),
+  index("idx_sos_user").on(table.userId),
+  index("idx_sos_ride").on(table.rideId),
+]);
+
+export const insertSosAlertSchema = createInsertSchema(sosAlerts, {
+  lat: z.coerce.number().optional(),
+  lon: z.coerce.number().optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+  status: true,
+  escalatedTo999At: true,
+  acknowledgedAt: true,
+  acknowledgedByUserId: true,
+  resolvedAt: true,
+});
+export type InsertSosAlert = z.infer<typeof insertSosAlertSchema>;
+export type SosAlert = typeof sosAlerts.$inferSelect;

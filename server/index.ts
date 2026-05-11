@@ -229,15 +229,32 @@ async function initStripe() {
   // Start payment timeout cleanup job (runs every 5 minutes)
   setInterval(async () => {
     try {
-      const { cleanupStalePendingPayments, markExpiredRides } = await import('./paymentCleanup');
+      const { cleanupStalePendingPayments, markExpiredRides, expireUnbidRiderOffers, retryFailedCaptures } = await import('./paymentCleanup');
       await cleanupStalePendingPayments();
       await markExpiredRides();
+      await expireUnbidRiderOffers();
+      await retryFailedCaptures();
     } catch (error) {
       console.error('Cleanup job failed:', error);
     }
   }, 5 * 60 * 1000); // 5 minutes
   
   log('Payment timeout and expired rides cleanup job scheduled (every 5 minutes)');
+
+  // Phase 1 — C3 + C5: short-interval expiry sweeps
+  // Bids expire after 5 min; commercial-ride-requests expire after 60s.
+  // Run every 30s so we don't keep stale state visible to users.
+  setInterval(async () => {
+    try {
+      const { expireStaleBids, expireStaleCommercialRideRequests } = await import('./paymentCleanup');
+      await expireStaleBids();
+      await expireStaleCommercialRideRequests();
+    } catch (error) {
+      console.error('Short-interval expiry sweep failed:', error);
+    }
+  }, 30 * 1000);
+
+  log('Bid and commercial-hail expiry sweep scheduled (every 30 seconds)');
 
   // Recurring schedule generation job (runs every 6 hours)
   setInterval(async () => {

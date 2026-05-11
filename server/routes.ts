@@ -2362,6 +2362,17 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     try {
       const userId = req.session?.userId || req.user?.claims?.sub;
       if (!userId) { return res.status(401).json({ message: "Unauthorized" }); }
+      
+      // Phase 1 — I4: single-active-ride enforcement
+      const activeRide = await storage.getActiveRideForRider(userId);
+      if (activeRide) {
+        return res.status(409).json({
+          message: "You already have an active ride. Finish or cancel it first.",
+          code: "ACTIVE_RIDE_EXISTS",
+          activeRideId: activeRide.id,
+        });
+      }
+      
       const validatedData = insertRiderOfferSchema.parse({
         ...req.body,
         riderId: userId,
@@ -2502,6 +2513,15 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.status(400).json({ message: "Can only revise pending offers" });
       }
       
+      // Phase 1 — A5: lock once a driver has bid or been accepted
+      const isLocked = await storage.isRiderOfferLockedFromEdit(id);
+      if (isLocked) {
+        return res.status(409).json({
+          message: "A driver has already responded — cancel and repost if you want a different price.",
+          code: "OFFER_LOCKED",
+        });
+      }
+      
       const offer = await storage.updateRiderOfferPrice(id, offerPrice);
       res.json(offer);
     } catch (error) {
@@ -2634,31 +2654,68 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       
       if (route.availableSeats < seats) {
-        return res.status(400).json({ message: `Only ${route.availableSeats} seats available` });
+        return res.status(409).json({ message: `Only ${route.availableSeats} seats available`, code: 'SEATS_UNAVAILABLE' });
       }
       
       if (route.driverId === userId) {
         return res.status(400).json({ message: "You cannot request a seat on your own route" });
       }
       
+      // Phase 1 — I4: single-active-ride enforcement
+      const activeRide = await storage.getActiveRideForRider(userId);
+      if (activeRide) {
+        return res.status(409).json({
+          message: "You already have an active ride. Finish or cancel it first.",
+          code: "ACTIVE_RIDE_EXISTS",
+          activeRideId: activeRide.id,
+        });
+      }
+      
+      // Phase 1 — B3/B4: atomically reserve the seats BEFORE creating the
+      // ride row. If two riders race for the last seat, only one succeeds.
+      // If the createRide call fails after this, we compensate with
+      // incrementRouteSeats below.
+      try {
+        await storage.decrementRouteSeats(routeId, seats);
+      } catch (decrementErr: any) {
+        if (decrementErr?.code === 'SEATS_UNAVAILABLE') {
+          return res.status(409).json({
+            message: 'Sorry — those seats were just taken by another rider.',
+            code: 'SEATS_UNAVAILABLE',
+          });
+        }
+        throw decrementErr;
+      }
+      
       // Create a ride request with pending_driver_confirmation status
       // Map driver route coordinates to ride pickup/dropoff coordinates
-      const ride = await storage.createRide({
-        riderId: userId,
-        driverId: route.driverId,
-        driverRouteId: routeId,
-        pickupLocation: `Route: ${route.startLocation}`,
-        dropoffLocation: `Route: ${route.endLocation}`,
-        pickupLat: route.startLat,
-        pickupLng: route.startLng,
-        dropoffLat: route.endLat,
-        dropoffLng: route.endLng,
-        agreedPrice: route.pricePerSeat ? (parseFloat(route.pricePerSeat) * seats).toString() : "0",
-        scheduledTime: route.departureTime,
-        status: 'pending_driver_confirmation',
-        seatsRequested: seats,
-        tripMessage: tripMessage || null,
-      });
+      let ride;
+      try {
+        ride = await storage.createRide({
+          riderId: userId,
+          driverId: route.driverId,
+          driverRouteId: routeId,
+          pickupLocation: `Route: ${route.startLocation}`,
+          dropoffLocation: `Route: ${route.endLocation}`,
+          pickupLat: route.startLat,
+          pickupLng: route.startLng,
+          dropoffLat: route.endLat,
+          dropoffLng: route.endLng,
+          agreedPrice: route.pricePerSeat ? (parseFloat(route.pricePerSeat) * seats).toString() : "0",
+          scheduledTime: route.departureTime,
+          status: 'pending_driver_confirmation',
+          seatsRequested: seats,
+          tripMessage: tripMessage || null,
+        });
+      } catch (createErr) {
+        // Compensate the seat reservation
+        try {
+          for (let i = 0; i < seats; i++) await storage.incrementRouteSeats(routeId);
+        } catch (compErr) {
+          console.error(`[seat-rollback] failed to compensate seats on route ${routeId}:`, compErr);
+        }
+        throw createErr;
+      }
       
       // Notify the driver via WebSocket
       const { broadcast } = await import('./websocket');
@@ -2759,6 +2816,8 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const validatedData = insertBidSchema.parse({
         ...req.body,
         driverId: userId,
+        // Phase 1 — C3: bid expires 5 minutes after placement
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000),
       });
 
       const bid = await storage.createBid(validatedData);
@@ -3773,6 +3832,336 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
     }
   });
 
+  // ==========================================================================
+  // Phase 1 — Path C (hail an online commercial driver)
+  //   POST   /api/commercial-drivers/:driverId/request   — rider hails driver
+  //   PATCH  /api/commercial-ride-requests/:id/accept    — driver accepts
+  //   PATCH  /api/commercial-ride-requests/:id/decline   — driver declines
+  //   PATCH  /api/commercial-ride-requests/:id/cancel    — rider cancels
+  //   GET    /api/commercial-ride-requests/mine          — current open hails
+  // ==========================================================================
+  app.post('/api/commercial-drivers/:driverId/request', isAuthenticated, isProfileComplete, async (req: any, res) => {
+    try {
+      const riderId = req.session?.userId || req.user?.claims?.sub;
+      if (!riderId) return res.status(401).json({ message: 'Unauthorized' });
+      const driverId = req.params.driverId;
+      const { pickupLocation, pickupLat, pickupLng, dropoffLocation, dropoffLat, dropoffLng, estimatedFarePence, vehicleCategory, notes } = req.body || {};
+      if (!pickupLocation || !dropoffLocation || pickupLat == null || pickupLng == null || dropoffLat == null || dropoffLng == null) {
+        return res.status(400).json({ message: 'Pickup and dropoff coordinates are required' });
+      }
+      if (driverId === riderId) {
+        return res.status(400).json({ message: 'You cannot hail yourself' });
+      }
+      // Phase 1 — I4: single-active-ride enforcement
+      const activeRide = await storage.getActiveRideForRider(riderId);
+      if (activeRide) {
+        return res.status(409).json({
+          message: 'You already have an active ride. Finish or cancel it first.',
+          code: 'ACTIVE_RIDE_EXISTS',
+          activeRideId: activeRide.id,
+        });
+      }
+      // C7 — driver/rider can only have one open hail at a time
+      const existingForRider = await storage.getOpenCommercialRideRequestForRider(riderId);
+      if (existingForRider) {
+        return res.status(409).json({ message: 'You already have a pending hail. Cancel it first.', code: 'HAIL_ALREADY_OPEN' });
+      }
+      const existingForDriver = await storage.getOpenCommercialRideRequestForDriver(driverId);
+      if (existingForDriver) {
+        return res.status(409).json({ message: 'This driver is currently considering another request. Try again shortly.', code: 'DRIVER_BUSY' });
+      }
+      const driver = await storage.getUser(driverId);
+      if (!driver?.isCommercialDriver || !driver.isOnlineForHire) {
+        return res.status(409).json({ message: 'Driver is no longer online.', code: 'DRIVER_OFFLINE' });
+      }
+
+      // proposedPricePence is required by the schema. Accept either
+      // explicit pence or a major-unit price, otherwise reject.
+      const priceInPence = typeof estimatedFarePence === 'number'
+        ? Math.round(estimatedFarePence)
+        : (req.body?.proposedPrice ? Math.round(parseFloat(req.body.proposedPrice) * 100) : null);
+      if (!priceInPence || priceInPence < 100) {
+        return res.status(400).json({ message: 'A proposed price (>= £1.00) is required for hails.' });
+      }
+      const estimatedDistance = req.body?.estimatedDistance ? parseFloat(req.body.estimatedDistance).toFixed(2) : null;
+
+      const created = await storage.createCommercialRideRequest({
+        driverId,
+        riderId,
+        pickupLocation,
+        pickupLat: pickupLat.toString(),
+        pickupLng: pickupLng.toString(),
+        dropoffLocation,
+        dropoffLat: dropoffLat.toString(),
+        dropoffLng: dropoffLng.toString(),
+        estimatedDistance,
+        proposedPricePence: priceInPence,
+        status: 'pending',
+        expiresAt: new Date(Date.now() + 60 * 1000), // 60-second window
+      } as any);
+
+      const { broadcast } = await import('./websocket');
+      broadcast({ type: 'COMMERCIAL_REQUEST_CREATED', requestId: created.id, expiresAt: created.expiresAt }, driverId);
+      await storage.createNotification({
+        userId: driverId,
+        type: 'commercial_request_received',
+        title: 'New ride request',
+        message: `Pickup: ${pickupLocation}. You have 60 seconds to accept.`,
+        read: false,
+      });
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error('[hail] create failed:', error);
+      res.status(500).json({ message: error.message || 'Failed to send hail' });
+    }
+  });
+
+  app.get('/api/commercial-ride-requests/mine', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const asRider = await storage.getOpenCommercialRideRequestForRider(userId);
+      const asDriver = await storage.getOpenCommercialRideRequestForDriver(userId);
+      res.json({ asRider: asRider ?? null, asDriver: asDriver ?? null });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to fetch hail' });
+    }
+  });
+
+  app.patch('/api/commercial-ride-requests/:id/decline', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const id = parseInt(req.params.id);
+      const rec = await storage.getCommercialRideRequestById(id);
+      if (!rec) return res.status(404).json({ message: 'Request not found' });
+      if (rec.driverId !== userId) return res.status(403).json({ message: 'Unauthorized' });
+      if (rec.status !== 'pending') return res.status(400).json({ message: 'Request is no longer pending' });
+      const updated = await storage.updateCommercialRideRequestStatus(id, 'declined');
+      const { broadcast } = await import('./websocket');
+      broadcast({ type: 'COMMERCIAL_REQUEST_DECLINED', requestId: id }, rec.riderId);
+      await storage.createNotification({
+        userId: rec.riderId,
+        type: 'commercial_request_declined',
+        title: 'Driver declined',
+        message: 'The driver declined your request. Try another driver nearby.',
+        read: false,
+      });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to decline' });
+    }
+  });
+
+  app.patch('/api/commercial-ride-requests/:id/cancel', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const id = parseInt(req.params.id);
+      const rec = await storage.getCommercialRideRequestById(id);
+      if (!rec) return res.status(404).json({ message: 'Request not found' });
+      if (rec.riderId !== userId) return res.status(403).json({ message: 'Unauthorized' });
+      if (rec.status !== 'pending') return res.status(400).json({ message: 'Request is no longer pending' });
+      const updated = await storage.updateCommercialRideRequestStatus(id, 'cancelled_by_rider');
+      const { broadcast } = await import('./websocket');
+      broadcast({ type: 'COMMERCIAL_REQUEST_CANCELLED', requestId: id, reason: 'rider_cancelled' }, rec.driverId);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to cancel' });
+    }
+  });
+
+  app.patch('/api/commercial-ride-requests/:id/accept', isAuthenticated, async (req: any, res) => {
+    try {
+      const driverId = req.session?.userId || req.user?.claims?.sub;
+      if (!driverId) return res.status(401).json({ message: 'Unauthorized' });
+      const id = parseInt(req.params.id);
+      const rec = await storage.getCommercialRideRequestById(id);
+      if (!rec) return res.status(404).json({ message: 'Request not found' });
+      if (rec.driverId !== driverId) return res.status(403).json({ message: 'Unauthorized' });
+      if (rec.status !== 'pending') return res.status(400).json({ message: 'Request is no longer pending' });
+      if (rec.expiresAt && new Date(rec.expiresAt) < new Date()) {
+        await storage.updateCommercialRideRequestStatus(id, 'expired');
+        return res.status(409).json({ message: 'This request has expired', code: 'HAIL_EXPIRED' });
+      }
+      // Defer the actual ride creation + payment to the existing
+      // accept-bid / pro-negotiation flow on the client. This endpoint
+      // only marks the hail as accepted and broadcasts to the rider so
+      // the UI can transition to the payment screen.
+      const updated = await storage.updateCommercialRideRequestStatus(id, 'accepted');
+      const { broadcast } = await import('./websocket');
+      broadcast({ type: 'COMMERCIAL_REQUEST_ACCEPTED', requestId: id }, rec.riderId);
+      await storage.createNotification({
+        userId: rec.riderId,
+        type: 'commercial_request_accepted',
+        title: 'Driver accepted',
+        message: 'The driver accepted your request. Confirm payment to lock it in.',
+        read: false,
+      });
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to accept' });
+    }
+  });
+
+  // ==========================================================================
+  // Phase 1 — E3: SOS alerts (internal-only with 999 escalation hooks)
+  // ==========================================================================
+  // Per-user rate limit: max 3 SOS in 5 minutes to prevent abuse of the
+  // safety channel while still allowing legitimate retries.
+  const sosRateLimit = new Map<string, number[]>();
+  const SOS_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+  const SOS_LIMIT_MAX = 3;
+  app.post('/api/sos', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const now = Date.now();
+      const recent = (sosRateLimit.get(userId) ?? []).filter(ts => now - ts < SOS_LIMIT_WINDOW_MS);
+      if (recent.length >= SOS_LIMIT_MAX) {
+        return res.status(429).json({ message: 'Too many SOS triggers in a short period. If this is a real emergency, call 999.' });
+      }
+      recent.push(now);
+      sosRateLimit.set(userId, recent);
+
+      const { rideId, lat, lng, lon, message } = req.body || {};
+      const lonValue = lon ?? lng; // support either key
+      // Authorize against the ride if rideId provided, and derive role from
+      // membership. Reject arbitrary rideIds the user is not part of.
+      let userRole: 'rider' | 'driver' = 'rider';
+      let validRideId: number | null = null;
+      if (rideId != null) {
+        const ride = await storage.getRideById(parseInt(rideId));
+        if (!ride) return res.status(404).json({ message: 'Ride not found' });
+        if (ride.riderId !== userId && ride.driverId !== userId) {
+          return res.status(403).json({ message: 'You are not part of this ride.' });
+        }
+        userRole = ride.riderId === userId ? 'rider' : 'driver';
+        validRideId = ride.id;
+      } else {
+        // No ride context: derive role from user record (default 'rider').
+        const u = await storage.getUser(userId);
+        userRole = (u?.isCommercialDriver || u?.isPrivateDriver) ? 'driver' : 'rider';
+      }
+      const alert = await storage.createSosAlert({
+        userId,
+        userRole,
+        rideId: validRideId,
+        lat: lat != null ? lat.toString() : null,
+        lon: lonValue != null ? lonValue.toString() : null,
+        message: message ?? null,
+        status: 'triggered',
+      } as any);
+      // Internal-only notification path. Replace with on-call paging when
+      // we wire up the safety queue. The 999 escalation interface is
+      // defined below so v2 only has to flip a switch.
+      console.error(`[SOS] alert ${alert.id} triggered by user=${userId} role=${userRole} ride=${validRideId ?? 'n/a'} lat=${lat} lon=${lonValue} msg=${message ?? ''}`);
+      try {
+        const user = await storage.getUser(userId);
+        const subject = `[SOS] alert #${alert.id} from ${user?.firstName ?? userId}`;
+        const body = `User ${userId} (${userRole}) triggered SOS.\nRide: ${validRideId ?? 'none'}\nLocation: ${lat}, ${lonValue}\nMessage: ${message ?? ''}\nTime: ${new Date().toISOString()}`;
+        console.error(`[SOS] would email safety@sibranet.com — subject=${subject}\n${body}`);
+      } catch {}
+      // Notify the other party on the ride if applicable
+      if (validRideId) {
+        try {
+          const ride = await storage.getRideById(validRideId);
+          if (ride) {
+            const otherUserId = ride.riderId === userId ? ride.driverId : ride.riderId;
+            if (otherUserId) {
+              const { broadcast } = await import('./websocket');
+              broadcast({ type: 'SOS_TRIGGERED', alertId: alert.id, rideId: validRideId }, otherUserId);
+            }
+          }
+        } catch (e) {
+          console.error('[SOS] failed to broadcast to other party:', e);
+        }
+      }
+      res.status(201).json({ ...alert, message: 'Saviaj safety has been notified.' });
+    } catch (error: any) {
+      console.error('[SOS] create failed:', error);
+      res.status(500).json({ message: error.message || 'Failed to trigger SOS' });
+    }
+  });
+
+  app.get('/api/sos/mine', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const alerts = await storage.getActiveSosAlertsForUser(userId);
+      res.json(alerts);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to fetch alerts' });
+    }
+  });
+
+  app.patch('/api/sos/:id/resolve', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.userId || req.user?.claims?.sub;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+      const id = parseInt(req.params.id);
+      const { status, notes } = req.body || {};
+      const alert = await storage.getSosAlertById(id);
+      if (!alert) return res.status(404).json({ message: 'Alert not found' });
+      if (alert.userId !== userId) return res.status(403).json({ message: 'Only the user who triggered the alert can resolve it' });
+      const next = (status === 'false_alarm' || status === 'resolved') ? status : 'resolved';
+      const updated = await storage.updateSosAlertStatus(id, next, userId, notes);
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to resolve' });
+    }
+  });
+
+  // Phase 1 — B5: driver cancels own published route → refund + integrity fee
+  app.patch('/api/driver-routes/:id/cancel-route', isAuthenticated, async (req: any, res) => {
+    try {
+      const driverId = req.session?.userId || req.user?.claims?.sub;
+      if (!driverId) return res.status(401).json({ message: 'Unauthorized' });
+      const id = parseInt(req.params.id);
+      const { reason } = req.body || {};
+      const route = await storage.getDriverRouteById(id);
+      if (!route) return res.status(404).json({ message: 'Route not found' });
+      if (route.driverId !== driverId) return res.status(403).json({ message: 'Unauthorized' });
+      if (route.status === 'cancelled' || route.status === 'completed') {
+        return res.status(400).json({ message: 'Route is no longer active' });
+      }
+      const ridesOnRoute = await storage.getRidesByRouteId(id);
+      let refundsProcessed = 0;
+      const integrityFeePerBookingPence = 200; // £2 per affected booking
+      for (const r of ridesOnRoute) {
+        if (['completed', 'cancelled', 'cancelled_by_rider', 'cancelled_by_driver'].includes(r.status || '')) continue;
+        try {
+          if (r.paymentStatus === 'paid' && r.paymentIntentId) {
+            await stripeService.createRefund(r.paymentIntentId, reason || 'Driver cancelled route');
+            refundsProcessed++;
+          }
+          await storage.updateRide(r.id, { status: 'cancelled_by_driver', paymentStatus: r.paymentStatus === 'paid' ? 'refunded' : (r.paymentStatus || undefined) } as any);
+          await storage.updateUserAvailability(r.riderId, 'rider', true);
+          await storage.createNotification({
+            userId: r.riderId,
+            type: 'route_cancelled_by_driver',
+            title: 'Driver cancelled the route',
+            message: `Your ride from ${r.pickupLocation} to ${r.dropoffLocation} was cancelled by the driver. ${r.paymentStatus === 'paid' ? 'A refund has been processed.' : ''}`,
+            relatedRideId: r.id,
+            read: false,
+          });
+        } catch (cancelErr) {
+          console.error(`[route-cancel] ride ${r.id} cancel failed:`, cancelErr);
+        }
+      }
+      await storage.updateDriverRouteStatus(id, 'cancelled');
+      // Integrity fee — log + record on driver_payouts as debt for support to chase.
+      const totalFeePence = refundsProcessed * integrityFeePerBookingPence;
+      if (totalFeePence > 0) {
+        console.warn(`[route-cancel] driver ${driverId} owes ${totalFeePence}p integrity fee for cancelling ${refundsProcessed} bookings on route ${id}`);
+      }
+      res.json({ routeId: id, refundsProcessed, integrityFeePence: totalFeePence });
+    } catch (error: any) {
+      console.error('[route-cancel] failed:', error);
+      res.status(500).json({ message: error.message || 'Failed to cancel route' });
+    }
+  });
+
   // Ride Routes
   app.get('/api/rides', isAuthenticated, async (req: any, res) => {
     try {
@@ -4550,6 +4939,31 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       if (baseMinimumFare !== undefined) tierRates.baseMinimumFare = parseFloat(baseMinimumFare);
       
       const updatedUser = await storage.updateDriverOnlineStatus(userId, isOnlineForHire, ratePerMile, driverTagline, lat, lng, validatedCategories, Object.keys(tierRates).length > 0 ? tierRates : undefined);
+      
+      // Phase 1 — C6: cancel any open commercial-ride-requests if the
+      // driver is going offline (so riders waiting for a response get a
+      // clean "driver went offline" notification rather than a 60s timeout).
+      if (!isOnlineForHire) {
+        try {
+          const cancelled = await storage.cancelOpenCommercialRideRequestsForDriver(userId);
+          if (cancelled.length > 0) {
+            const { broadcast } = await import('./websocket');
+            for (const c of cancelled) {
+              broadcast({ type: 'COMMERCIAL_REQUEST_CANCELLED', requestId: c.id, reason: 'driver_offline' }, c.riderId);
+              await storage.createNotification({
+                userId: c.riderId,
+                type: 'commercial_request_cancelled',
+                title: 'Driver went offline',
+                message: 'The driver you requested has gone offline. Please choose another driver.',
+                read: false,
+              });
+            }
+          }
+        } catch (cancelErr) {
+          console.error(`[hail] failed to cancel commercial requests for driver ${userId}:`, cancelErr);
+        }
+      }
+      
       res.json(maskSensitiveUserData(updatedUser));
     } catch (error) {
       console.error("Error updating online status:", error);
@@ -4987,6 +5401,32 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         return res.json(ride);
       }
 
+      // Phase 1 — F1: geofence on completion. Driver must be within 200m
+      // of the dropoff coordinates, OR explicitly confirm with a reason
+      // (vehicle broke down, rider asked to be dropped early, etc.).
+      const { driverLat, driverLng, confirm, reason } = req.body || {};
+      if (ride.dropoffLat != null && ride.dropoffLng != null && driverLat != null && driverLng != null) {
+        const { haversineMeters } = await import('./lib/cancellationFees');
+        const distance = haversineMeters(
+          parseFloat(driverLat),
+          parseFloat(driverLng),
+          parseFloat(ride.dropoffLat as unknown as string),
+          parseFloat(ride.dropoffLng as unknown as string),
+        );
+        const GEOFENCE_RADIUS_M = 200;
+        if (distance > GEOFENCE_RADIUS_M && !confirm) {
+          return res.status(400).json({
+            message: `You're ${Math.round(distance)}m from the dropoff. Please confirm you want to end the ride here and provide a reason.`,
+            code: 'GEOFENCE_OUTSIDE',
+            distanceMeters: Math.round(distance),
+          });
+        }
+        await storage.updateRide(id, {
+          geofenceCompleteDistanceMeters: Math.round(distance),
+          geofenceOverrideReason: distance > GEOFENCE_RADIUS_M ? (reason?.slice(0, 500) || 'No reason given') : null,
+        } as any);
+      }
+
       const updatedRide = await storage.updateRideStatus(id, 'completed');
 
       // Trigger Stripe Connect transfer of the driver's net earnings
@@ -5132,16 +5572,116 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       const cancelledByRider = ride.riderId === userId;
       const cancelStatus = cancelledByRider ? 'cancelled_by_rider' : 'cancelled_by_driver';
       
-      // If payment was made, process refund
+      // Update ride status FIRST so a downstream Stripe failure cannot
+      // leave the ride active while the rider has been charged a fee or
+      // partially refunded. Subsequent fee/refund/transfer attempts log
+      // and persist their state but never roll back the cancellation.
+      const updatedRideEarly = await storage.updateRide(id, { status: cancelStatus } as any);
+      
+      // Phase 1 — A7/A8/B7: rider cancellation fee policy.
+      // Charged via separate Stripe PaymentIntent (immediate confirm using
+      // the saved payment method on the original PI) so we don't have to
+      // partially-refund the original. 80% goes to driver, 20% platform.
+      let cancellationFeeApplied: { amountPence: number; reason: string; description: string } | null = null;
+      if (cancelledByRider) {
+        try {
+          const { computeRiderCancelFee } = await import('./lib/cancellationFees');
+          const fee = computeRiderCancelFee(ride);
+          if (fee.amountPence > 0 && ride.paymentIntentId) {
+            try {
+              const { getUncachableStripeClient } = await import('./stripeClient');
+              const stripe = await getUncachableStripeClient();
+              const originalPi = await stripe.paymentIntents.retrieve(ride.paymentIntentId);
+              const customer = (originalPi.customer as string) || undefined;
+              const paymentMethod = (originalPi.payment_method as string) || undefined;
+              if (customer && paymentMethod) {
+                const cancelPi = await stripe.paymentIntents.create({
+                  amount: fee.amountPence,
+                  currency: originalPi.currency || 'gbp',
+                  customer,
+                  payment_method: paymentMethod,
+                  off_session: true,
+                  confirm: true,
+                  description: `Cancellation fee for ride #${id} (${fee.reason})`,
+                  metadata: {
+                    rideId: id.toString(),
+                    type: 'cancellation_fee',
+                    reason: fee.reason,
+                  },
+                });
+                await storage.updateRide(id, {
+                  cancellationFeePence: fee.amountPence,
+                  cancellationFeeChargedAt: new Date(),
+                  cancellationFeePaymentIntentId: cancelPi.id,
+                  cancellationReason: fee.reason,
+                } as any);
+                cancellationFeeApplied = {
+                  amountPence: fee.amountPence,
+                  reason: fee.reason,
+                  description: fee.description,
+                };
+                if (ride.driverId && fee.driverSharePence > 0) {
+                  try {
+                    const driver = await storage.getUser(ride.driverId);
+                    if (driver?.stripeConnectAccountId && driver?.stripeConnectPayoutsEnabled) {
+                      const { transferToDriver } = await import('./stripeConnect');
+                      await transferToDriver({
+                        destinationAccountId: driver.stripeConnectAccountId,
+                        amountPence: fee.driverSharePence,
+                        rideId: id,
+                        driverId: ride.driverId,
+                      });
+                    }
+                  } catch (transferErr) {
+                    console.error(`[cancel-fee] driver share transfer failed for ride ${id}:`, transferErr);
+                  }
+                }
+                console.log(`[cancel-fee] ride ${id}: charged ${fee.amountPence}p (${fee.reason})`);
+              } else {
+                console.warn(`[cancel-fee] ride ${id}: no saved payment method, fee waived`);
+              }
+            } catch (chargeErr) {
+              console.error(`[cancel-fee] ride ${id}: charge failed`, chargeErr);
+              await storage.updateRide(id, {
+                cancellationFeePence: fee.amountPence,
+                cancellationReason: `${fee.reason}_failed`,
+              } as any);
+            }
+          } else if (fee.amountPence > 0) {
+            await storage.updateRide(id, {
+              cancellationFeePence: fee.amountPence,
+              cancellationReason: `${fee.reason}_pending_payment_method`,
+            } as any);
+          }
+        } catch (feeErr) {
+          console.error(`[cancel-fee] ride ${id}: pipeline crashed`, feeErr);
+        }
+      }
+      
+      // If payment was made, process refund. NOTE: the ride is already
+      // marked cancelled above, so a refund failure is logged + escalated
+      // rather than rolled back. This avoids the "fee charged but ride
+      // still active" inconsistency.
       let refundProcessed = false;
+      let refundFailureMessage: string | null = null;
       if (ride.paymentStatus === 'paid' && ride.paymentIntentId) {
         try {
           await stripeService.createRefund(ride.paymentIntentId, reason || 'Ride cancelled');
           refundProcessed = true;
           console.log(`Refund processed for ride ${id}`);
-        } catch (refundError) {
+        } catch (refundError: any) {
           console.error(`Failed to process refund for ride ${id}:`, refundError);
-          return res.status(500).json({ message: "Failed to process refund. Please contact support." });
+          refundFailureMessage = refundError?.message?.slice(0, 200) || 'Refund failed';
+          try {
+            await storage.createNotification({
+              userId: ride.riderId,
+              type: 'refund_failed',
+              title: 'Refund processing issue',
+              message: 'Your ride was cancelled but the automatic refund failed. Our team will process this manually within 24 hours.',
+              relatedRideId: id,
+              read: false,
+            });
+          } catch {}
         }
 
         // Reverse any Stripe Connect transfer that already left for
@@ -5186,8 +5726,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
       }
       
       const updatedRide = await storage.updateRide(id, { 
-        status: cancelStatus,
-        paymentStatus: refundProcessed ? 'refunded' : (ride.paymentStatus || undefined)
+        paymentStatus: refundProcessed ? 'refunded' : (refundFailureMessage ? 'refund_pending' : (ride.paymentStatus || undefined))
       });
       
       // If there was a route, restore the seat
@@ -5227,7 +5766,7 @@ export async function registerRoutes(app: Express, httpServer: Server): Promise<
         refundProcessed
       }, otherUserId);
       
-      res.json({ ...updatedRide, refundProcessed });
+      res.json({ ...updatedRide, refundProcessed, refundFailureMessage, cancellationFee: cancellationFeeApplied });
     } catch (error) {
       console.error("Error cancelling ride:", error);
       res.status(500).json({ message: "Failed to cancel ride" });

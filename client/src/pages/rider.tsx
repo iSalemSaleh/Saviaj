@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
+import SosButton from "@/components/SosButton";
 import { getCurrentPosition, isNativePlatform, requestPermissions } from "@/lib/nativeGeolocation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -473,12 +474,21 @@ export default function RiderPage() {
       setSelectedOffer(null);
       queryClient.invalidateQueries({ queryKey: ["/api/rider-offers/mine"] });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      // Phase 1 — A5: surface the lock 409 with a clearer call-to-action.
+      const msg = error?.message || "Failed to revise offer";
+      const isLocked = /OFFER_LOCKED|already responded/i.test(msg);
       toast({
-        title: "Error",
-        description: error.message || "Failed to revise offer",
+        title: isLocked ? "Offer locked" : "Error",
+        description: isLocked
+          ? "A driver has already responded — cancel this offer and post a new one if you want a different price."
+          : msg,
         variant: "destructive",
       });
+      if (isLocked) {
+        setEditDialogOpen(false);
+        queryClient.invalidateQueries({ queryKey: ["/api/rider-offers/mine"] });
+      }
     },
   });
 
@@ -1015,8 +1025,20 @@ export default function RiderPage() {
     return (route.totalSeats || route.availableSeats) - route.availableSeats;
   };
 
+  // Phase 1 — E3: SOS button is mounted on the rider page when a ride is
+  // actively in progress. Hold for 2 seconds to alert Saviaj safety.
+  const inProgressRide = useMemo(
+    () => myRides.find(r => ['en_route_pickup', 'arrived_pickup', 'in_progress', 'arrived_dropoff'].includes(r.status || '')),
+    [myRides]
+  );
+
   return (
     <div className="relative h-screen overflow-hidden">
+      {inProgressRide && (
+        <div className="fixed bottom-24 right-4 z-[60]">
+          <SosButton rideId={inProgressRide.id} />
+        </div>
+      )}
       {/* BACKGROUND: Full-screen Map */}
       <div className="fixed inset-0 z-0">
         <RiderLocationMap

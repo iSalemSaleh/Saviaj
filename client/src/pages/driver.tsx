@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Navbar from "@/components/layout/Navbar";
+import SosButton from "@/components/SosButton";
 import { getCurrentPosition, isNativePlatform, requestPermissions } from "@/lib/nativeGeolocation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1010,8 +1011,16 @@ export default function DriverPage() {
     }
   };
 
+  // Phase 1 — E3: SOS button mounted on driver page during an active trip.
+  const driverInProgressRide = activeRides.find(r => ['en_route_pickup', 'arrived_pickup', 'in_progress', 'arrived_dropoff'].includes(r.status || ''));
+
   return (
     <div className="h-screen w-screen overflow-hidden relative">
+      {driverInProgressRide && (
+        <div className="fixed bottom-24 right-4 z-[60]">
+          <SosButton rideId={driverInProgressRide.id} />
+        </div>
+      )}
       <div className="fixed inset-0 z-0">
         <RiderLocationMap
           userLocation={startCoords ? { lat: startCoords.lat, lng: startCoords.lon } : userLocation}

@@ -581,4 +581,74 @@ CREATE TABLE IF NOT EXISTS "account_deletion_requests" (
 );
 CREATE INDEX IF NOT EXISTS account_deletion_requests_email_idx ON public.account_deletion_requests USING btree (email);
 CREATE INDEX IF NOT EXISTS account_deletion_requests_status_idx ON public.account_deletion_requests USING btree (status);
+-- Phase 1 additions are wrapped in a separate transaction below.
+
+COMMIT;
+BEGIN;
+-- ====== Phase 1 — Ride flow 10/10 additions (May 2026) ======
+
+-- A5: lock rider offer once a bid is accepted
+ALTER TABLE "rider_offers" ADD COLUMN IF NOT EXISTS "acceptance_locked_at" TIMESTAMP;
+ALTER TABLE "rider_offers" ADD COLUMN IF NOT EXISTS "expired_at" TIMESTAMP;
+
+-- A7/A8/B7: cancellation fee tracking
+ALTER TABLE "rides" ADD COLUMN IF NOT EXISTS "cancellation_fee_pence" INTEGER;
+ALTER TABLE "rides" ADD COLUMN IF NOT EXISTS "cancellation_fee_charged_at" TIMESTAMP;
+ALTER TABLE "rides" ADD COLUMN IF NOT EXISTS "cancellation_fee_payment_intent_id" VARCHAR(255);
+ALTER TABLE "rides" ADD COLUMN IF NOT EXISTS "cancellation_reason" VARCHAR(100);
+
+-- F1: geofence on trip complete
+ALTER TABLE "rides" ADD COLUMN IF NOT EXISTS "geofence_override_reason" TEXT;
+ALTER TABLE "rides" ADD COLUMN IF NOT EXISTS "geofence_complete_distance_meters" INTEGER;
+
+-- G4: capture retry policy
+ALTER TABLE "rides" ADD COLUMN IF NOT EXISTS "capture_attempts" INTEGER DEFAULT 0;
+ALTER TABLE "rides" ADD COLUMN IF NOT EXISTS "capture_last_attempt_at" TIMESTAMP;
+ALTER TABLE "rides" ADD COLUMN IF NOT EXISTS "capture_last_error" TEXT;
+
+-- C3: bid 5-minute confirmation countdown
+ALTER TABLE "bids" ADD COLUMN IF NOT EXISTS "expires_at" TIMESTAMP;
+ALTER TABLE "bids" ADD COLUMN IF NOT EXISTS "expired_at" TIMESTAMP;
+
+-- C5/C6/C7: commercial driver hail requests
+CREATE TABLE IF NOT EXISTS "commercial_ride_requests" (id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY);
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "rider_id" VARCHAR;
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "driver_id" VARCHAR;
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "pickup_location" TEXT;
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "dropoff_location" TEXT;
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "pickup_lat" NUMERIC(10,7);
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "pickup_lng" NUMERIC(10,7);
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "dropoff_lat" NUMERIC(10,7);
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "dropoff_lng" NUMERIC(10,7);
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "estimated_distance" NUMERIC(7,2);
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "proposed_price_pence" INTEGER;
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "status" VARCHAR(30) DEFAULT 'pending';
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "expires_at" TIMESTAMP;
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "resolved_at" TIMESTAMP;
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "ride_id" INTEGER;
+ALTER TABLE "commercial_ride_requests" ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMP DEFAULT now();
+CREATE INDEX IF NOT EXISTS "idx_crr_driver_status" ON "commercial_ride_requests" ("driver_id", "status");
+CREATE INDEX IF NOT EXISTS "idx_crr_rider_status" ON "commercial_ride_requests" ("rider_id", "status");
+CREATE INDEX IF NOT EXISTS "idx_crr_expires" ON "commercial_ride_requests" ("expires_at");
+
+-- E3: SOS alerts
+CREATE TABLE IF NOT EXISTS "sos_alerts" (id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY);
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "ride_id" INTEGER;
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "user_id" VARCHAR;
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "user_role" VARCHAR(10);
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "lat" NUMERIC(10,7);
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "lon" NUMERIC(10,7);
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "accuracy_meters" INTEGER;
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "message" TEXT;
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "status" VARCHAR(30) DEFAULT 'triggered';
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "escalated_to_999_at" TIMESTAMP;
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "acknowledged_at" TIMESTAMP;
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "acknowledged_by_user_id" VARCHAR;
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "resolved_at" TIMESTAMP;
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "notes" TEXT;
+ALTER TABLE "sos_alerts" ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMP DEFAULT now();
+CREATE INDEX IF NOT EXISTS "idx_sos_status" ON "sos_alerts" ("status", "created_at");
+CREATE INDEX IF NOT EXISTS "idx_sos_user" ON "sos_alerts" ("user_id");
+CREATE INDEX IF NOT EXISTS "idx_sos_ride" ON "sos_alerts" ("ride_id");
+
 COMMIT;

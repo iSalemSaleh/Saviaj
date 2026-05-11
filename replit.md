@@ -153,6 +153,43 @@ Service SSH console) before submitting builds for review.
   3. `cd android && ./gradlew bundleRelease` — produces signed AAB
   4. Upload AAB to Play Console → Internal Testing track (instant, no review)
 
+## Phase 1 Ride-Flow Hardening (May 2026)
+Critical-path fixes across all three rider journeys plus internal-only SOS.
+
+### New / changed endpoints
+- `PATCH /api/rider-offers/:id/revise` → 409 `OFFER_LOCKED` if any active bid exists.
+- `POST /api/driver-routes/:routeId/request-seat` → atomically reserves seats; returns 409 `SEATS_UNAVAILABLE` on race; rolls back the seat reservation if the ride row fails to write.
+- `PATCH /api/rides/:id/cancel` → marks ride cancelled FIRST, then attempts cancellation fee (separate Stripe PI, off-session confirm using saved PM on the original PI; 80% to driver / 20% platform) and refund. Refund failures are logged + surface a notification to the rider but never roll back the cancellation. Response includes `cancellationFee` and `refundFailureMessage`.
+- `PATCH /api/rides/:id/complete` → enforces 200 m haversine geofence vs dropoff. Outside the radius requires `{ confirm: true, reason: string }` and persists `geofence_override_reason` + `geofence_override_distance_m`.
+- `PATCH /api/driver-routes/:id/cancel-route` → driver cancels a published route: refunds every booked rider, marks each booking cancelled, charges driver £2 per affected booking as platform integrity fee.
+- `POST /api/commercial-drivers/:driverId/request` → hail flow. Requires `proposedPricePence` (or `proposedPrice` in major units, ≥ £1.00). Single-active per rider/driver. 60-second `expires_at`. Companion endpoints: `GET /api/commercial-ride-requests/mine`, `PATCH /:id/accept|decline|cancel`.
+- Driver online toggle off → cancels open commercial ride requests for that driver.
+- `POST /api/sos` → internal safety alert. Rate-limited to 3 per user per 5 min. If `rideId` is supplied, caller MUST be rider or driver on that ride; `userRole` is derived server-side from membership. Body accepts `{ rideId?, lat?, lng?|lon?, message? }`. Companions: `GET /api/sos/mine`, `PATCH /:id/resolve`.
+
+### Cancellation fee policy
+- Computed in `server/lib/cancellationFees.ts` (`computeRiderCancelFee`).
+- > 30 min before pickup: £1.50 flat.
+- ≤ 30 min before pickup: 50% of fare.
+
+### Cron jobs (server/index.ts)
+- 30 sec sweep: `expireStaleBids`, `expireStaleCommercialRideRequests` (60-second hail timeout).
+- 5 min sweep: existing payment-timeout job + `expireUnbidRiderOffers` + `retryFailedCaptures` (3 attempts, 8h apart, then admin notification).
+
+### Single-active-ride guard
+`storage.getActiveRideForRider` enforced at: POST `/api/rider-offers`, POST `/api/driver-routes/:routeId/request-seat`, POST `/api/commercial-drivers/:driverId/request`. Returns 409 `ACTIVE_RIDE_EXISTS` with `activeRideId`.
+
+### Frontend
+- `client/src/components/SosButton.tsx`: 2-second hold to fire, mounted floating bottom-right on rider + driver pages while a ride is in progress.
+- Rider revise mutation surfaces a specific lock toast on `OFFER_LOCKED`.
+- Outstanding (deferred to Phase 1.1): bid 5-min countdown UI, geofence reason picker, cancel-route confirmation dialog, active-ride banner.
+
+### Production schema sync
+After deploy, SSH the Azure App Service and run:
+```
+cd /home/site/wwwroot && node scripts/run-prod-schema-sync.cjs
+```
+The Phase-1 batch is wrapped in its own `BEGIN/COMMIT` after the existing transaction in `scripts/prod-full-schema-sync.sql`. Every statement is `IF NOT EXISTS` / idempotent.
+
 ## External Dependencies
 - **Stripe**: Payment processing.
 - **Azure Maps**: Geocoding and routing.

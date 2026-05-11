@@ -49,6 +49,12 @@ import {
   pushTokens,
   type PushToken,
   type InsertPushToken,
+  commercialRideRequests,
+  type CommercialRideRequest,
+  type InsertCommercialRideRequest,
+  sosAlerts,
+  type SosAlert,
+  type InsertSosAlert,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql, lt, gt, or, isNotNull, ne, inArray } from "drizzle-orm";
@@ -1556,6 +1562,33 @@ export class DatabaseStorage implements IStorage {
     return offer;
   }
 
+  // Phase 1 — A5: lock offer once a bid has been accepted
+  async lockRiderOffer(id: number): Promise<RiderOffer> {
+    const [offer] = await db
+      .update(riderOffers)
+      .set({ acceptanceLockedAt: new Date(), updatedAt: new Date() })
+      .where(eq(riderOffers.id, id))
+      .returning();
+    return offer;
+  }
+
+  // Phase 1 — A5: returns true if the offer has any non-cancelled bid OR is locked
+  async isRiderOfferLockedFromEdit(id: number): Promise<boolean> {
+    const [offer] = await db.select().from(riderOffers).where(eq(riderOffers.id, id));
+    if (!offer) return false;
+    if (offer.acceptanceLockedAt) return true;
+    if (offer.status !== 'pending') return true;
+    const activeBids = await db
+      .select({ id: bids.id })
+      .from(bids)
+      .where(and(
+        eq(bids.riderOfferId, id),
+        sql`${bids.status} NOT IN ('rejected','expired','withdrawn','cancelled')`
+      ))
+      .limit(1);
+    return activeBids.length > 0;
+  }
+
   // Driver Route operations
   async createDriverRoute(route: InsertDriverRoute): Promise<DriverRoute> {
     const [driverRoute] = await db
@@ -2305,19 +2338,51 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(rides.createdAt));
   }
 
-  async decrementRouteSeats(routeId: number): Promise<DriverRoute> {
-    const route = await this.getDriverRouteById(routeId);
-    if (!route) throw new Error('Route not found');
-    
-    const newSeats = Math.max(0, route.availableSeats - 1);
-    const newStatus = newSeats === 0 ? 'full' : 'active';
-    
-    const [updated] = await db
-      .update(driverRoutes)
-      .set({ availableSeats: newSeats, status: newStatus, updatedAt: new Date() })
-      .where(eq(driverRoutes.id, routeId))
-      .returning();
-    return updated;
+  async decrementRouteSeats(routeId: number, seats: number = 1): Promise<DriverRoute> {
+    // Atomic decrement (Phase 1 — B3/B4). The previous read-then-write
+    // approach allowed two concurrent bookings of the last seat to both
+    // succeed. Now we do a single conditional UPDATE: only succeeds if
+    // the row still has enough seats. Throws SeatNotAvailableError if
+    // not — caller must convert to a 409.
+    const result = await db.execute(sql`
+      UPDATE driver_routes
+      SET available_seats = available_seats - ${seats},
+          status = CASE WHEN available_seats - ${seats} <= 0 THEN 'full' ELSE 'active' END,
+          updated_at = NOW()
+      WHERE id = ${routeId}
+        AND available_seats >= ${seats}
+        AND status = 'active'
+      RETURNING *
+    `);
+    const row = (result as any).rows?.[0];
+    if (!row) {
+      const err: any = new Error('No seats available on this route');
+      err.code = 'SEATS_UNAVAILABLE';
+      throw err;
+    }
+    // Map snake_case back to drizzle camelCase shape
+    return {
+      id: row.id,
+      driverId: row.driver_id,
+      startLocation: row.start_location,
+      endLocation: row.end_location,
+      startLat: row.start_lat,
+      startLng: row.start_lng,
+      endLat: row.end_lat,
+      endLng: row.end_lng,
+      departureTime: row.departure_time,
+      maxDetourMiles: row.max_detour_miles,
+      availableSeats: row.available_seats,
+      totalSeats: row.total_seats,
+      pricePerSeat: row.price_per_seat,
+      paymentTimeoutMinutes: row.payment_timeout_minutes,
+      status: row.status,
+      scheduleId: row.schedule_id,
+      platformFeeCollectedForRideId: row.platform_fee_collected_for_ride_id,
+      platformFeeCollectedPence: row.platform_fee_collected_pence,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    } as DriverRoute;
   }
 
   async incrementRouteSeats(routeId: number): Promise<DriverRoute> {
@@ -3027,6 +3092,204 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(proHireNegotiationOffers.createdAt))
       .limit(1);
     return offer;
+  }
+
+  // ==========================================================================
+  // Phase 1 — I4: single-active-ride enforcement
+  // ==========================================================================
+  async getActiveRideForRider(riderId: string): Promise<Ride | undefined> {
+    const ACTIVE_STATUSES = [
+      'pending_payment',
+      'pending_driver_confirmation',
+      'scheduled',
+      'matched',
+      'accepted',
+      'en_route_pickup',
+      'arrived_pickup',
+      'in_progress',
+      'arrived_dropoff',
+    ];
+    const [ride] = await db
+      .select()
+      .from(rides)
+      .where(and(
+        eq(rides.riderId, riderId),
+        inArray(rides.status, ACTIVE_STATUSES)
+      ))
+      .orderBy(desc(rides.createdAt))
+      .limit(1);
+    return ride;
+  }
+
+  async getActiveRiderOfferCount(riderId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(riderOffers)
+      .where(and(
+        eq(riderOffers.riderId, riderId),
+        eq(riderOffers.status, 'pending')
+      ));
+    return result[0]?.count ?? 0;
+  }
+
+  // ==========================================================================
+  // Phase 1 — C5/C6/C7: commercial ride requests (hail flow)
+  // ==========================================================================
+  async createCommercialRideRequest(req: InsertCommercialRideRequest): Promise<CommercialRideRequest> {
+    const [created] = await db.insert(commercialRideRequests).values(req as any).returning();
+    return created;
+  }
+
+  async getCommercialRideRequestById(id: number): Promise<CommercialRideRequest | undefined> {
+    const [r] = await db.select().from(commercialRideRequests).where(eq(commercialRideRequests.id, id));
+    return r;
+  }
+
+  async getOpenCommercialRideRequestForDriver(driverId: string): Promise<CommercialRideRequest | undefined> {
+    const [r] = await db.select().from(commercialRideRequests).where(and(
+      eq(commercialRideRequests.driverId, driverId),
+      eq(commercialRideRequests.status, 'pending'),
+      gt(commercialRideRequests.expiresAt, new Date())
+    )).limit(1);
+    return r;
+  }
+
+  async getOpenCommercialRideRequestForRider(riderId: string): Promise<CommercialRideRequest | undefined> {
+    const [r] = await db.select().from(commercialRideRequests).where(and(
+      eq(commercialRideRequests.riderId, riderId),
+      eq(commercialRideRequests.status, 'pending'),
+      gt(commercialRideRequests.expiresAt, new Date())
+    )).limit(1);
+    return r;
+  }
+
+  async updateCommercialRideRequestStatus(id: number, status: string, rideId?: number): Promise<CommercialRideRequest> {
+    const [updated] = await db.update(commercialRideRequests)
+      .set({ status, resolvedAt: new Date(), ...(rideId ? { rideId } : {}) })
+      .where(eq(commercialRideRequests.id, id))
+      .returning();
+    return updated;
+  }
+
+  async expireStaleCommercialRideRequests(): Promise<CommercialRideRequest[]> {
+    const result = await db.update(commercialRideRequests)
+      .set({ status: 'expired', resolvedAt: new Date() })
+      .where(and(
+        eq(commercialRideRequests.status, 'pending'),
+        lt(commercialRideRequests.expiresAt, new Date())
+      ))
+      .returning();
+    return result;
+  }
+
+  async cancelOpenCommercialRideRequestsForDriver(driverId: string): Promise<CommercialRideRequest[]> {
+    const result = await db.update(commercialRideRequests)
+      .set({ status: 'cancelled_driver_offline', resolvedAt: new Date() })
+      .where(and(
+        eq(commercialRideRequests.driverId, driverId),
+        eq(commercialRideRequests.status, 'pending')
+      ))
+      .returning();
+    return result;
+  }
+
+  // ==========================================================================
+  // Phase 1 — E3: SOS alerts
+  // ==========================================================================
+  async createSosAlert(alert: InsertSosAlert): Promise<SosAlert> {
+    const [created] = await db.insert(sosAlerts).values(alert as any).returning();
+    return created;
+  }
+
+  async getSosAlertById(id: number): Promise<SosAlert | undefined> {
+    const [a] = await db.select().from(sosAlerts).where(eq(sosAlerts.id, id));
+    return a;
+  }
+
+  async getActiveSosAlertsForUser(userId: string): Promise<SosAlert[]> {
+    return db.select().from(sosAlerts).where(and(
+      eq(sosAlerts.userId, userId),
+      sql`${sosAlerts.status} IN ('triggered','acknowledged','escalated_999')`
+    )).orderBy(desc(sosAlerts.createdAt));
+  }
+
+  async updateSosAlertStatus(id: number, status: string, byUserId?: string, notes?: string): Promise<SosAlert> {
+    const patch: any = { status };
+    const now = new Date();
+    if (status === 'acknowledged') { patch.acknowledgedAt = now; patch.acknowledgedByUserId = byUserId; }
+    if (status === 'resolved' || status === 'false_alarm') { patch.resolvedAt = now; }
+    if (status === 'escalated_999') { patch.escalatedTo999At = now; }
+    if (notes) patch.notes = notes;
+    const [updated] = await db.update(sosAlerts).set(patch).where(eq(sosAlerts.id, id)).returning();
+    return updated;
+  }
+
+  // ==========================================================================
+  // Phase 1 — C3: bid expiry (5-min confirmation window)
+  // ==========================================================================
+  async expireStaleBids(): Promise<Array<{ id: number; riderOfferId: number; driverId: string }>> {
+    const result = await db.update(bids)
+      .set({ status: 'expired', expiredAt: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(bids.status, 'pending'),
+        isNotNull(bids.expiresAt),
+        lt(bids.expiresAt, new Date())
+      ))
+      .returning({ id: bids.id, riderOfferId: bids.riderOfferId, driverId: bids.driverId });
+    return result;
+  }
+
+  // ==========================================================================
+  // Phase 1 — A B4: expire rider offers with no bids
+  // ==========================================================================
+  async expireUnbidRiderOffers(): Promise<RiderOffer[]> {
+    // Two cases:
+    //   (a) requestedTime within next 30 min and zero bids → expire
+    //   (b) created > 60 min ago and zero bids → expire
+    const now = new Date();
+    const within30min = new Date(now.getTime() + 30 * 60 * 1000);
+    const sixtyMinAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    const result = await db.execute(sql`
+      UPDATE rider_offers ro
+      SET status = 'expired', expired_at = NOW(), updated_at = NOW()
+      WHERE ro.status = 'pending'
+        AND NOT EXISTS (
+          SELECT 1 FROM bids b
+          WHERE b.rider_offer_id = ro.id
+            AND b.status NOT IN ('rejected','expired','withdrawn','cancelled')
+        )
+        AND (
+          (ro.requested_time IS NOT NULL AND ro.requested_time <= ${within30min})
+          OR (ro.created_at <= ${sixtyMinAgo})
+        )
+      RETURNING *
+    `);
+    return ((result as any).rows ?? []) as RiderOffer[];
+  }
+
+  // ==========================================================================
+  // Phase 1 — G4: capture retry tracking
+  // ==========================================================================
+  async findRidesNeedingCaptureRetry(maxAttempts: number, hoursBetweenAttempts: number): Promise<Ride[]> {
+    const cutoff = new Date(Date.now() - hoursBetweenAttempts * 60 * 60 * 1000);
+    return db.select().from(rides).where(and(
+      eq(rides.paymentStatus, 'failed'),
+      sql`COALESCE(${rides.captureAttempts}, 0) < ${maxAttempts}`,
+      or(
+        sql`${rides.captureLastAttemptAt} IS NULL`,
+        lt(rides.captureLastAttemptAt, cutoff)
+      )
+    )).limit(50);
+  }
+
+  async recordCaptureAttempt(rideId: number, success: boolean, error?: string): Promise<void> {
+    await db.update(rides).set({
+      captureAttempts: sql`COALESCE(${rides.captureAttempts}, 0) + 1`,
+      captureLastAttemptAt: new Date(),
+      captureLastError: success ? null : (error?.slice(0, 500) ?? 'Unknown'),
+      paymentStatus: success ? 'paid' : 'failed',
+      updatedAt: new Date(),
+    } as any).where(eq(rides.id, rideId));
   }
 }
 
