@@ -365,15 +365,24 @@ export default function RiderPage() {
 
   // Phase 2 — T07: poll my commercial ride requests so we can toast when a
   // hail expires (60s timeout) without needing a websocket subscription.
-  const { data: myCommercialRequests = [] } = useQuery<any[]>({
+  // The endpoint returns { asRider, asDriver } where each is a single object
+  // or null — not an array. Normalise to an array of "as rider" entries.
+  const { data: myCommercialRequestsRaw } = useQuery<any>({
     queryKey: ["/api/commercial-ride-requests/mine"],
     enabled: !!user,
     refetchInterval: 5000,
   });
+  const myCommercialRequests = useMemo<any[]>(() => {
+    if (!myCommercialRequestsRaw) return [];
+    if (Array.isArray(myCommercialRequestsRaw)) return myCommercialRequestsRaw;
+    const r = myCommercialRequestsRaw.asRider;
+    return r ? [r] : [];
+  }, [myCommercialRequestsRaw]);
   const prevHailStatuses = useRef<Map<number, string>>(new Map());
   useEffect(() => {
     const next = new Map<number, string>();
     for (const req of myCommercialRequests) {
+      if (!req || typeof req.id === 'undefined') continue;
       const prev = prevHailStatuses.current.get(req.id);
       next.set(req.id, req.status);
       if (prev === 'pending' && req.status === 'expired') {
